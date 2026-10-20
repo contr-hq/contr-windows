@@ -22,6 +22,6 @@ internal sealed class LogDecoder
         var chars = new char[decoder.GetCharCount(bytes, flush: false)];
         decoder.GetChars(bytes, chars, flush: false);
 
-        return new ContainerLogEvent.Output(new string(chars), isError);
+        return new ContainerLogEvent.Output(new string(chars), isError, response.Timestamp?.ToDateTimeOffset());
     }
 }

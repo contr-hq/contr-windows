@@ -23,6 +23,6 @@ public sealed class StreamContainerLogsQueryHandler
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return Task.FromResult(_containers.StreamLogsAsync(request.Id, request.TailLines, cancellationToken));
+        return Task.FromResult(_containers.StreamLogsAsync(request.Id, request.Range, cancellationToken));
     }
 }

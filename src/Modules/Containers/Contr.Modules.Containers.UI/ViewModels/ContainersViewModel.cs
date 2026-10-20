@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,61 +14,127 @@ using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RestartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
-using Contr.Modules.Containers.Application.Containers.Queries.StreamContainerLogs;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
 using Contr.SharedKernel;
+using Contr.UI.Common.Engine;
 using Contr.UI.Common.Lists;
+using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.Modules.Containers.UI.ViewModels;
 
-/// <summary>The containers list, its lifecycle actions, and the log panel of one container.</summary>
+/// <summary>The containers list: grouped by Compose project or flat, filtered, with lifecycle actions.</summary>
 public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto, ContainerRow>
 {
-    private const int _logTailLines = 500;
+    /// <summary>The page key of the container page, derived from its type name.</summary>
+    private const string _detailPageKey = "ContainerDetail";
 
-    /// <summary>The log panel keeps the newest characters up to this count.</summary>
-    private const int _logCapacity = 200_000;
+    private const int _flatView = 1;
 
     private static readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(3);
 
     private readonly ISender _sender;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
-    private readonly StringBuilder _logText = new();
-    private CancellationTokenSource? _logs;
+    private readonly INavigationService _navigation;
+    private readonly IClipboardService _clipboard;
+    private readonly UsageSampler _usage;
+    private readonly Dictionary<string, ContainerGroup> _groups = new(StringComparer.Ordinal);
+    private ContainerRow? _exited;
 
     [ObservableProperty]
-    public partial bool IsLogsOpen { get; set; }
+    public partial string FilterText { get; set; }
+
+    /// <summary>0 groups the list by Compose project; 1 shows it flat.</summary>
+    [ObservableProperty]
+    public partial int ViewIndex { get; set; }
 
     [ObservableProperty]
-    public partial string LogsTitle { get; set; }
+    public partial bool ShowStopped { get; set; }
+
+    /// <summary>Such as <c>5 running · 2 stopped · 3 compose projects</c>.</summary>
+    [ObservableProperty]
+    public partial string Subtitle { get; set; }
+
+    /// <summary>Whether the filter and the stopped toggle let any container through.</summary>
+    [ObservableProperty]
+    public partial bool HasMatches { get; set; }
 
     [ObservableProperty]
-    public partial string LogsText { get; set; }
+    public partial bool CanPrune { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasLogsError))]
-    public partial string? LogsError { get; set; }
+    public partial bool IsExitNoticeOpen { get; set; }
 
-    public ContainersViewModel(ISender sender, IDialogService dialogs, INotificationService notifications)
+    [ObservableProperty]
+    public partial string ExitNotice { get; set; }
+
+    public ContainersViewModel(
+        ISender sender,
+        IDialogService dialogs,
+        INotificationService notifications,
+        INavigationService navigation,
+        IClipboardService clipboard,
+        IDaemonConnection daemon)
+        : this(sender, dialogs, notifications, navigation, clipboard, daemon, new UsageSampler(sender))
+    {
+    }
+
+    private ContainersViewModel(
+        ISender sender,
+        IDialogService dialogs,
+        INotificationService notifications,
+        INavigationService navigation,
+        IClipboardService clipboard,
+        IDaemonConnection daemon,
+        UsageSampler usage)
         : base(
-            new LiveCollection<ContainerDto, ContainerRow>(ContainerRow.From, row => row.Id, ContainerRow.Compare),
+            new LiveCollection<ContainerDto, ContainerRow>(
+                container => ContainerRow.From(container, usage.For(container.Id)),
+                row => row.Id,
+                ContainerRow.Compare),
             _retryDelay)
     {
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
+        ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(clipboard);
         _sender = sender;
         _dialogs = dialogs;
         _notifications = notifications;
-        LogsTitle = string.Empty;
-        LogsText = string.Empty;
+        _navigation = navigation;
+        _clipboard = clipboard;
+        _usage = usage;
+        Engine = new EngineGateViewModel(daemon);
+        FilterText = string.Empty;
+        ShowStopped = true;
+        Subtitle = string.Empty;
+        ExitNotice = string.Empty;
+        Rows.CollectionChanged += OnRowsChanged;
     }
 
-    public bool HasLogsError => !string.IsNullOrEmpty(LogsError);
+    public EngineGateViewModel Engine { get; }
+
+    public ObservableCollection<ContainerGroup> Groups { get; } = [];
+
+    /// <summary>Starts following the engine and the list; call it from the page's <c>Loaded</c>.</summary>
+    public void Activate()
+    {
+        Engine.Start();
+        StartWatching();
+        Regroup();
+    }
+
+    /// <summary>Stops every stream the page holds; call it from the page's <c>Unloaded</c>.</summary>
+    public void Deactivate()
+    {
+        StopWatching();
+        _usage.StopAll();
+        Engine.Stop();
+    }
 
     public Task StartAsync(ContainerRow row)
     {
@@ -105,28 +174,77 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         await RunAsync(new RemoveContainerCommand(row.ContainerId, row.State), $"Could not delete {row.Name}");
     }
 
-    /// <summary>Opens the log panel on <paramref name="row"/> and follows its output.</summary>
-    public void OpenLogs(ContainerRow row)
+    public void OpenDetails(ContainerRow row, ContainerDetailTab tab)
     {
         ArgumentNullException.ThrowIfNull(row);
 
-        CloseLogs();
-        _logText.Clear();
-        LogsText = string.Empty;
-        LogsError = null;
-        LogsTitle = row.Name;
-        IsLogsOpen = true;
-
-        _logs = new CancellationTokenSource();
-        _ = FollowLogsAsync(row.ContainerId, _logs.Token);
+        _navigation.NavigateTo(_detailPageKey, row.ContainerId, tab);
     }
 
-    public void CloseLogs()
+    public void CopyId(ContainerRow row)
     {
-        _logs?.Cancel();
-        _logs?.Dispose();
-        _logs = null;
-        IsLogsOpen = false;
+        ArgumentNullException.ThrowIfNull(row);
+
+        _clipboard.SetText(row.Id);
+    }
+
+    public Task StartAllAsync(ContainerGroup group)
+    {
+        return RunEachAsync(group, row => row.CanStart, StartAsync);
+    }
+
+    public Task StopAllAsync(ContainerGroup group)
+    {
+        return RunEachAsync(group, row => row.CanStop, StopAsync);
+    }
+
+    public Task RestartAllAsync(ContainerGroup group)
+    {
+        return RunEachAsync(group, row => row.CanRestart, RestartAsync);
+    }
+
+    /// <summary>Deletes every stopped container after asking once.</summary>
+    public async Task PruneStoppedAsync()
+    {
+        var stopped = Rows
+            .Where(row => row.IsStopped)
+            .ToList();
+
+        if (stopped.Count == 0)
+        {
+            return;
+        }
+
+        var message = stopped.Count == 1
+            ? $"Delete {stopped[0].Name}? Its logs and file changes are deleted with it."
+            : $"Delete {stopped.Count} stopped containers? Their logs and file changes are deleted with them.";
+
+        if (!await _dialogs.ShowConfirmAsync("Prune stopped containers", message, "Delete", "Cancel"))
+        {
+            return;
+        }
+
+        foreach (var row in stopped)
+        {
+            await RunAsync(new RemoveContainerCommand(row.ContainerId, row.State), $"Could not delete {row.Name}");
+        }
+    }
+
+    public void ViewExitedLogs()
+    {
+        if (_exited is { } row)
+        {
+            OpenDetails(row, ContainerDetailTab.Logs);
+        }
+    }
+
+    public async Task RestartExitedAsync()
+    {
+        if (_exited is { } row)
+        {
+            IsExitNoticeOpen = false;
+            await StartAsync(row);
+        }
     }
 
     protected override Task<IAsyncEnumerable<ListChange<ContainerDto>>> OpenAsync(
@@ -139,10 +257,77 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
     {
         if (disposing)
         {
-            CloseLogs();
+            Rows.CollectionChanged -= OnRowsChanged;
+            Deactivate();
+            _usage.Dispose();
         }
 
         base.Dispose(disposing);
+    }
+
+    partial void OnFilterTextChanged(string value)
+    {
+        Regroup();
+    }
+
+    partial void OnViewIndexChanged(int value)
+    {
+        Regroup();
+    }
+
+    partial void OnShowStoppedChanged(bool value)
+    {
+        Regroup();
+    }
+
+    private static string Describe(IReadOnlyCollection<ContainerRow> rows)
+    {
+        var running = rows.Count(row => row.IsRunning);
+        var stopped = rows.Count(row => row.IsStopped);
+        var projects = rows
+            .Where(row => row.HasProject)
+            .Select(row => row.Project)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        var parts = new List<string> { $"{Count(running)} running" };
+
+        if (stopped > 0)
+        {
+            parts.Add($"{Count(stopped)} stopped");
+        }
+
+        if (projects > 0)
+        {
+            parts.Add(projects == 1 ? "1 compose project" : $"{Count(projects)} compose projects");
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private static string Count(int count)
+    {
+        return count.ToString(CultureInfo.CurrentCulture);
+    }
+
+    private async Task RunEachAsync(
+        ContainerGroup group, Func<ContainerRow, bool> applies, Func<ContainerRow, Task> run)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+
+        var rows = RowsOf(group.Key)
+            .Where(applies)
+            .ToList();
+
+        foreach (var row in rows)
+        {
+            await run(row);
+        }
+    }
+
+    private IEnumerable<ContainerRow> RowsOf(string groupKey)
+    {
+        return groupKey == ContainerGroup.FlatKey ? Rows : Rows.Where(row => row.Project == groupKey);
     }
 
     private async Task RunAsync(IRequest<Result> command, string failure)
@@ -155,39 +340,106 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         }
     }
 
-    private async Task FollowLogsAsync(ContainerId id, CancellationToken cancellationToken)
+    private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        try
+        if (e is {
+            Action: NotifyCollectionChangedAction.Replace,
+            OldItems: [ContainerRow before],
+            NewItems: [ContainerRow after],
+        })
         {
-            var events = await _sender.Send(new StreamContainerLogsQuery(id, _logTailLines), cancellationToken);
-            await foreach (var logEvent in events.WithCancellation(cancellationToken))
-            {
-                switch (logEvent)
-                {
-                    case ContainerLogEvent.Output output:
-                        AppendLog(output.Text);
-                        break;
-                    case ContainerLogEvent.Failed failed:
-                        LogsError = failed.Error.Message;
-                        break;
-                }
-            }
+            NoticeExit(before, after);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+
+        Regroup();
+    }
+
+    /// <summary>Raises the exit notice when a running container fails; lowers it when that one runs again.</summary>
+    private void NoticeExit(ContainerRow before, ContainerRow after)
+    {
+        if (before.IsRunning && after.HasFailed)
         {
-            // The panel closed or moved to another container.
+            _exited = after;
+            var where = after.HasProject ? $"{after.Name} in {after.Project}" : after.Name;
+            var what = after.ExitCode is { } exitCode ? $"exited with code {exitCode}" : "died";
+            ExitNotice = $"{where} {what} at {DateTimeOffset.Now.ToString("t", CultureInfo.CurrentCulture)}.";
+            IsExitNoticeOpen = true;
+
+            return;
+        }
+
+        if (_exited?.Id == after.Id && after.IsRunning)
+        {
+            IsExitNoticeOpen = false;
         }
     }
 
-    private void AppendLog(string text)
+    private void Regroup()
     {
-        _logText.Append(text);
+        var filter = FilterText.Trim();
+        var all = Rows.ToList();
+        var visible = all
+            .Where(row => (ShowStopped || !row.IsStopped) && row.Matches(filter))
+            .ToList();
 
-        if (_logText.Length > _logCapacity)
+        var desired = ViewIndex == _flatView ? FlatGroups(visible, all) : ProjectGroups(visible, all);
+        CollectionSync.Sync(Groups, desired, group => group.Key);
+
+        var running = all
+            .Where(row => row.State == ContainerState.Running)
+            .Select(row => row.ContainerId)
+            .ToList();
+        _usage.Follow(running);
+
+        Subtitle = all.Count == 0 ? string.Empty : Describe(all);
+        HasMatches = visible.Count > 0;
+        CanPrune = all.Any(row => row.IsStopped);
+    }
+
+    private List<ContainerGroup> FlatGroups(List<ContainerRow> visible, List<ContainerRow> all)
+    {
+        if (visible.Count == 0)
         {
-            _logText.Remove(0, _logText.Length - _logCapacity);
+            return [];
         }
 
-        LogsText = _logText.ToString();
+        var group = GroupFor(ContainerGroup.FlatKey);
+        group.Update(visible, all);
+
+        return [group];
+    }
+
+    /// <summary>Projects by name, then the standalone containers; a card the filter empties is left out.</summary>
+    private List<ContainerGroup> ProjectGroups(List<ContainerRow> visible, List<ContainerRow> all)
+    {
+        var keys = visible
+            .Select(row => row.Project)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key.Length == 0)
+            .ThenBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var groups = new List<ContainerGroup>(keys.Count);
+        foreach (var key in keys)
+        {
+            var group = GroupFor(key);
+            group.Update(
+                [.. visible.Where(row => row.Project == key)],
+                [.. all.Where(row => row.Project == key)]);
+            groups.Add(group);
+        }
+
+        return groups;
+    }
+
+    private ContainerGroup GroupFor(string key)
+    {
+        if (!_groups.TryGetValue(key, out var group))
+        {
+            group = new ContainerGroup(key);
+            _groups[key] = group;
+        }
+
+        return group;
     }
 }

@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
+using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Containers.Application.Containers;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
-using Contr.Modules.Containers.Application.Containers.Queries.StreamContainerLogs;
+using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.SharedKernel;
+using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml.Controls;
 using NSubstitute;
@@ -22,11 +26,21 @@ public sealed class ContainersViewModelTests
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly IDialogService _dialogs = Substitute.For<IDialogService>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly INavigationService _navigation = Substitute.For<INavigationService>();
+    private readonly IClipboardService _clipboard = Substitute.For<IClipboardService>();
+    private readonly IDaemonConnection _daemon = Substitute.For<IDaemonConnection>();
+
+    public ContainersViewModelTests()
+    {
+        var running = new DaemonStatus(DaemonConnectionState.Connected, EngineState.Running, string.Empty);
+        _daemon.Status.Returns(running);
+        _daemon.StatusChanges.Returns(Observable.Return(running));
+    }
 
     [Fact]
     public async Task Start_SendsTheRowStateAndShowsAFailure()
     {
-        var row = Row(ContainerState.Exited);
+        var row = ContainerRowTests.Row("web", state: ContainerState.Exited, status: "Exited (0) 1 minute ago");
         _sender
             .Send(Arg.Is<StartContainerCommand>(command => command != null), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Daemon.Conflict", "port is taken")));
@@ -45,58 +59,139 @@ public sealed class ContainersViewModelTests
     {
         _dialogs.ShowConfirmAsync(default!, default!, default!, default!).ReturnsForAnyArgs(false);
 
-        await CreateViewModel().RemoveAsync(Row(ContainerState.Running));
+        await CreateViewModel().RemoveAsync(ContainerRowTests.Row("web"));
 
         await _sender.DidNotReceiveWithAnyArgs().Send(Arg.Any<RemoveContainerCommand>(), default);
     }
 
     [Fact]
-    public async Task Remove_SendsTheCommandOnceConfirmed()
+    public void Groups_ListProjectsByNameThenTheStandaloneContainers()
     {
-        _dialogs.ShowConfirmAsync(default!, default!, default!, default!).ReturnsForAnyArgs(true);
-        _sender
-            .Send(Arg.Is<RemoveContainerCommand>(command => command != null), Arg.Any<CancellationToken>())
-            .Returns(Result.Success());
+        Stream(Snapshot(
+            Dto("shop-web", "shop"),
+            Dto("shop-db", "shop"),
+            Dto("adminer"),
+            Dto("docs-web", "docs")));
+        var viewModel = CreateViewModel();
 
-        await CreateViewModel().RemoveAsync(Row(ContainerState.Running));
+        viewModel.Activate();
 
-        await _sender.Received(1).Send(
-            Arg.Is<RemoveContainerCommand>(command => command != null && command.State == ContainerState.Running),
-            Arg.Any<CancellationToken>());
+        Assert.Equal(["docs", "shop", ContainerGroup.StandaloneKey], viewModel.Groups.Select(group => group.Key));
+        Assert.Equal(["shop-db", "shop-web"], viewModel.Groups[1].Rows.Select(row => row.Name));
+        Assert.Equal("2 containers · 2 running", viewModel.Groups[1].Summary);
+        Assert.Equal("4 running · 2 compose projects", viewModel.Subtitle);
     }
 
     [Fact]
-    public void OpenLogs_ShowsTheOutputAndTheFailure()
+    public void Filter_HidesTheCardsItEmpties()
     {
-        IAsyncEnumerable<ContainerLogEvent> events = TestStreams.Of<ContainerLogEvent>(
-            new ContainerLogEvent.Output("starting\n", false),
-            new ContainerLogEvent.Output("ready\n", false),
-            new ContainerLogEvent.Failed(new Error("Daemon.Unavailable", "connection closed")));
-        _sender
-            .Send(Arg.Is<StreamContainerLogsQuery>(query => query != null), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(events));
+        Stream(Snapshot(Dto("shop-web", "shop"), Dto("adminer")));
         var viewModel = CreateViewModel();
+        viewModel.Activate();
 
-        viewModel.OpenLogs(Row(ContainerState.Running));
+        viewModel.FilterText = "admin";
 
-        Assert.True(viewModel.IsLogsOpen);
-        Assert.Equal("web", viewModel.LogsTitle);
-        Assert.Equal("starting\nready\n", viewModel.LogsText);
-        Assert.Equal("connection closed", viewModel.LogsError);
-
-        viewModel.CloseLogs();
-
-        Assert.False(viewModel.IsLogsOpen);
+        Assert.Equal([ContainerGroup.StandaloneKey], viewModel.Groups.Select(group => group.Key));
+        Assert.True(viewModel.HasMatches);
     }
 
-    private static ContainerRow Row(ContainerState state)
+    [Fact]
+    public void ShowStopped_Off_HidesStoppedContainers()
     {
-        return ContainerRow.From(new ContainerDto(
-            new ContainerId("c0ffee01"), "web", "nginx:1.29", state, "Up", DateTimeOffset.UnixEpoch, [], string.Empty));
+        var old = Dto("old", state: ContainerState.Exited, status: "Exited (0) 3 days ago");
+        Stream(Snapshot(Dto("shop-web", "shop"), old));
+        var viewModel = CreateViewModel();
+        viewModel.Activate();
+
+        viewModel.ShowStopped = false;
+
+        Assert.Equal(["shop"], viewModel.Groups.Select(group => group.Key));
+        Assert.True(viewModel.CanPrune);
+    }
+
+    [Fact]
+    public void FlatList_ShowsEveryContainerInOneCard()
+    {
+        Stream(Snapshot(Dto("shop-web", "shop"), Dto("adminer")));
+        var viewModel = CreateViewModel();
+        viewModel.Activate();
+
+        viewModel.ViewIndex = 1;
+
+        var group = Assert.Single(viewModel.Groups);
+        Assert.False(group.HasHeader);
+        Assert.Equal(["adminer", "shop-web"], group.Rows.Select(row => row.Name));
+    }
+
+    [Fact]
+    public void ExitNotice_OpensWhenARunningContainerFails()
+    {
+        var running = Dto("worker", "shop");
+        var exited = running with { State = ContainerState.Exited, Status = "Exited (1) Less than a second ago" };
+        Stream(Snapshot(running), new ListChange<ContainerDto>.Upserted(exited));
+        var viewModel = CreateViewModel();
+
+        viewModel.Activate();
+
+        Assert.True(viewModel.IsExitNoticeOpen);
+        Assert.StartsWith("worker in shop exited with code 1 at ", viewModel.ExitNotice, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PruneStopped_DeletesEveryStoppedContainerOnceConfirmed()
+    {
+        Stream(Snapshot(
+            Dto("web"),
+            Dto("old", state: ContainerState.Exited, status: "Exited (0) 3 days ago"),
+            Dto("new", state: ContainerState.Created, status: "Created")));
+        _dialogs.ShowConfirmAsync(default!, default!, default!, default!).ReturnsForAnyArgs(true);
+        _sender
+            .Send(Arg.Any<RemoveContainerCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+        var viewModel = CreateViewModel();
+        viewModel.Activate();
+
+        await viewModel.PruneStoppedAsync();
+
+        await _sender.Received(2).Send(Arg.Any<RemoveContainerCommand>(), Arg.Any<CancellationToken>());
+        await _sender.DidNotReceive().Send(
+            Arg.Is<RemoveContainerCommand>(command => command != null && command.Id.Value == "web-id"),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static ListChange<ContainerDto> Snapshot(params ContainerDto[] containers)
+    {
+        return new ListChange<ContainerDto>.Snapshot(containers);
+    }
+
+    private static ContainerDto Dto(
+        string name,
+        string project = "",
+        ContainerState state = ContainerState.Running,
+        string status = "Up 2 hours")
+    {
+        return new ContainerDto(
+            new ContainerId(name + "-id"),
+            name,
+            "nginx:1.29",
+            state,
+            status,
+            DateTimeOffset.UnixEpoch,
+            [],
+            project,
+            string.Empty);
+    }
+
+    private void Stream(params ListChange<ContainerDto>[] changes)
+    {
+        IAsyncEnumerable<ListChange<ContainerDto>> stream = TestStreams.Of(changes);
+        _sender
+            .Send(Arg.Any<WatchContainersQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(stream));
     }
 
     private ContainersViewModel CreateViewModel()
     {
-        return new ContainersViewModel(_sender, _dialogs, _notifications);
+        return new ContainersViewModel(_sender, _dialogs, _notifications, _navigation, _clipboard, _daemon);
     }
 }

@@ -1,19 +1,33 @@
 using System;
-using Contr.Modules.Containers.Domain;
 using Contr.Modules.Containers.UI.ViewModels;
+using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 namespace Contr.Modules.Containers.UI.Views;
 
-/// <summary>The containers list with per-row lifecycle actions and a log panel.</summary>
-public sealed partial class ContainersPage : Page
+/// <summary>The containers list, grouped by Compose project, with per-row and per-project actions.</summary>
+public sealed partial class ContainersPage : Page, IHasViewModel
 {
-    public ContainersPage(ContainersViewModel viewModel)
+    /// <summary>The page key of the Images module's page; modules know each other only by page key.</summary>
+    private const string _imagesPageKey = "Images";
+
+    private readonly INavigationService _navigation;
+    private readonly IClipboardService _clipboard;
+
+    public ContainersPage(
+        ContainersViewModel viewModel, INavigationService navigation, IClipboardService clipboard)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(clipboard);
         ViewModel = viewModel;
+        _navigation = navigation;
+        _clipboard = clipboard;
 
         InitializeComponent();
 
@@ -21,54 +35,97 @@ public sealed partial class ContainersPage : Page
         Unloaded += OnUnloaded;
     }
 
+    /// <summary>The command the empty list suggests trying from a terminal.</summary>
+    public static string TryCommand => "docker run -d -p 8080:80 nginx";
+
     public ContainersViewModel ViewModel { get; }
 
-    public static Brush StateBrush(ContainerState state)
-    {
-        var key = state switch {
-            ContainerState.Running => "SystemFillColorSuccessBrush",
-            ContainerState.Dead => "SystemFillColorCriticalBrush",
-            ContainerState.Exited or ContainerState.Unknown => "SystemFillColorNeutralBrush",
-            _ => "SystemFillColorCautionBrush",
-        };
+    Contr.UI.Contracts.ViewModel IHasViewModel.ViewModel => ViewModel;
 
-        return (Brush)Microsoft.UI.Xaml.Application.Current.Resources[key];
+    public static string ChevronGlyph(bool expanded)
+    {
+        return expanded ? "\uE70D" : "\uE76C";
     }
 
-    public static string Subtitle(string project, string shortId)
+    public static string ExpandName(bool expanded)
     {
-        return project.Length > 0 ? $"{project} · {shortId}" : shortId;
+        return expanded ? "Collapse" : "Expand";
     }
 
-    public static InfoBarSeverity SeverityFor(bool engineDown)
+    public static string Shown(string text, bool engineOpen)
     {
-        return engineDown ? InfoBarSeverity.Warning : InfoBarSeverity.Error;
+        return engineOpen ? text : string.Empty;
     }
 
-    public static bool IsWaiting(bool isLoaded, bool hasError)
+    public static Visibility ShowsBoth(bool first, bool second)
     {
-        return !isLoaded && !hasError;
+        return first && second ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private static ContainerRow? RowOf(object sender)
+    public static bool ShowsError(bool hasError, bool engineOpen)
     {
-        return (sender as FrameworkElement)?.Tag as ContainerRow;
+        return hasError && engineOpen;
+    }
+
+    public static Visibility ShowsNoMatches(bool engineOpen, bool hasRows, bool hasMatches)
+    {
+        return engineOpen && hasRows && !hasMatches ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static bool IsWaiting(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return engineOpen && !isLoaded && !hasError;
+    }
+
+    private static T? TagOf<T>(object sender)
+        where T : class
+    {
+        return (sender as FrameworkElement)?.Tag as T;
+    }
+
+    private static bool IsInsideButton(DependencyObject source, object row)
+    {
+        var node = source;
+        while (node is not null && !ReferenceEquals(node, row))
+        {
+            if (node is ButtonBase)
+            {
+                return true;
+            }
+
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return false;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StartWatching();
+        ViewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StopWatching();
-        ViewModel.CloseLogs();
+        ViewModel.Deactivate();
+    }
+
+    /// <summary>Opens the container unless the tap landed on one of the row's buttons or links.</summary>
+    private void OnRowTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && IsInsideButton(source, sender))
+        {
+            return;
+        }
+
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            ViewModel.OpenDetails(row, ContainerDetailTab.Logs);
+        }
     }
 
     private async void OnStart(object sender, RoutedEventArgs e)
     {
-        if (RowOf(sender) is { } row)
+        if (TagOf<ContainerRow>(sender) is { } row)
         {
             await ViewModel.StartAsync(row);
         }
@@ -76,7 +133,7 @@ public sealed partial class ContainersPage : Page
 
     private async void OnStop(object sender, RoutedEventArgs e)
     {
-        if (RowOf(sender) is { } row)
+        if (TagOf<ContainerRow>(sender) is { } row)
         {
             await ViewModel.StopAsync(row);
         }
@@ -84,7 +141,7 @@ public sealed partial class ContainersPage : Page
 
     private async void OnRestart(object sender, RoutedEventArgs e)
     {
-        if (RowOf(sender) is { } row)
+        if (TagOf<ContainerRow>(sender) is { } row)
         {
             await ViewModel.RestartAsync(row);
         }
@@ -92,7 +149,7 @@ public sealed partial class ContainersPage : Page
 
     private async void OnRemove(object sender, RoutedEventArgs e)
     {
-        if (RowOf(sender) is { } row)
+        if (TagOf<ContainerRow>(sender) is { } row)
         {
             await ViewModel.RemoveAsync(row);
         }
@@ -100,20 +157,82 @@ public sealed partial class ContainersPage : Page
 
     private void OnLogs(object sender, RoutedEventArgs e)
     {
-        if (RowOf(sender) is { } row)
+        if (TagOf<ContainerRow>(sender) is { } row)
         {
-            ViewModel.OpenLogs(row);
+            ViewModel.OpenDetails(row, ContainerDetailTab.Logs);
         }
     }
 
-    private void OnCloseLogs(object sender, RoutedEventArgs e)
+    private void OnDetails(object sender, RoutedEventArgs e)
     {
-        ViewModel.CloseLogs();
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            ViewModel.OpenDetails(row, ContainerDetailTab.Inspect);
+        }
     }
 
-    /// <summary>Keeps the newest output in view as it arrives.</summary>
-    private void OnLogsSizeChanged(object sender, SizeChangedEventArgs e)
+    private void OnCopyId(object sender, RoutedEventArgs e)
     {
-        LogsScroller.ChangeView(null, LogsScroller.ScrollableHeight, null, disableAnimation: true);
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            ViewModel.CopyId(row);
+        }
+    }
+
+    private void OnToggleGroup(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerGroup>(sender) is { } group)
+        {
+            group.IsExpanded = !group.IsExpanded;
+        }
+    }
+
+    private async void OnStartAll(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerGroup>(sender) is { } group)
+        {
+            await ViewModel.StartAllAsync(group);
+        }
+    }
+
+    private async void OnStopAll(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerGroup>(sender) is { } group)
+        {
+            await ViewModel.StopAllAsync(group);
+        }
+    }
+
+    private async void OnRestartAll(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerGroup>(sender) is { } group)
+        {
+            await ViewModel.RestartAllAsync(group);
+        }
+    }
+
+    private async void OnPruneStopped(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PruneStoppedAsync();
+    }
+
+    private void OnViewExitedLogs(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ViewExitedLogs();
+    }
+
+    private async void OnRestartExited(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RestartExitedAsync();
+    }
+
+    private void OnPullImage(object sender, RoutedEventArgs e)
+    {
+        _navigation.NavigateTo(_imagesPageKey);
+    }
+
+    private void OnCopyTryCommand(object sender, RoutedEventArgs e)
+    {
+        _clipboard.SetText(TryCommand);
     }
 }

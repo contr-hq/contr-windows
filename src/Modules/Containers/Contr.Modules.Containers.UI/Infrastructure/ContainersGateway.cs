@@ -9,6 +9,7 @@ using Contr.Modules.Containers.Application.Containers;
 using Contr.Modules.Containers.Domain;
 using Contr.SharedKernel;
 using ContainersV1 = Contr.Sdk.Containers.V1;
+using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Contr.Modules.Containers.UI.Infrastructure;
 
@@ -90,12 +91,27 @@ public sealed class ContainersGateway : IContainersGateway
     }
 
     public IAsyncEnumerable<ContainerLogEvent> StreamLogsAsync(
-        ContainerId id, int tailLines, CancellationToken cancellationToken)
+        ContainerId id, LogRange range, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(id);
-        ArgumentOutOfRangeException.ThrowIfNegative(tailLines);
+        ArgumentNullException.ThrowIfNull(range);
 
-        var request = new ContainersV1.StreamLogsRequest { Id = id.Value, Follow = true, TailLines = (uint)tailLines };
+        var request = new ContainersV1.StreamLogsRequest {
+            Id = id.Value,
+            Follow = true,
+            Timestamps = range.Timestamps,
+        };
+
+        if (range.TailLines is { } tailLines)
+        {
+            request.TailLines = (uint)Math.Max(0, tailLines);
+        }
+
+        if (range.Since is { } since)
+        {
+            request.Since = Timestamp.FromDateTimeOffset(since);
+        }
+
         var decoder = new LogDecoder();
 
         return _daemon.StreamAsync(
@@ -103,5 +119,36 @@ public sealed class ContainersGateway : IContainersGateway
             decoder.Decode,
             error => new ContainerLogEvent.Failed(error),
             cancellationToken);
+    }
+
+    public IAsyncEnumerable<ContainerStatsEvent> StreamStatsAsync(ContainerId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new ContainersV1.StreamStatsRequest { Id = id.Value };
+
+        return _daemon.StreamAsync(
+            (client, token) => client.Containers.StreamStats(request, cancellationToken: token),
+            ContainerMapping.ToStatsEvent,
+            error => new ContainerStatsEvent.Failed(error),
+            cancellationToken);
+    }
+
+    public async Task<Result<ContainerDetailsDto>> InspectAsync(ContainerId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new ContainersV1.InspectContainerRequest { Id = id.Value };
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Containers
+                    .InspectContainerAsync(request, cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Result.Success(ContainerMapping.ToDetails(id, result.Value))
+            : Result.Failure<ContainerDetailsDto>(result.Error);
     }
 }
