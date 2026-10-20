@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -34,6 +35,7 @@ public sealed partial class OnboardingViewModel : ViewModel
 
     private readonly IDaemonConnection _daemon;
     private readonly ICliTools _cliTools;
+    private readonly IWslDistributions _wsl;
     private readonly ISignInStartup _signIn;
     private readonly ILocalSettingsService _settings;
     private readonly IClipboardService _clipboard;
@@ -79,6 +81,14 @@ public sealed partial class OnboardingViewModel : ViewModel
     [ObservableProperty]
     public partial bool InstallTools { get; set; }
 
+    /// <summary>Whether the daemon integrates WSL distributions and the user has any besides Contr's own.</summary>
+    [ObservableProperty]
+    public partial bool HasDistributions { get; set; }
+
+    /// <summary>Which distributions reach the engine once setup finishes, for the summary.</summary>
+    [ObservableProperty]
+    public partial string WslText { get; set; }
+
     [ObservableProperty]
     public partial string ContextText { get; set; }
 
@@ -88,17 +98,20 @@ public sealed partial class OnboardingViewModel : ViewModel
     public OnboardingViewModel(
         IDaemonConnection daemon,
         ICliTools cliTools,
+        IWslDistributions wsl,
         ISignInStartup signIn,
         ILocalSettingsService settings,
         IClipboardService clipboard)
     {
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(cliTools);
+        ArgumentNullException.ThrowIfNull(wsl);
         ArgumentNullException.ThrowIfNull(signIn);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(clipboard);
         _daemon = daemon;
         _cliTools = cliTools;
+        _wsl = wsl;
         _signIn = signIn;
         _settings = settings;
         _clipboard = clipboard;
@@ -106,6 +119,7 @@ public sealed partial class OnboardingViewModel : ViewModel
         ToolsText = string.Empty;
         ToolsNote = string.Empty;
         ContextText = string.Empty;
+        WslText = string.Empty;
         StartAtSignIn = true;
         Steps = [
             new OnboardingStep(1, "Check this PC"),
@@ -130,6 +144,9 @@ public sealed partial class OnboardingViewModel : ViewModel
     public ObservableCollection<CheckRow> Summary { get; } = [];
 
     public string StepLabel => $"Step {StepIndex + 1} of {Steps.Count}";
+
+    /// <summary>The user's WSL distributions; the checked ones reach the engine once setup applies step 4.</summary>
+    public ObservableCollection<WslDistributionItem> Distributions { get; } = [];
 
     public bool IsChecking => StepIndex == 0;
 
@@ -359,6 +376,75 @@ public sealed partial class OnboardingViewModel : ViewModel
                 + $"docker command uses with docker context use {context}."
             : "The daemon made no Docker context for this engine.";
         StartAtSignIn = _signIn.IsEnabled || !_settings.Read<bool>(SetupDoneKey);
+        await LoadDistributionsAsync();
+    }
+
+    private async Task LoadDistributionsAsync()
+    {
+        Distributions.Clear();
+        HasDistributions = false;
+
+        if (_daemon.Identity?.Capabilities.Contains(DaemonCapability.WslIntegration) != true)
+        {
+            return;
+        }
+
+        var listed = await _wsl.ListAsync(CancellationToken.None);
+
+        if (listed.IsFailure)
+        {
+            return;
+        }
+
+        foreach (var distribution in WslDistributionItem.Ordered(listed.Value))
+        {
+            Distributions.Add(new WslDistributionItem(distribution));
+        }
+
+        // The default distribution starts out checked while none has engine access yet.
+        if (!Distributions.Any(item => item.IsOn) && Distributions.FirstOrDefault(Offered) is { } first)
+        {
+            first.SetQuietly(true);
+        }
+
+        HasDistributions = Distributions.Count > 0;
+    }
+
+    private static bool Offered(WslDistributionItem item)
+    {
+        return item.CanChange && item.Distribution.IsDefault;
+    }
+
+    private async Task ApplyDistributionsAsync()
+    {
+        var failures = new List<string>();
+
+        foreach (var item in Distributions.Where(item => item.CanChange))
+        {
+            if (item.IsOn == WslDistributionItem.IsIntegrated(item.Distribution))
+            {
+                continue;
+            }
+
+            var result = await _wsl.SetIntegrationAsync(item.Name, item.IsOn, CancellationToken.None);
+
+            if (result.IsSuccess)
+            {
+                item.Show(result.Value);
+            }
+            else
+            {
+                failures.Add($"{item.Name}: {result.Error.Message}");
+            }
+        }
+
+        var on = Distributions
+            .Where(item => WslDistributionItem.IsIntegrated(item.Distribution))
+            .Select(item => item.Name)
+            .ToList();
+        WslText = failures.Count > 0
+            ? string.Join(" · ", failures)
+            : on.Count > 0 ? string.Join(", ", on) : "None";
     }
 
     private void ShowTools(CliToolsStatus? tools, string error)
@@ -400,6 +486,8 @@ public sealed partial class OnboardingViewModel : ViewModel
             {
                 Steps[3].Detail = CanInstallTools ? "Command-line tools left as they were" : "No tools to install";
             }
+
+            await ApplyDistributionsAsync();
         }
         finally
         {
@@ -415,6 +503,12 @@ public sealed partial class OnboardingViewModel : ViewModel
             ? new CheckRow(StatusKind.Good, "Ready", "Engine", $"Engine {engine.Version}")
             : new CheckRow(StatusKind.Caution, "Not running", "Engine", "Start it from the tray when you need it"));
         Summary.Add(new CheckRow(StatusKind.Good, "Set", "Command-line tools", Steps[3].Detail));
+
+        if (HasDistributions)
+        {
+            Summary.Add(new CheckRow(StatusKind.Good, "Set", "WSL distros", WslText));
+        }
+
         Summary.Add(StartAtSignIn
             ? new CheckRow(StatusKind.Good, "On", "Start at sign-in", "Contr starts in the notification area")
             : new CheckRow(StatusKind.Neutral, "Off", "Start at sign-in", "Off"));

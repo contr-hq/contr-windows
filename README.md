@@ -13,10 +13,11 @@ stops the engine; the tray keeps Contr reachable while its window is closed. Unt
 Also: Compose projects from the containers' Compose labels, Troubleshoot (the engine's failure, the checks the client
 can make, its own log), the tray flyout with the running containers, and the Kubernetes page's layout.
 
-The first run opens a setup (this PC's checks, the engine's setup with the daemon's progress, the command-line tools
-and start at sign-in), and Settings has the design's tabs.
+The first run opens a setup (this PC's checks, the engine's setup with the daemon's progress, the command-line tools,
+which of your WSL distributions reach the engine, and start at sign-in), and Settings has the design's tabs, with a
+switch per WSL distribution where the daemon integrates them.
 
-Next: WSL distributions once the daemon offers them, and a Velopack installer that bundles a pinned core release.
+Next: a Velopack installer that bundles a pinned core release.
 Screens and actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and
 down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
 

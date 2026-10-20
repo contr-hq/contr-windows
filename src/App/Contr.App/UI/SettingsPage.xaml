@@ -232,11 +232,37 @@
                         IsOpen="{x:Bind ViewModel.LacksWslIntegration}"
                         Message="This version of the Contr daemon does not integrate your WSL distributions."
                         Severity="Informational" />
-                    <controls:SettingsCard
-                        Description="docker inside these distros talks to Contr."
+                    <InfoBar
+                        Title="WSL integration didn't change"
+                        Margin="0,0,0,8"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.HasWslError, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.WslError, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind ViewModel.HasWslError, Mode=OneWay}" />
+                    <!--  Each switch applies when flipped; the daemon keeps the choice across restarts.  -->
+                    <controls:SettingsExpander
+                        AutomationProperties.AutomationId="WslDistributions"
+                        Description="{x:Bind local:SettingsPage.Or(ViewModel.WslSummary, 'docker inside these distros talks to Contr.'), Mode=OneWay}"
                         Header="Your distros"
                         HeaderIcon="{winui:FontIcon Glyph=&#xE756;}"
-                        IsEnabled="False" />
+                        IsEnabled="{x:Bind ViewModel.OffersWslIntegration}"
+                        IsExpanded="True"
+                        ItemsSource="{x:Bind ViewModel.Distributions}">
+                        <controls:SettingsExpander.ItemTemplate>
+                            <DataTemplate x:DataType="local:WslDistributionItem">
+                                <controls:SettingsCard Description="{x:Bind Detail, Mode=OneWay}" IsEnabled="{x:Bind CanChange, Mode=OneWay}">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="{x:Bind Name}" />
+                                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind DefaultText, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <ToggleSwitch AutomationProperties.Name="{x:Bind Name}" IsOn="{x:Bind IsOn, Mode=TwoWay}" />
+                                </controls:SettingsCard>
+                            </DataTemplate>
+                        </controls:SettingsExpander.ItemTemplate>
+                    </controls:SettingsExpander>
                 </StackPanel>
 
                 <!--  Proxies and certificates  -->
