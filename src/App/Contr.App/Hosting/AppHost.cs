@@ -73,6 +73,8 @@ internal static class AppHost
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IMainWindowProvider, MainWindowProvider>();
         services.AddSingleton<TrayService>();
+        services.AddTransient<TrayViewModel>();
+        services.AddSingleton<Func<TrayViewModel>>(provider => provider.GetRequiredService<TrayViewModel>);
     }
 
     private static void AddViewsAndViewModels(IServiceCollection services)
