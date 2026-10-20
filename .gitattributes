@@ -8,5 +8,6 @@
 *.pfx binary
 *.snk binary
 *.cer binary
+*.ttf binary
 
 gen/** linguist-generated=true

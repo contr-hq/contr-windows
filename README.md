@@ -24,6 +24,15 @@ down, resources, proxies, engine configuration, updates) show their layout with 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
 
+The icons are a font built from [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT),
+whose SVGs and licence are in `assets/icons`. After adding or changing an SVG there, list it in
+`assets/icons/icons.json` (new icons at the end, so the others keep their code points) and rebuild the font and its
+`ContrIcons` glyph table:
+
+```bash
+uv run --with fonttools==4.60.1 scripts/build-icon-font.py
+```
+
 ## Build and run
 
 Windows 10 1809 or later with the .NET 10 SDK (see `global.json`) and the Windows App Runtime 2.3 or later.
