@@ -81,6 +81,31 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
+    public void ApplyUsage_ShowsTheShareOfTheEnginesCpusMemoryAndDisk()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ApplyUsage(new EngineUsage(54, 6, 2_576_980_378, 8_589_934_592, 18_600_000_000, 5));
+
+        Assert.Equal("CPU 9%", viewModel.CpuText);
+        Assert.Equal("Memory 2.4 of 8 GB", viewModel.MemoryText);
+        Assert.Equal("Disk 18.6 GB", viewModel.DiskText);
+    }
+
+    [Fact]
+    public void ApplyUsage_HidesTheFiguresWithoutUsageAndTheDiskUntilMeasured()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ApplyUsage(new EngineUsage(0, 6, 0, 8_589_934_592, 0, 0));
+        Assert.True(viewModel.HasUsage);
+        Assert.False(viewModel.HasDisk);
+
+        viewModel.ApplyUsage(null);
+        Assert.False(viewModel.HasUsage);
+    }
+
+    [Fact]
     public void ApplyStatus_SaysWhenTheEngineStopped()
     {
         var viewModel = CreateViewModel();

@@ -17,6 +17,13 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
     /// <summary>Whether connecting starts a stopped or unprovisioned engine; the choice persists.</summary>
     bool StartsEngineOnConnect { get; set; }
 
+    /// <summary>
+    /// The engine's resource usage about every two seconds while it runs; absent while it does not, or when the
+    /// daemon does not report it. The first sample can show no CPU or memory yet.
+    /// </summary>
+    /// <remarks>Emits on a background thread; subscribers share one stream from the daemon.</remarks>
+    IObservable<EngineUsage?> UsageChanges { get; }
+
     /// <summary>Emits the current status on subscription, then every change.</summary>
     /// <remarks>Emits on a background thread; UI subscribers marshal to their dispatcher.</remarks>
     IObservable<DaemonStatus> StatusChanges { get; }
