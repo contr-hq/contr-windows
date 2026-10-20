@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- The product version; Directory.Build.props derives every assembly version from it. -->
+  <PropertyGroup>
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>1</VersionMinor>
+    <VersionPatch>0</VersionPatch>
+  </PropertyGroup>
+
+</Project>

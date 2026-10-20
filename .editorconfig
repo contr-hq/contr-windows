@@ -1,0 +1,283 @@
+# This file is the single source of truth for formatting and naming. It is
+# enforced at build time (EnforceCodeStyleInBuild) and gated in CI with
+# `dotnet format --verify-no-changes`.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{xml,csproj,props,targets,config,nuspec,resx}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.xaml]
+indent_size = 4
+
+# ============================================================================
+#  C# files
+# ============================================================================
+[*.cs]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 120
+guidelines = 120
+
+# ---------------------------------------------------------------------------
+#  using directives
+#  declarations at the top, before namespaces; System first;
+#  then alphabetical.
+# ---------------------------------------------------------------------------
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# ---------------------------------------------------------------------------
+#  'this.' qualification
+# ---------------------------------------------------------------------------
+dotnet_style_qualification_for_field = false:silent
+dotnet_style_qualification_for_property = false:silent
+dotnet_style_qualification_for_method = false:silent
+dotnet_style_qualification_for_event = false:silent
+
+# ---------------------------------------------------------------------------
+#  Language keywords vs. BCL type names
+# ---------------------------------------------------------------------------
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+
+# ---------------------------------------------------------------------------
+#  Modifiers
+#  "public protected internal private new abstract virtual override sealed
+#  static readonly extern unsafe volatile async".
+# ---------------------------------------------------------------------------
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+csharp_preferred_modifier_order = public,protected,internal,private,new,abstract,virtual,override,sealed,static,readonly,extern,unsafe,volatile,async:warning
+dotnet_style_readonly_field = true:suggestion
+
+# ---------------------------------------------------------------------------
+#  Expression-level preferences
+# ---------------------------------------------------------------------------
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_collection_expression = true:suggestion
+dotnet_style_prefer_auto_properties = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+dotnet_style_operator_placement_when_wrapping = beginning_of_line
+dotnet_style_namespace_match_folder = true:suggestion
+
+# ---------------------------------------------------------------------------
+#  Namespaces
+# ---------------------------------------------------------------------------
+csharp_style_namespace_declarations = file_scoped:warning
+
+# ---------------------------------------------------------------------------
+#  New lines / braces
+#
+#  Allman for what declares or branches, K&R for what evaluates. The four
+#  tokens below are the whole rule; every other construct follows from them:
+#
+#    types             class, interface, struct, record, enum
+#    methods           methods, constructors, finalizers, operators, and
+#                      local functions (there is no local_functions token
+#                      that does anything)
+#    control_blocks    if/else, for, foreach, while, do, try/catch/finally,
+#                      switch statement, using, lock
+#    properties        the property, indexer and event declaration brace —
+#                      NOT the get/set bodies, which are `accessors`
+#
+#  Left out on purpose, so they stay on the line that opens them: accessors,
+#  lambdas, anonymous_methods, anonymous_types, and
+#  object_collection_array_initializers — that last one also governs the
+#  switch expression and the property/recursive patterns.
+#
+#  An unrecognised token here is dropped silently, with no diagnostic, so a
+#  typo reads as "this construct is K&R" rather than as an error.
+# ---------------------------------------------------------------------------
+csharp_new_line_before_open_brace = types,methods,control_blocks,properties
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+csharp_prefer_braces = true:warning
+dotnet_style_allow_blank_line_after_token_in_keyword = return:silent
+
+# ---------------------------------------------------------------------------
+#  Indentation
+# ---------------------------------------------------------------------------
+csharp_indent_case_contents = true
+csharp_indent_case_contents_when_block = false
+csharp_indent_switch_labels = true
+csharp_indent_labels = one_less_than_current
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+
+# ---------------------------------------------------------------------------
+#  Spacing
+#  "Space after if/for/while etc., and after commas. No space after an
+#  opening parenthesis or before a closing parenthesis."
+# ---------------------------------------------------------------------------
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_after_cast = false
+csharp_space_around_binary_operators = before_and_after
+csharp_space_after_comma = true
+csharp_space_before_comma = false
+csharp_space_after_dot = false
+csharp_space_before_dot = false
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_before_open_square_brackets = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+
+# ---------------------------------------------------------------------------
+#  var usage
+#  prefer var when the type is obvious; avoid for built-in/numeric types or
+#  when the type aids the reader. Kept as suggestions because the rule is
+#  contextual.
+# ---------------------------------------------------------------------------
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:silent
+
+# ---------------------------------------------------------------------------
+#  Expression-bodied members
+#  prefer for single-line read-only properties and lambdas; do NOT use on
+#  method definitions.
+# ---------------------------------------------------------------------------
+csharp_style_expression_bodied_methods = false:warning
+csharp_style_expression_bodied_constructors = false:warning
+csharp_style_expression_bodied_operators = false:silent
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_indexers = true:silent
+csharp_style_expression_bodied_accessors = true:silent
+csharp_style_expression_bodied_lambdas = true:silent
+csharp_style_expression_bodied_local_functions = false:silent
+
+# ---------------------------------------------------------------------------
+#  Modern C# preferences (reasonable defaults, not dictated)
+# ---------------------------------------------------------------------------
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_pattern_matching = true:silent
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_inlined_variable_declaration = true:suggestion
+csharp_style_deconstructed_variable_declaration = true:silent
+csharp_style_prefer_index_operator = true:silent
+csharp_style_prefer_range_operator = true:silent
+csharp_style_throw_expression = true:suggestion
+csharp_style_unused_value_assignment_preference = discard_variable:suggestion
+csharp_prefer_static_local_function = true:suggestion
+
+# ---------------------------------------------------------------------------
+#  Diagnostic severities
+# ---------------------------------------------------------------------------
+dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.IDE1006.severity = warning
+dotnet_diagnostic.IDE2003.severity = suggestion
+
+# ---------------------------------------------------------------------------
+#  Layout rules with no .editorconfig option, from client/tools.
+#  Warnings, so TreatWarningsAsErrors makes them build errors. Each ships a
+#  fixer: `dotnet format analyzers` applies them across the solution.
+# ---------------------------------------------------------------------------
+dotnet_diagnostic.KH0001.severity = warning
+dotnet_diagnostic.KH0002.severity = warning
+dotnet_diagnostic.KH0003.severity = warning
+dotnet_diagnostic.KH0004.severity = warning
+dotnet_diagnostic.KH0005.severity = warning
+dotnet_diagnostic.KH0006.severity = warning
+dotnet_diagnostic.KH0007.severity = warning
+
+# ============================================================================
+#  Naming rules
+# ============================================================================
+
+# -- styles --
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.camel_case.capitalization = camel_case
+
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+
+dotnet_naming_style.interface_style.capitalization = pascal_case
+dotnet_naming_style.interface_style.required_prefix = I
+
+dotnet_naming_style.type_parameter_style.capitalization = pascal_case
+dotnet_naming_style.type_parameter_style.required_prefix = T
+
+# -- interfaces: IPascalCase --
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+dotnet_naming_rule.interfaces_are_i_prefixed.symbols = interfaces
+dotnet_naming_rule.interfaces_are_i_prefixed.style = interface_style
+dotnet_naming_rule.interfaces_are_i_prefixed.severity = warning
+
+# -- type parameters: TPascalCase --
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
+dotnet_naming_symbols.type_parameters.applicable_accessibilities = *
+dotnet_naming_rule.type_parameters_are_t_prefixed.symbols = type_parameters
+dotnet_naming_rule.type_parameters_are_t_prefixed.style = type_parameter_style
+dotnet_naming_rule.type_parameters_are_t_prefixed.severity = warning
+
+# -- types and namespaces: PascalCase --
+dotnet_naming_symbols.types_and_namespaces.applicable_kinds = namespace,class,struct,enum,delegate
+dotnet_naming_symbols.types_and_namespaces.applicable_accessibilities = *
+dotnet_naming_rule.types_are_pascal_case.symbols = types_and_namespaces
+dotnet_naming_rule.types_are_pascal_case.style = pascal_case
+dotnet_naming_rule.types_are_pascal_case.severity = warning
+
+# -- methods (all accessibilities): PascalCase --
+dotnet_naming_symbols.methods.applicable_kinds = method,local_function
+dotnet_naming_symbols.methods.applicable_accessibilities = *
+dotnet_naming_rule.methods_are_pascal_case.symbols = methods
+dotnet_naming_rule.methods_are_pascal_case.style = pascal_case
+dotnet_naming_rule.methods_are_pascal_case.severity = warning
+
+# -- public fields / properties / events: PascalCase --
+dotnet_naming_symbols.public_members.applicable_kinds = field,property,event
+dotnet_naming_symbols.public_members.applicable_accessibilities = public
+dotnet_naming_rule.public_members_are_pascal_case.symbols = public_members
+dotnet_naming_rule.public_members_are_pascal_case.style = pascal_case
+dotnet_naming_rule.public_members_are_pascal_case.severity = warning
+
+# -- non-public fields / properties / events: _camelCase --
+#    "private, protected, internal and protected internal fields and
+#    properties: _camelCase" (unaffected by const/static/readonly).
+dotnet_naming_symbols.non_public_members.applicable_kinds = field,property,event
+dotnet_naming_symbols.non_public_members.applicable_accessibilities = internal,private,protected,protected_internal,private_protected
+dotnet_naming_rule.non_public_members_are_underscore_camel.symbols = non_public_members
+dotnet_naming_rule.non_public_members_are_underscore_camel.style = underscore_camel_case
+dotnet_naming_rule.non_public_members_are_underscore_camel.severity = warning
+
+# -- parameters and locals: camelCase --
+dotnet_naming_symbols.parameters_and_locals.applicable_kinds = parameter,local
+dotnet_naming_symbols.parameters_and_locals.applicable_accessibilities = *
+dotnet_naming_rule.parameters_are_camel_case.symbols = parameters_and_locals
+dotnet_naming_rule.parameters_are_camel_case.style = camel_case
+dotnet_naming_rule.parameters_are_camel_case.severity = suggestion
+
+# ============================================================================
+#  Generated code: do not analyze.
+# ============================================================================
+[*.{g,g.i,Designer}.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

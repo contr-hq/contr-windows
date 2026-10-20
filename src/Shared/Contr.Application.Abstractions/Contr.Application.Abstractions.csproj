@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Contr.Application.Abstractions</RootNamespace>
+    <AssemblyName>Contr.Application.Abstractions</AssemblyName>
+
+    <!-- A contract assembly: CS1591 fails the build on an undocumented public member. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Contr.SharedKernel\Contr.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>
