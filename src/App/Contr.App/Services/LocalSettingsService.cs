@@ -13,6 +13,9 @@ namespace Contr.App.Services;
 /// </summary>
 public sealed class LocalSettingsService : ILocalSettingsService
 {
+    /// <summary>The daemon keeps its own <c>settings.json</c> in the same folder.</summary>
+    private const string _fileName = "client-settings.json";
+
     private readonly string _path;
     private readonly Dictionary<string, JsonElement> _cache;
 
@@ -21,7 +24,7 @@ public sealed class LocalSettingsService : ILocalSettingsService
         var directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Contr");
         Directory.CreateDirectory(directory);
-        _path = Path.Combine(directory, "settings.json");
+        _path = Path.Combine(directory, _fileName);
         _cache = Load(_path);
     }
 
