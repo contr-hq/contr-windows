@@ -8,8 +8,8 @@ namespace Contr.UI.Common.Lists;
 public static class CollectionSync
 {
     /// <summary>
-    /// Makes <paramref name="target"/> equal <paramref name="desired"/>; an item with the same key and a different
-    /// instance replaces the old one in place.
+    /// Makes <paramref name="target"/> equal <paramref name="desired"/>; a different instance with an item's key takes
+    /// that item's place.
     /// </summary>
     public static void Sync<T>(ObservableCollection<T> target, IReadOnlyList<T> desired, Func<T, string> key)
     {
