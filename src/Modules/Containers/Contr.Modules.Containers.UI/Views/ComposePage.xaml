@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="Contr.Modules.Containers.UI.Views.ComposePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:common="using:Contr.UI.Common.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:views="using:Contr.Modules.Containers.UI.Views"
+    xmlns:vm="using:Contr.Modules.Containers.UI.ViewModels"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#0C0C0C" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#FBFBFB" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <GridLength x:Key="ImageColumnWidth">220</GridLength>
+            <GridLength x:Key="StateColumnWidth">190</GridLength>
+            <GridLength x:Key="PortsColumnWidth">110</GridLength>
+
+            <DataTemplate x:Key="ProjectTemplate" x:DataType="vm:ComposeProjectItem">
+                <Grid
+                    Margin="0,0,0,6"
+                    Padding="16,10,12,10"
+                    AutomationProperties.Name="{x:Bind Name}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    ColumnSpacing="8"
+                    CornerRadius="6"
+                    Tag="{x:Bind}"
+                    Tapped="OnProjectTapped">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border
+                        Grid.ColumnSpan="2"
+                        Margin="-16,-10,-12,-10"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="6"
+                        Visibility="{x:Bind IsSelected}" />
+                    <Border
+                        Width="3"
+                        Height="16"
+                        Margin="-11,0,0,0"
+                        HorizontalAlignment="Left"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        CornerRadius="1.5"
+                        Visibility="{x:Bind IsSelected}" />
+                    <StackPanel>
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Style="{StaticResource CellTextStyle}"
+                            Text="{x:Bind Name}" />
+                        <TextBlock
+                            Style="{StaticResource SecondaryCellTextStyle}"
+                            Text="{x:Bind Location}"
+                            Visibility="{x:Bind HasLocation}" />
+                    </StackPanel>
+                    <common:StatusLabel
+                        Grid.Column="1"
+                        VerticalAlignment="Top"
+                        FontSize="12"
+                        Kind="{x:Bind StatusKind}"
+                        Text="{x:Bind StatusText}" />
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ServiceTemplate" x:DataType="vm:ContainerRow">
+                <Grid
+                    MinHeight="44"
+                    Padding="16,6,12,6"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="{StaticResource ImageColumnWidth}" />
+                        <ColumnDefinition Width="{StaticResource StateColumnWidth}" />
+                        <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        FontWeight="SemiBold"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="{x:Bind views:ComposePage.ServiceName(Service, Name)}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="{x:Bind Image}" />
+                    <common:StatusLabel
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Detail="{x:Bind Elapsed}"
+                        Kind="{x:Bind StatusKind}"
+                        Text="{x:Bind StatusText}" />
+                    <TextBlock
+                        Grid.Column="3"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="{x:Bind views:ComposePage.PortsText(Ports)}" />
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="LogTemplate" x:DataType="vm:ComposeLogLine">
+                <Grid Padding="14,1" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="72" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        FontFamily="Cascadia Mono,Consolas"
+                        FontSize="13"
+                        Foreground="{x:Bind views:ComposePage.ServiceBrush(Color)}"
+                        Text="{x:Bind views:ComposePage.Prefix(Service)}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        FontFamily="Cascadia Mono,Consolas"
+                        FontSize="13"
+                        IsTextSelectionEnabled="True"
+                        Text="{x:Bind Text}"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Page.Resources>
+
+    <Grid Padding="36,24,36,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <common:PageHeader Title="Compose" Subtitle="Projects appear here when you run docker compose up.">
+            <Button AutomationProperties.AutomationId="AddComposeProjectButton" IsEnabled="False">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontSize="14" Glyph="&#xE710;" />
+                    <TextBlock Text="Add project…" />
+                </StackPanel>
+            </Button>
+        </common:PageHeader>
+
+        <Grid Grid.Row="1">
+            <common:EngineGate
+                Margin="0,0,0,48"
+                ViewModel="{x:Bind ViewModel.Engine}"
+                Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
+
+            <common:EmptyState
+                Title="No Compose projects running"
+                Margin="0,0,0,48"
+                Glyph="&#xE8FD;"
+                Message="Run docker compose up in a project's folder. Its services show up here, grouped by project."
+                Visibility="{x:Bind views:ComposePage.ShowsEmpty(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasProjects), Mode=OneWay}" />
+
+            <Grid ColumnSpacing="16" Visibility="{x:Bind views:ComposePage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasProjects), Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="240" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ScrollViewer>
+                    <ItemsRepeater
+                        AutomationProperties.AutomationId="ComposeProjects"
+                        ItemTemplate="{StaticResource ProjectTemplate}"
+                        ItemsSource="{x:Bind ViewModel.Projects}" />
+                </ScrollViewer>
+
+                <Grid Grid.Column="1" RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Selected.Name, Mode=OneWay}" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryCellTextStyle}"
+                                    Text="{x:Bind ViewModel.ConfigFile, Mode=OneWay}" />
+                                <HyperlinkButton
+                                    Padding="4,0"
+                                    Click="OnOpenFolder"
+                                    Content="Open folder"
+                                    FontSize="12"
+                                    Visibility="{x:Bind views:ComposePage.IsWindowsPath(ViewModel.Selected.Location), Mode=OneWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel
+                            Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <Button
+                                AutomationProperties.AutomationId="ComposeStartButton"
+                                Click="OnStart"
+                                Style="{StaticResource AccentButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14" Glyph="&#xE768;" />
+                                    <TextBlock Text="Start" />
+                                </StackPanel>
+                            </Button>
+                            <Button IsEnabled="False">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14" Glyph="&#xE896;" />
+                                    <TextBlock Text="Pull" />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="OnRestart">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                                    <TextBlock Text="Restart" />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="OnStop">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14" Glyph="&#xE71A;" />
+                                    <TextBlock Text="Stop" />
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Down" IsEnabled="False" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Grid.Row="1" Style="{StaticResource ListCardStyle}">
+                        <StackPanel>
+                            <Grid Padding="16,10,12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="{StaticResource ImageColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource StateColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Service" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Text="Image" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Text="State" />
+                                <TextBlock
+                                    Grid.Column="3"
+                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Text="Ports" />
+                            </Grid>
+                            <ItemsRepeater ItemTemplate="{StaticResource ServiceTemplate}" ItemsSource="{x:Bind ViewModel.Services}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Padding="12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontWeight="SemiBold"
+                                    Text="Logs" />
+                                <toolkit:Segmented
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Service"
+                                    ItemsSource="{x:Bind ViewModel.Filters}"
+                                    SelectedIndex="{x:Bind ViewModel.FilterIndex, Mode=TwoWay}" />
+                                <StackPanel
+                                    Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    Spacing="8">
+                                    <TextBlock VerticalAlignment="Center" Text="Follow" />
+                                    <ToggleSwitch
+                                        MinWidth="0"
+                                        AutomationProperties.Name="Follow"
+                                        IsOn="{x:Bind ViewModel.IsFollowing, Mode=TwoWay}"
+                                        OffContent=""
+                                        OnContent="" />
+                                </StackPanel>
+                            </Grid>
+                            <ListView
+                                x:Name="LogList"
+                                Grid.Row="1"
+                                Padding="0,8"
+                                Background="{ThemeResource ComposeLogBackgroundBrush}"
+                                CornerRadius="0,0,8,8"
+                                ItemTemplate="{StaticResource LogTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Lines}"
+                                SelectionMode="None">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="MinHeight" Value="0" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                            </ListView>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>

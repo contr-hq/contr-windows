@@ -32,15 +32,19 @@ public sealed class ContainersModule : IModule
         services.AddTransient<ContainersPage>();
         services.AddTransient<ContainerDetailViewModel>();
         services.AddTransient<ContainerDetailPage>();
+        services.AddTransient<ComposeViewModel>();
+        services.AddTransient<ComposePage>();
     }
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
         var containers = new NavigationItem("Containers", "\uE7B8", typeof(ContainersPage)) {
             Badge = CountContainers,
+            Order = 10,
         };
+        var compose = new NavigationItem("Compose", "\uE8FD", typeof(ComposePage)) { Order = 50 };
 
-        return [containers];
+        return [containers, compose];
     }
 
     public IReadOnlyList<Type> GetPages()

@@ -21,6 +21,12 @@ public sealed record ContainerRow(
     IReadOnlyList<PortLink> Ports,
     ContainerUsage Usage)
 {
+    /// <summary>The Compose service the container runs; empty outside Compose.</summary>
+    public string Service { get; init; } = string.Empty;
+
+    /// <summary>The folder Compose ran in; empty when unknown.</summary>
+    public string ComposeFolder { get; init; } = string.Empty;
+
     public string Id => ContainerId.Value;
 
     public string ShortId => ContainerId.Short;
@@ -101,7 +107,10 @@ public sealed record ContainerRow(
             container.State,
             container.Status,
             PortLink.From(container.Ports),
-            usage);
+            usage) {
+            Service = container.ComposeService,
+            ComposeFolder = container.ComposeFolder,
+        };
     }
 
     /// <summary>By name.</summary>
