@@ -109,3 +109,22 @@ public enum DaemonCapability
     /// <summary>Forwards published ports to the host.</summary>
     HostPortForwarding,
 }
+
+/// <summary>The resources the engine uses: its running containers' CPU and memory, and its data's disk.</summary>
+/// <param name="CpuPercent">100 per fully used CPU, summed over running containers.</param>
+/// <param name="Cpus">CPUs of the machine the engine runs on; on Windows, the WSL virtual machine.</param>
+/// <param name="MemoryUsedBytes">Summed over running containers, as <c>docker stats</c> counts it.</param>
+/// <param name="MemoryTotalBytes">Memory of the machine the engine runs on.</param>
+/// <param name="DiskUsedBytes">Images, containers, volumes and build cache; zero until first measured.</param>
+/// <param name="RunningContainers">The containers the CPU and memory are summed over.</param>
+public sealed record EngineUsage(
+    double CpuPercent,
+    int Cpus,
+    long MemoryUsedBytes,
+    long MemoryTotalBytes,
+    long DiskUsedBytes,
+    int RunningContainers)
+{
+    /// <summary>The share of the engine's CPUs in use, 0 to 100.</summary>
+    public double CpuShare => Cpus > 0 ? Math.Clamp(CpuPercent / Cpus, 0, 100) : CpuPercent;
+}

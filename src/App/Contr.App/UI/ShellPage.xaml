@@ -167,6 +167,19 @@
                 Text="{x:Bind ViewModel.EngineVersionText, Mode=OneWay}"
                 Visibility="{x:Bind ViewModel.HasEngineVersion, Mode=OneWay}" />
             <TextBlock
+                AutomationProperties.AutomationId="StatusBarCpu"
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.CpuText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.MemoryText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.DiskText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasDisk, Mode=OneWay}" />
+            <TextBlock
                 Style="{StaticResource StatusBarTextStyle}"
                 Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
                 Visibility="{x:Bind ViewModel.HasContext, Mode=OneWay}" />

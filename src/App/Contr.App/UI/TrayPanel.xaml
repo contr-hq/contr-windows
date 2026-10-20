@@ -112,6 +112,56 @@
             </Button>
         </Grid>
 
+        <!--  The engine's usage, while it reports one.  -->
+        <Grid
+            Margin="12,0,12,12"
+            ColumnSpacing="8"
+            Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border
+                Padding="10,8"
+                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="CPU" />
+                    <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.CpuText, Mode=OneWay}" />
+                </StackPanel>
+            </Border>
+            <Border
+                Grid.Column="1"
+                Padding="10,8"
+                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Memory" />
+                    <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.MemoryText, Mode=OneWay}" />
+                </StackPanel>
+            </Border>
+            <Border
+                Grid.Column="2"
+                Padding="10,8"
+                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Disk" />
+                    <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.DiskText, Mode=OneWay}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <StackPanel Visibility="{x:Bind ViewModel.HasContainers}">
             <MenuFlyoutSeparator />
             <TextBlock

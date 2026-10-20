@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.UI.Common.Controls;
+using Contr.UI.Common.Formatting;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Containers;
 using Contr.UI.Contracts.Services.Daemon;
@@ -21,6 +22,7 @@ public sealed partial class TrayViewModel : ViewModel
     private readonly DispatcherQueue? _dispatcher;
     private IDisposable? _statusSubscription;
     private IDisposable? _containersSubscription;
+    private IDisposable? _usageSubscription;
 
     [ObservableProperty]
     public partial StatusKind StatusKind { get; set; }
@@ -36,6 +38,19 @@ public sealed partial class TrayViewModel : ViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasContext))]
     public partial string DockerContext { get; set; }
+
+    /// <summary>Such as <c>9%</c>; empty while the engine reports no usage.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUsage))]
+    public partial string CpuText { get; set; }
+
+    /// <summary>Such as <c>2.4 / 8 GB</c>.</summary>
+    [ObservableProperty]
+    public partial string MemoryText { get; set; }
+
+    /// <summary>Such as <c>18.6 GB</c>, or a dash until the engine measured it.</summary>
+    [ObservableProperty]
+    public partial string DiskText { get; set; }
 
     [ObservableProperty]
     public partial bool CanStartEngine { get; set; }
@@ -53,6 +68,9 @@ public sealed partial class TrayViewModel : ViewModel
         StatusText = string.Empty;
         RunningTitle = "RUNNING";
         DockerContext = string.Empty;
+        CpuText = string.Empty;
+        MemoryText = string.Empty;
+        DiskText = string.Empty;
         Apply(daemon.Status);
     }
 
@@ -62,10 +80,13 @@ public sealed partial class TrayViewModel : ViewModel
 
     public bool HasContainers => _containers is not null;
 
+    public bool HasUsage => CpuText.Length > 0;
+
     /// <summary>Follows the daemon and the containers while the flyout is open.</summary>
     public void Start()
     {
         _statusSubscription ??= _daemon.StatusChanges.Subscribe(status => OnUiThread(() => Apply(status)));
+        _usageSubscription ??= _daemon.UsageChanges.Subscribe(usage => OnUiThread(() => ShowUsage(usage)));
 
         if (_containers is not null && _containersSubscription is null)
         {
@@ -81,6 +102,20 @@ public sealed partial class TrayViewModel : ViewModel
         _statusSubscription = null;
         _containersSubscription?.Dispose();
         _containersSubscription = null;
+        _usageSubscription?.Dispose();
+        _usageSubscription = null;
+    }
+
+    /// <summary>Shows the engine's usage in the tiles, or hides them when absent; call it on the UI thread.</summary>
+    public void ShowUsage(EngineUsage? usage)
+    {
+        CpuText = usage is null ? string.Empty : $"{usage.CpuShare.ToString("0", CultureInfo.CurrentCulture)}%";
+        MemoryText = usage is null
+            ? string.Empty
+            : HumanFormat
+                .MemoryOf(usage.MemoryUsedBytes, usage.MemoryTotalBytes)
+                .Replace(" of ", " / ", StringComparison.Ordinal);
+        DiskText = usage is { DiskUsedBytes: > 0 } ? HumanFormat.Bytes(usage.DiskUsedBytes) : "—";
     }
 
     public Task StopContainerAsync(RunningContainer container)

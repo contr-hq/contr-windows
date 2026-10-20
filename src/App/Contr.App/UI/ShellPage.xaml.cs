@@ -95,9 +95,11 @@ public sealed partial class ShellPage : Page
 
         _subscription.Add(_navigationService.OnNavigated.Subscribe(OnNavigated));
 
-        // StatusChanges emits on a background thread.
+        // StatusChanges and UsageChanges emit on a background thread.
         _subscription.Add(_daemon.StatusChanges.Subscribe(
             status => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyStatus(status))));
+        _subscription.Add(_daemon.UsageChanges.Subscribe(
+            usage => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyUsage(usage))));
 
         if (NavView.SettingsItem is NavigationViewItem settings)
         {

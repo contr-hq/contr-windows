@@ -16,7 +16,9 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using EngineState = Contr.UI.Contracts.Services.Daemon.EngineState;
+using EngineUsage = Contr.UI.Contracts.Services.Daemon.EngineUsage;
 using WireEngineState = Contr.Sdk.Engine.V1.EngineState;
+using WireEngineUsage = Contr.Sdk.Engine.V1.EngineUsage;
 
 namespace Contr.Daemon.UI;
 
@@ -45,6 +47,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     private readonly BehaviorSubject<DaemonStatus> _status = new(DaemonStatus.Connecting);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly IObservable<EngineUsage?> _usage;
     private ContrClient? _client;
     private int _retryScheduled;
     private int _disposed;
@@ -64,6 +67,13 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
         _settings = settings;
         _logger = logger;
         _startEngine = settings.Read<bool?>(_startEngineKey) ?? options.Value.StartEngine;
+        _usage = _status
+            .Select(status => status is { Connection: DaemonConnectionState.Connected, Engine: EngineState.Running })
+            .DistinctUntilChanged()
+            .Select(running => running ? StreamUsage() : Observable.Return<EngineUsage?>(null))
+            .Switch()
+            .Replay(1)
+            .RefCount();
     }
 
     public DaemonStatus Status => _status.Value;
@@ -71,6 +81,8 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     public DaemonIdentity? Identity { get; private set; }
 
     public IObservable<DaemonStatus> StatusChanges => _status.AsObservable();
+
+    public IObservable<EngineUsage?> UsageChanges => _usage;
 
     public bool StartsEngineOnConnect
     {
@@ -443,6 +455,53 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
             .ConfigureAwait(false);
     }
 
+    /// <summary>One stream of usage; a refusal or a broken stream ends it with an absent sample.</summary>
+    private IObservable<EngineUsage?> StreamUsage()
+    {
+        return Observable.Create<EngineUsage?>(async (observer, cancellationToken) => {
+            try
+            {
+                var client = await GetAsync(cancellationToken).ConfigureAwait(false);
+                using var call = client.Engine.StreamUsage(
+                    new StreamUsageRequest(), cancellationToken: cancellationToken);
+                var responses = call.ResponseStream.ReadAllAsync(cancellationToken);
+                await foreach (var response in responses.ConfigureAwait(false))
+                {
+                    observer.OnNext(ToUsage(response.Usage));
+                }
+            }
+            catch (RpcException exception) when (exception.StatusCode != StatusCode.Cancelled)
+            {
+                LogUsageEnded(exception.Status.Detail);
+            }
+            catch (ContrException exception)
+            {
+                LogUsageEnded(exception.Message);
+            }
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                observer.OnNext(null);
+            }
+        });
+    }
+
+    private static EngineUsage ToUsage(WireEngineUsage usage)
+    {
+        return new EngineUsage(
+            usage.CpuPercent,
+            (int)usage.Cpus,
+            ToLong(usage.MemoryUsedBytes),
+            ToLong(usage.MemoryTotalBytes),
+            ToLong(usage.DiskUsedBytes),
+            (int)usage.RunningContainers);
+    }
+
+    private static long ToLong(ulong value)
+    {
+        return value > long.MaxValue ? long.MaxValue : (long)value;
+    }
+
     private static double? Fraction(Contr.Sdk.Common.V1.Progress progress)
     {
         return progress.HasFraction ? progress.Fraction : null;
@@ -546,4 +605,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The daemon connection closed: {Reason}")]
     private partial void LogDisconnected(string reason);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "The engine's usage stream ended: {Reason}")]
+    private partial void LogUsageEnded(string reason);
 }
