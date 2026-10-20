@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Networks.Application.Networks;
 using Contr.Modules.Networks.Domain;
@@ -42,6 +44,43 @@ internal static class NetworkMapping
             network.Internal,
             [.. network.Subnets.Select(subnet => subnet.Cidr)],
             network.CreatedAt?.ToDateTimeOffset() ?? DateTimeOffset.UnixEpoch,
-            project);
+            project,
+            network.Subnets.Count > 0 ? network.Subnets[0].Gateway : string.Empty);
+    }
+
+    /// <summary>
+    /// Reads the <c>Containers</c> map of the engine's network inspection document (Docker Engine API), which lists
+    /// the running containers only.
+    /// </summary>
+    public static IReadOnlyList<NetworkEndpointDto> ToEndpoints(string rawJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(rawJson);
+
+            if (!document.RootElement.TryGetProperty("Containers", out var containers)
+                || containers.ValueKind != JsonValueKind.Object)
+            {
+                return [];
+            }
+
+            return [.. containers
+                .EnumerateObject()
+                .Select(container => new NetworkEndpointDto(
+                    Text(container.Value, "Name"),
+                    Text(container.Value, "IPv4Address")))
+                .OrderBy(endpoint => endpoint.Container, StringComparer.OrdinalIgnoreCase)];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string Text(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
     }
 }

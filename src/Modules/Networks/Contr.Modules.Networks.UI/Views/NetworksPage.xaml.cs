@@ -1,12 +1,14 @@
 using System;
 using Contr.Modules.Networks.UI.ViewModels;
+using Contr.UI.Contracts;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace Contr.Modules.Networks.UI.Views;
 
-/// <summary>The engine's networks, with removal of user-defined ones.</summary>
-public sealed partial class NetworksPage : Page
+/// <summary>The engine's networks and a details panel with the containers connected to the selected one.</summary>
+public sealed partial class NetworksPage : Page, IHasViewModel
 {
     public NetworksPage(NetworksViewModel viewModel)
     {
@@ -21,34 +23,70 @@ public sealed partial class NetworksPage : Page
 
     public NetworksViewModel ViewModel { get; }
 
-    public static InfoBarSeverity SeverityFor(bool engineDown)
+    Contr.UI.Contracts.ViewModel IHasViewModel.ViewModel => ViewModel;
+
+    public static string Shown(string text, bool engineOpen)
     {
-        return engineDown ? InfoBarSeverity.Warning : InfoBarSeverity.Error;
+        return engineOpen ? text : string.Empty;
     }
 
-    public static bool IsWaiting(bool isLoaded, bool hasError)
+    public static string ProjectText(string project)
     {
-        return !isLoaded && !hasError;
+        return $"{project} project";
     }
 
-    public static string RemoveToolTip(bool canRemove)
+    public static Visibility Visible(bool first, bool second)
     {
-        return canRemove ? "Delete" : "The engine's own networks cannot be deleted";
+        return first && second ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static bool ShowsBoth(bool first, bool second)
+    {
+        return first && second;
+    }
+
+    public static bool IsWaiting(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return engineOpen && !isLoaded && !hasError;
+    }
+
+    /// <summary>The engine keeps its own networks; Compose removes the networks it created.</summary>
+    public static bool CanDelete(bool canRemove, bool hasProject)
+    {
+        return canRemove && !hasProject;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StartWatching();
+        ViewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StopWatching();
+        ViewModel.Deactivate();
     }
 
-    private async void OnRemove(object sender, RoutedEventArgs e)
+    private void OnRowTapped(object sender, TappedRoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is NetworkRow row)
+        {
+            ViewModel.Select(row);
+        }
+    }
+
+    private async void OnCreate(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PromptAndCreateAsync();
+    }
+
+    private async void OnRemoveUnused(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RemoveUnusedAsync();
+    }
+
+    private async void OnDelete(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Selected is { } row)
         {
             await ViewModel.RemoveAsync(row);
         }

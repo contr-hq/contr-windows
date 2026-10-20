@@ -6,6 +6,7 @@ using Contr.Modules.Networks.Application.Networks.Commands.RemoveNetwork;
 using Contr.Modules.Networks.Domain;
 using Contr.Modules.Networks.UI.Infrastructure;
 using Contr.Modules.Networks.UI.ViewModels;
+using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using NSubstitute;
 using Xunit;
@@ -23,10 +24,40 @@ public sealed class NetworksTests
     }
 
     [Fact]
-    public void Compare_PutsTheEngineNetworksFirst()
+    public void Compare_PutsTheEngineNetworksLast()
     {
-        Assert.True(NetworkRow.Compare(Row("none"), Row("app")) < 0);
+        Assert.True(NetworkRow.Compare(Row("app"), Row("none")) < 0);
         Assert.True(NetworkRow.Compare(Row("app"), Row("shop_default")) < 0);
+    }
+
+    [Fact]
+    public void Mapping_ReadsTheConnectedContainers()
+    {
+        const string inspection = """
+            {
+              "Name": "shop_default",
+              "Containers": {
+                "c1": { "Name": "shop-web-1", "IPv4Address": "172.18.0.3/16" },
+                "c2": { "Name": "shop-db-1", "IPv4Address": "172.18.0.2/16" }
+              }
+            }
+            """;
+
+        var endpoints = NetworkMapping.ToEndpoints(inspection);
+
+        Assert.Equal(
+            [
+                new NetworkEndpointDto("shop-db-1", "172.18.0.2/16"),
+                new NetworkEndpointDto("shop-web-1", "172.18.0.3/16"),
+            ],
+            endpoints);
+    }
+
+    [Fact]
+    public void Mapping_ReadsNoContainersFromAnUnexpectedDocument()
+    {
+        Assert.Empty(NetworkMapping.ToEndpoints("not json"));
+        Assert.Empty(NetworkMapping.ToEndpoints("{}"));
     }
 
     [Fact]
@@ -55,7 +86,10 @@ public sealed class NetworksTests
         var dialogs = Substitute.For<IDialogService>();
         dialogs.ShowConfirmAsync(default!, default!, default!, default!).ReturnsForAnyArgs(false);
 
-        await new NetworksViewModel(sender, dialogs, Substitute.For<INotificationService>())
+        var daemon = Substitute.For<IDaemonConnection>();
+        daemon.Status.Returns(new DaemonStatus(DaemonConnectionState.Connected, EngineState.Running, string.Empty));
+
+        await new NetworksViewModel(sender, dialogs, Substitute.For<INotificationService>(), daemon)
             .RemoveAsync(Row("shop_default"));
 
         await sender.DidNotReceiveWithAnyArgs().Send(Arg.Any<RemoveNetworkCommand>(), default);
