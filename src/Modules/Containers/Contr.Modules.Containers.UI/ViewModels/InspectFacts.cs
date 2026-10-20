@@ -21,6 +21,18 @@ public sealed record InspectFacts(
 {
     private const string _none = "—";
 
+    /// <summary>Each mount as its kind and <c>source → destination</c>, paths as the engine sees them.</summary>
+    public IReadOnlyList<InspectFact> Mounts { get; init; } = [];
+
+    /// <summary>Each network the container is attached to, with its address there.</summary>
+    public IReadOnlyList<InspectFact> Networks { get; init; } = [];
+
+    /// <summary>The <c>VAR=value</c> entries the container runs with.</summary>
+    public IReadOnlyList<string> Environment { get; init; } = [];
+
+    /// <summary>Such as <c>Project shop-api · service api</c>; empty outside Compose.</summary>
+    public string Compose { get; init; } = string.Empty;
+
     public static InspectFacts From(ContainerDetailsDto details, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(details);
@@ -57,7 +69,42 @@ public sealed record InspectFacts(
             new("Memory", Number(host, "Memory") is > 0 and var memory ? HumanFormat.Bytes(memory) : "No limit"),
         ];
 
-        return new InspectFacts(configuration, state, limits);
+        return new InspectFacts(configuration, state, limits) {
+            Mounts = [.. details.Mounts.Select(Mount)],
+            Networks = ReadNetworks(Child(Child(root, "NetworkSettings"), "Networks")),
+            Environment = details.Environment,
+            Compose = ReadCompose(Child(config, "Labels")),
+        };
+    }
+
+    private static InspectFact Mount(MountDto mount)
+    {
+        var kind = mount.Kind.Length > 0 ? char.ToUpperInvariant(mount.Kind[0]) + mount.Kind[1..] : _none;
+        var source = mount.Kind == "volume" && mount.Name.Length > 0 ? mount.Name : mount.Source;
+
+        return new InspectFact(kind, $"{source} → {mount.Destination}", IsCode: true);
+    }
+
+    private static List<InspectFact> ReadNetworks(JsonElement networks)
+    {
+        return networks.ValueKind == JsonValueKind.Object
+            ? [.. networks
+                .EnumerateObject()
+                .Select(network => new InspectFact(network.Name, Or(Text(network.Value, "IPAddress"), "No address")))]
+            : [];
+    }
+
+    private static string ReadCompose(JsonElement labels)
+    {
+        var project = Text(labels, "com.docker.compose.project");
+        var service = Text(labels, "com.docker.compose.service");
+
+        if (project.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return service.Length > 0 ? $"Project {project} · service {service}" : $"Project {project}";
     }
 
     private static JsonDocument? Parse(string json)

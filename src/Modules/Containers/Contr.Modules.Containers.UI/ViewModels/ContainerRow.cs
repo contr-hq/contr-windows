@@ -74,11 +74,14 @@ public sealed record ContainerRow(
 
     public bool CanRemove => State.CanRemove();
 
-    /// <summary>A row offers its logs while the container runs or after it failed.</summary>
-    public bool OffersLogs => !IsStopped || HasFailed;
+    /// <summary>A running container's row offers a terminal.</summary>
+    public bool OffersTerminal => State == ContainerState.Running;
 
     /// <summary>A row offers deletion after a clean exit, where logs tell little.</summary>
     public bool OffersDelete => IsStopped && !HasFailed;
+
+    /// <summary>Any other row offers its logs, such as after a failure.</summary>
+    public bool OffersLogs => !OffersTerminal && !OffersDelete;
 
     public static ContainerRow From(ContainerDto container, ContainerUsage usage)
     {

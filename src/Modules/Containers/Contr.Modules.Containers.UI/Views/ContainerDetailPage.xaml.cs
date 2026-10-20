@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.UI.Contracts;
@@ -63,6 +65,36 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         return maximum > 0 ? maximum * 1.25 : 1;
     }
 
+    public static Visibility WhenPort(bool hasPort, bool isRunning)
+    {
+        return hasPort && isRunning ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static string OpenText(PortLink? port)
+    {
+        return port is null ? string.Empty : $"Open {port.Address}";
+    }
+
+    public static string OrDash(string text)
+    {
+        return string.IsNullOrEmpty(text) ? "—" : text;
+    }
+
+    public static double Latest(IReadOnlyList<double> values)
+    {
+        return values is { Count: > 0 } ? Math.Min(values[^1], 100) : 0;
+    }
+
+    public static Visibility WhenNoFacts(IReadOnlyList<InspectFact> facts)
+    {
+        return facts is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public static Visibility WhenNone(IReadOnlyList<PortLink> ports)
+    {
+        return ports is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     public static string StatsWaitText(bool isRunning, string? error)
     {
         if (!string.IsNullOrEmpty(error))
@@ -77,11 +109,15 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
     {
         Tabs.SelectedItem = ViewModel.Tab switch {
             ContainerDetailTab.Inspect => InspectTab,
+            ContainerDetailTab.Exec => ExecTab,
             ContainerDetailTab.Stats => StatsTab,
             _ => LogsTab,
         };
         ViewModel.Logs.Lines.CollectionChanged += OnLogLinesChanged;
         ViewModel.Logs.MatchSelected += OnMatchSelected;
+        ViewModel.PropertyChanged += OnViewModelChanged;
+        TerminalHost.Ready += OnTerminalReady;
+        TerminalHost.Copied += OnTerminalCopied;
         ViewModel.Activate();
     }
 
@@ -89,6 +125,10 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
     {
         ViewModel.Logs.Lines.CollectionChanged -= OnLogLinesChanged;
         ViewModel.Logs.MatchSelected -= OnMatchSelected;
+        ViewModel.PropertyChanged -= OnViewModelChanged;
+        TerminalHost.Ready -= OnTerminalReady;
+        TerminalHost.Copied -= OnTerminalCopied;
+        TerminalHost.Detach();
         ViewModel.Deactivate();
     }
 
@@ -96,9 +136,71 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
     {
         ViewModel.Tab = sender.SelectedItem switch {
             var item when item == InspectTab => ContainerDetailTab.Inspect,
+            var item when item == ExecTab => ContainerDetailTab.Exec,
             var item when item == StatsTab => ContainerDetailTab.Stats,
             _ => ContainerDetailTab.Logs,
         };
+    }
+
+    /// <summary>The terminal starts when the exec tab first shows a running container.</summary>
+    private async void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ContainerDetailViewModel.Tab) or nameof(ContainerDetailViewModel.IsRunning)
+            && ViewModel.Tab == ContainerDetailTab.Exec)
+        {
+            await TerminalHost.AttachAsync(ViewModel.Terminal);
+            await ViewModel.ConnectTerminalAsync();
+            TerminalHost.FocusTerminal();
+        }
+    }
+
+    private async void OnTerminalReady(object? sender, EventArgs e)
+    {
+        if (ViewModel.Tab == ContainerDetailTab.Exec)
+        {
+            await ViewModel.ConnectTerminalAsync();
+            TerminalHost.FocusTerminal();
+        }
+    }
+
+    private void OnTerminalCopied(object? sender, string text)
+    {
+        ViewModel.CopyText(text);
+    }
+
+    private void OnCopyId(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CopyId();
+    }
+
+    private async void OnOpenPort(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.FirstPort?.Uri is { } uri)
+        {
+            await Launcher.LaunchUriAsync(uri);
+        }
+    }
+
+    private void OnClearTerminal(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Terminal.Clear();
+    }
+
+    private void OnCopyTerminal(object sender, RoutedEventArgs e)
+    {
+        TerminalHost.RequestCopy();
+    }
+
+    private async void OnConnectTerminal(object sender, RoutedEventArgs e)
+    {
+        await TerminalHost.AttachAsync(ViewModel.Terminal);
+        await ViewModel.ConnectTerminalAsync();
+        TerminalHost.FocusTerminal();
+    }
+
+    private async void OnDisconnectTerminal(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Terminal.DisconnectAsync();
     }
 
     private void OnTrailClicked(object? sender, int index)

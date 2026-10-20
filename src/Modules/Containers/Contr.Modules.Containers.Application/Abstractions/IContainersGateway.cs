@@ -32,4 +32,9 @@ public interface IContainersGateway
     IAsyncEnumerable<ContainerStatsEvent> StreamStatsAsync(ContainerId id, CancellationToken cancellationToken);
 
     Task<Result<ContainerDetailsDto>> InspectAsync(ContainerId id, CancellationToken cancellationToken);
+
+    /// <summary>Starts <paramref name="shell"/> in the container with a terminal on its input and output.</summary>
+    /// <param name="user">Such as <c>root</c>; empty runs as the container's own user.</param>
+    Task<Result<ITerminalSession>> OpenTerminalAsync(
+        ContainerId id, string shell, string user, int columns, int rows, CancellationToken cancellationToken);
 }

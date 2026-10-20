@@ -163,6 +163,14 @@ public sealed partial class ContainersPage : Page, IHasViewModel
         }
     }
 
+    private void OnTerminal(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            ViewModel.OpenDetails(row, ContainerDetailTab.Exec);
+        }
+    }
+
     private void OnDetails(object sender, RoutedEventArgs e)
     {
         if (TagOf<ContainerRow>(sender) is { } row)

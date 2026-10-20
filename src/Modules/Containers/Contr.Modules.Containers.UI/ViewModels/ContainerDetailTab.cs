@@ -5,5 +5,6 @@ public enum ContainerDetailTab
 {
     Logs,
     Inspect,
+    Exec,
     Stats,
 }

@@ -61,14 +61,16 @@ public sealed class ContainerRowTests
     }
 
     [Theory]
-    [InlineData(ContainerState.Running, "Up 2 hours", true, false)]
-    [InlineData(ContainerState.Exited, "Exited (1) 14 minutes ago", true, false)]
-    [InlineData(ContainerState.Exited, "Exited (0) 3 days ago", false, true)]
-    public void Actions_OfferLogsUnlessTheContainerExitedCleanly(
-        ContainerState state, string status, bool logs, bool delete)
+    [InlineData(ContainerState.Running, "Up 2 hours", true, false, false)]
+    [InlineData(ContainerState.Exited, "Exited (1) 14 minutes ago", false, true, false)]
+    [InlineData(ContainerState.Exited, "Exited (0) 3 days ago", false, false, true)]
+    [InlineData(ContainerState.Paused, "Up 2 hours (Paused)", false, true, false)]
+    public void Actions_FollowTheDesignPerState(
+        ContainerState state, string status, bool terminal, bool logs, bool delete)
     {
         var row = Row("web", state: state, status: status);
 
+        Assert.Equal(terminal, row.OffersTerminal);
         Assert.Equal(logs, row.OffersLogs);
         Assert.Equal(delete, row.OffersDelete);
     }

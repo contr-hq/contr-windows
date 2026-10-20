@@ -16,6 +16,11 @@
     <InternalsVisibleTo Include="Contr.Modules.Containers.UI.Tests" />
   </ItemGroup>
 
+  <!-- The exec tab's terminal page; WebView2 serves it from the app folder. -->
+  <ItemGroup>
+    <Content Include="Terminal\**" Link="ContainerTerminal\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" />

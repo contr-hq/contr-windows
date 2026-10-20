@@ -116,6 +116,15 @@
                         <FontIcon FontSize="14" Glyph="&#xE71A;" />
                     </Button>
                     <Button
+                        AutomationProperties.Name="Open terminal"
+                        Click="OnTerminal"
+                        Style="{StaticResource RowActionButtonStyle}"
+                        Tag="{x:Bind}"
+                        ToolTipService.ToolTip="Open terminal"
+                        Visibility="{x:Bind OffersTerminal}">
+                        <FontIcon FontSize="14" Glyph="&#xE756;" />
+                    </Button>
+                    <Button
                         AutomationProperties.Name="View logs"
                         Click="OnLogs"
                         Style="{StaticResource RowActionButtonStyle}"
@@ -154,6 +163,15 @@
                                     Text="View logs">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE8A5;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="OnTerminal"
+                                    IsEnabled="{x:Bind OffersTerminal}"
+                                    Tag="{x:Bind}"
+                                    Text="Open terminal">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE756;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
