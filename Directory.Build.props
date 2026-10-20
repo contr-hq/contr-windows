@@ -1,0 +1,55 @@
+<Project>
+
+  <Import Project="$(MSBuildThisFileDirectory)Version.props" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+
+    <!-- The style requires explicit, ordered using directives. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+
+    <!-- Whitespace is gated by `dotnet format` in CI, not by the build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+  </PropertyGroup>
+
+  <!--
+    The layout rules KH0001-KH0007, loaded into every compiler run but the analyzers' own.
+    Platform stays pinned to AnyCPU: an undefined Platform and the solution's Platform=AnyCPU are
+    different global-property sets, and building the analyzer twice into one obj\ fails with CS2012.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Contr.Analyzers'
+                        AND '$(MSBuildProjectName)' != 'Contr.Analyzers.CodeFixes'">
+    <ProjectReference
+        Include="$(MSBuildThisFileDirectory)tools\Contr.Analyzers\Contr.Analyzers.csproj"
+        OutputItemType="Analyzer"
+        ReferenceOutputAssembly="false"
+        UndefineProperties="TargetFramework;RuntimeIdentifier"
+        AdditionalProperties="Platform=AnyCPU" />
+    <ProjectReference
+        Include="$(MSBuildThisFileDirectory)tools\Contr.Analyzers.CodeFixes\Contr.Analyzers.CodeFixes.csproj"
+        OutputItemType="Analyzer"
+        ReferenceOutputAssembly="false"
+        UndefineProperties="TargetFramework;RuntimeIdentifier"
+        AdditionalProperties="Platform=AnyCPU" />
+  </ItemGroup>
+
+  <!-- AssemblyVersion stays major.minor.0.0 so a patch release keeps binding. -->
+  <PropertyGroup>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
+    <VersionPrefix>$(VersionMajor).$(VersionMinor).$(VersionPatch)</VersionPrefix>
+    <AssemblyVersion>$(VersionMajor).$(VersionMinor).0.0</AssemblyVersion>
+    <FileVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).0</FileVersion>
+    <InformationalVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch)</InformationalVersion>
+  </PropertyGroup>
+
+</Project>

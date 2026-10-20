@@ -1,0 +1,54 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM/
+ARM64/
+[Bb]in/
+[Oo]bj/
+
+## Build and publish output
+artifacts/
+publish/
+*.binlog
+project.lock.json
+project.fragment.lock.json
+
+## Packaging
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixbundle
+*.cer
+*.pfx
+Generated Files/
+
+## Test and coverage
+[Tt]est[Rr]esult*/
+coverage/
+*.coverage
+*.coveragexml
+TestResults/
+
+## Editors and OS
+.idea/
+*.DotSettings.user
+Thumbs.db
+.DS_Store
+
+## Machine-specific configuration
+appsettings.Development.json
+.env
+.env.local
+
+## Claude Code local settings
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
