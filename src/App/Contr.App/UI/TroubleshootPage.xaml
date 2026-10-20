@@ -194,6 +194,28 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
+                                        <TextBlock Text="Reset the engine" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="Replaces its runtime. Images, containers and volumes stay."
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AutomationId="ResetEngineButton"
+                                        Click="OnResetEngine"
+                                        Content="Reset…"
+                                        IsEnabled="{x:Bind ViewModel.CanReset, Mode=OneWay}" />
+                                </Grid>
+                                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
                                         <TextBlock Text="Reset Kubernetes" />
                                         <TextBlock
                                             FontSize="12"
@@ -224,10 +246,31 @@
                                     <Button
                                         Grid.Column="1"
                                         VerticalAlignment="Center"
+                                        AutomationProperties.AutomationId="FactoryResetButton"
+                                        Click="OnFactoryReset"
                                         Content="Factory reset…"
                                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        IsEnabled="False" />
+                                        IsEnabled="{x:Bind ViewModel.CanReset, Mode=OneWay}" />
                                 </Grid>
+                                <StackPanel
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    Visibility="{x:Bind ViewModel.IsResetting, Mode=OneWay}">
+                                    <ProgressRing
+                                        Width="16"
+                                        Height="16"
+                                        IsActive="{x:Bind ViewModel.IsResetting, Mode=OneWay}" />
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="{x:Bind ViewModel.ResetStatus, Mode=OneWay}" />
+                                </StackPanel>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="This daemon can't reset the engine it runs."
+                                    TextWrapping="Wrap"
+                                    Visibility="{x:Bind local:TroubleshootPage.Not(ViewModel.OffersReset), Mode=OneWay}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

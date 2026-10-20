@@ -108,6 +108,19 @@ public enum DaemonCapability
 
     /// <summary>Forwards published ports to the host.</summary>
     HostPortForwarding,
+
+    /// <summary>Resets the engine to a clean state.</summary>
+    Reset,
+}
+
+/// <summary>What a reset of the engine keeps.</summary>
+public enum EngineResetScope
+{
+    /// <summary>Replaces the engine's runtime and keeps images, containers and volumes; it ends stopped.</summary>
+    Runtime,
+
+    /// <summary>Deletes every image, container, volume and the build cache; the engine needs setting up anew.</summary>
+    Factory,
 }
 
 /// <summary>The resources the engine uses: its running containers' CPU and memory, and its data's disk.</summary>
