@@ -87,6 +87,12 @@ public sealed record ContainerRow(
 
     public bool CanRemove => State.CanRemove();
 
+    public bool CanPause => State.CanPause();
+
+    public bool CanUnpause => State.CanUnpause();
+
+    public bool CanKill => State.CanKill();
+
     /// <summary>A running container's row offers a terminal.</summary>
     public bool OffersTerminal => State == ContainerState.Running;
 

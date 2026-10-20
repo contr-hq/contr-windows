@@ -114,7 +114,66 @@ internal static class ContainerMapping
         return new MountDto(kind, mount.Name, mount.Source, mount.Destination, mount.ReadOnly);
     }
 
-    private static long ToLong(ulong value)
+    public static ContainersV1.CreateContainerRequest ToCreateRequest(ContainerSpec spec)
+    {
+        var request = new ContainersV1.CreateContainerRequest {
+            Image = spec.Image,
+            Name = spec.Name?.Value ?? string.Empty,
+            Network = spec.Network,
+            RestartPolicy = ToRestartPolicy(spec.RestartPolicy),
+            AutoRemove = spec.AutoRemove,
+            Start = true,
+        };
+        request.Command.Add(spec.Command);
+        request.Env.Add(spec.Environment);
+        request.Ports.Add(spec.Ports.Select(ToPublication));
+        request.Mounts.Add(spec.Mounts.Select(ToMountSpec));
+
+        return request;
+    }
+
+    private static ContainersV1.RestartPolicy ToRestartPolicy(RestartPolicy policy)
+    {
+        return new ContainersV1.RestartPolicy {
+            Mode = policy.Mode switch {
+                RestartMode.Always => ContainersV1.RestartMode.Always,
+                RestartMode.UnlessStopped => ContainersV1.RestartMode.UnlessStopped,
+                RestartMode.OnFailure => ContainersV1.RestartMode.OnFailure,
+                _ => ContainersV1.RestartMode.No,
+            },
+            MaxRetries = (uint)Math.Max(0, policy.MaxRetries),
+        };
+    }
+
+    private static ContainersV1.PortPublication ToPublication(PortBinding port)
+    {
+        return new ContainersV1.PortPublication {
+            ContainerPort = (uint)port.ContainerPort,
+            Protocol = port.Protocol switch {
+                PortProtocol.Udp => ContainersV1.Protocol.Udp,
+                PortProtocol.Sctp => ContainersV1.Protocol.Sctp,
+                _ => ContainersV1.Protocol.Tcp,
+            },
+            HostPort = (uint)port.HostPort,
+            HostIp = port.HostIp,
+        };
+    }
+
+    private static ContainersV1.MountSpec ToMountSpec(MountRequest mount)
+    {
+        return new ContainersV1.MountSpec {
+            Kind = mount.Kind switch {
+                MountSource.Volume => ContainersV1.MountKind.Volume,
+                MountSource.Tmpfs => ContainersV1.MountKind.Tmpfs,
+                _ => ContainersV1.MountKind.Bind,
+            },
+            Source = mount.Source,
+            Destination = mount.Destination,
+            ReadOnly = mount.ReadOnly,
+        };
+    }
+
+    public static long ToLong(ulong value)
     {
         return value > long.MaxValue ? long.MaxValue : (long)value;
     }

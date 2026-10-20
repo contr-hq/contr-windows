@@ -206,6 +206,41 @@
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
+                                    Click="OnPause"
+                                    Tag="{x:Bind}"
+                                    Text="Pause"
+                                    Visibility="{x:Bind CanPause}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Pause}" Style="{StaticResource RowIconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="OnUnpause"
+                                    Tag="{x:Bind}"
+                                    Text="Resume"
+                                    Visibility="{x:Bind CanUnpause}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource RowIconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="OnKill"
+                                    IsEnabled="{x:Bind CanKill}"
+                                    Tag="{x:Bind}"
+                                    Text="Kill">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Power}" Style="{StaticResource RowIconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="OnRename"
+                                    Tag="{x:Bind}"
+                                    Text="Rename…">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Rename}" Style="{StaticResource RowIconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
                                     Click="OnCopyId"
                                     Tag="{x:Bind}"
                                     Text="Copy ID">

@@ -55,4 +55,24 @@ public sealed class ContainerLifecycleTests
         Assert.True(ContainerState.Running.CanRemove());
         Assert.False(ContainerState.Removing.CanRemove());
     }
+
+    [Theory]
+    [InlineData(ContainerState.Running, true, false)]
+    [InlineData(ContainerState.Paused, false, true)]
+    [InlineData(ContainerState.Exited, false, false)]
+    public void PauseAndUnpause_FollowTheState(ContainerState state, bool canPause, bool canUnpause)
+    {
+        Assert.Equal(canPause, state.CanPause());
+        Assert.Equal(canUnpause, state.CanUnpause());
+    }
+
+    [Theory]
+    [InlineData(ContainerState.Running, true)]
+    [InlineData(ContainerState.Paused, true)]
+    [InlineData(ContainerState.Exited, false)]
+    [InlineData(ContainerState.Created, false)]
+    public void CanKill_OnlyWithAMainProcess(ContainerState state, bool expected)
+    {
+        Assert.Equal(expected, state.CanKill());
+    }
 }

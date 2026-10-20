@@ -1,7 +1,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.Modules.Containers.Application.Abstractions;
+using Contr.Modules.Containers.Application.Containers;
+using Contr.Modules.Containers.Application.Containers.Commands.CreateContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.KillContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PauseContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.RenameContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RestartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
@@ -86,5 +91,65 @@ public sealed class ContainerCommandHandlerTests
             .Handle(new RemoveContainerCommand(_id, ContainerState.Exited), CancellationToken.None);
 
         Assert.Equal(conflict, result.Error);
+    }
+
+    [Fact]
+    public async Task Pause_RefusesAPausedContainer()
+    {
+        var result = await new PauseContainerCommandHandler(_gateway)
+            .Handle(new PauseContainerCommand(_id, ContainerState.Paused), CancellationToken.None);
+
+        Assert.Equal(ContainersErrors.CannotPause, result.Error);
+        await _gateway.DidNotReceiveWithAnyArgs().PauseAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Kill_AsksTheEngineForARunningContainer()
+    {
+        _gateway.KillAsync(default!, default).ReturnsForAnyArgs(Result.Success());
+
+        await new KillContainerCommandHandler(_gateway)
+            .Handle(new KillContainerCommand(_id, ContainerState.Running), CancellationToken.None);
+
+        await _gateway.Received(1).KillAsync(_id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Rename_RefusesAnInvalidNameWithoutAskingTheEngine()
+    {
+        var result = await new RenameContainerCommandHandler(_gateway)
+            .Handle(new RenameContainerCommand(_id, "my web"), CancellationToken.None);
+
+        Assert.Equal("Containers.Name.Invalid", result.Error.Code);
+        await _gateway.DidNotReceiveWithAnyArgs().RenameAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Create_RefusesAMountOutsideTheContainersFilesystem()
+    {
+        var spec = ContainerSpec.For("nginx") with {
+            Mounts = [new MountRequest(MountSource.Bind, @"C:\site", "html", ReadOnly: true)],
+        };
+
+        var result = await new CreateContainerCommandHandler(_gateway)
+            .Handle(new CreateContainerCommand(spec), CancellationToken.None);
+
+        Assert.Equal("Containers.Path.Invalid", result.Error.Code);
+        await _gateway.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Create_PassesATrimmedImageToTheEngine()
+    {
+        _gateway
+            .CreateAsync(default!, default)
+            .ReturnsForAnyArgs(Result.Success(new CreatedContainer(_id, [])));
+
+        var result = await new CreateContainerCommandHandler(_gateway)
+            .Handle(new CreateContainerCommand(ContainerSpec.For(" nginx:1.29 ")), CancellationToken.None);
+
+        Assert.Equal(_id, result.Value.Id);
+        await _gateway.Received(1).CreateAsync(
+            Arg.Is<ContainerSpec>(spec => spec != null && spec.Image == "nginx:1.29"), Arg.Any<CancellationToken>());
     }
 }
