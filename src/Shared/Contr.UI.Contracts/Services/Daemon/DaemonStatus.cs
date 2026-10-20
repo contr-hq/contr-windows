@@ -1,3 +1,5 @@
+using System;
+
 namespace Contr.UI.Contracts.Services.Daemon;
 
 /// <summary>Whether the client holds a daemon connection that passed the handshake.</summary>
@@ -56,7 +58,18 @@ public sealed record DaemonStatus(DaemonConnectionState Connection, EngineState 
     /// <summary>The status before the first connection attempt finishes.</summary>
     public static DaemonStatus Connecting { get; } =
         new(DaemonConnectionState.Connecting, EngineState.Unknown, string.Empty);
+
+    /// <summary>When this client saw the engine enter <see cref="Engine"/>; absent until it did.</summary>
+    public DateTimeOffset? Since { get; init; }
+
+    /// <summary>The running engine's identity; absent unless <see cref="Engine"/> is running.</summary>
+    public EngineDetails? Details { get; init; }
 }
+
+/// <summary>The running engine as the daemon describes it.</summary>
+/// <param name="Version">The engine's release version, such as <c>29.9.1</c>.</param>
+/// <param name="DockerContext">The Docker CLI context targeting the engine; empty when the daemon made none.</param>
+public sealed record EngineDetails(string Version, string DockerContext);
 
 /// <summary>The daemon the client is connected to, as its handshake described it.</summary>
 /// <param name="Endpoint">The local endpoint, such as <c>npipe:////./pipe/contr-S-1-5-21-…-api</c>.</param>

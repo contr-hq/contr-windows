@@ -14,8 +14,7 @@ public abstract class ViewModel : ObservableObject, IDisposable
     /// Called when the page showing this view model is navigated to, with the navigation argument.
     /// </summary>
     /// <remarks>
-    /// Pages come from the container and the navigation service sets <c>Frame.Content</c> directly,
-    /// so <c>Frame.Navigate</c> never raises this; pages start loading from <c>Loaded</c>.
+    /// The navigation service calls it before the page loads, and only for an <see cref="IHasViewModel"/> page.
     /// </remarks>
     public virtual void OnNavigatedTo(params ReadOnlySpan<object> args) { }
 

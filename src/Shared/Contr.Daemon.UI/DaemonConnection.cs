@@ -8,6 +8,7 @@ using Contr.Sdk.Daemon.V1;
 using Contr.Sdk.Engine.V1;
 using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
+using Contr.UI.Contracts.Services.Platform;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,14 +28,16 @@ namespace Contr.Daemon.UI;
 public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient, IDisposable
 {
     private const string _clientName = "contr-windows";
+    private const string _startEngineKey = "StartEngineOnConnect";
 
     private static readonly TimeSpan _attemptTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan _pollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _describeRetryDelay = TimeSpan.FromSeconds(2);
 
     private readonly DaemonLauncher _launcher;
-    private readonly bool _startEngine;
+    private readonly ILocalSettingsService _settings;
     private readonly ILogger<DaemonConnection> _logger;
     private readonly BehaviorSubject<DaemonStatus> _status = new(DaemonStatus.Connecting);
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -42,16 +45,22 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     private ContrClient? _client;
     private int _retryScheduled;
     private int _disposed;
+    private volatile bool _startEngine;
 
     public DaemonConnection(
-        DaemonLauncher launcher, IOptions<DaemonOptions> options, ILogger<DaemonConnection> logger)
+        DaemonLauncher launcher,
+        IOptions<DaemonOptions> options,
+        ILocalSettingsService settings,
+        ILogger<DaemonConnection> logger)
     {
         ArgumentNullException.ThrowIfNull(launcher);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(logger);
         _launcher = launcher;
-        _startEngine = options.Value.StartEngine;
+        _settings = settings;
         _logger = logger;
+        _startEngine = settings.Read<bool?>(_startEngineKey) ?? options.Value.StartEngine;
     }
 
     public DaemonStatus Status => _status.Value;
@@ -59,6 +68,15 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     public DaemonIdentity? Identity { get; private set; }
 
     public IObservable<DaemonStatus> StatusChanges => _status.AsObservable();
+
+    public bool StartsEngineOnConnect
+    {
+        get => _startEngine;
+        set {
+            _startEngine = value;
+            _settings.Save(_startEngineKey, value);
+        }
+    }
 
     public async Task<Result> ConnectAsync(CancellationToken cancellationToken)
     {
@@ -152,7 +170,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     {
         return backend switch {
             BackendKind.Host => "Host",
-            BackendKind.Wsl => "WSL",
+            BackendKind.Wsl => "WSL 2",
             BackendKind.Qemu => "QEMU",
             BackendKind.Fake => "Fake",
             _ => "Unknown",
@@ -268,10 +286,19 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                 .ReadAllAsync(call, cancellationToken)
                 .ConfigureAwait(false))
             {
+                var state = Map(update.State);
                 var problem = update.State == WireEngineState.Failed
                     ? DaemonErrorMapping.Describe(update.FailureReason)
                     : string.Empty;
-                Publish(new DaemonStatus(DaemonConnectionState.Connected, Map(update.State), problem));
+                var details = state == EngineState.Running
+                    ? await DescribeEngineAsync(client, cancellationToken).ConfigureAwait(false)
+                    : null;
+                PublishEngine(state, problem, details);
+
+                if (state == EngineState.Running && details is null)
+                {
+                    _ = DescribeLaterAsync(client, cancellationToken);
+                }
 
                 if (first && _startEngine
                     && update.State is WireEngineState.Stopped or WireEngineState.Uninitialized)
@@ -306,6 +333,46 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
         Publish(new DaemonStatus(
             DaemonConnectionState.Unavailable, EngineState.Unknown, "The connection to the daemon closed."));
         ScheduleRetry();
+    }
+
+    /// <summary>The engine's version and Docker context; <see langword="null"/> when the daemon cannot say.</summary>
+    private static async Task<EngineDetails?> DescribeEngineAsync(
+        ContrClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var info = await client.Daemon
+                .GetInfoAsync(new GetInfoRequest(), cancellationToken: cancellationToken)
+                .ResponseAsync
+                .ConfigureAwait(false);
+
+            return info.Engine is { } engine ? new EngineDetails(engine.Version, engine.DockerContext) : null;
+        }
+        catch (RpcException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Asks again for an engine that reported running before it could describe itself.</summary>
+    private async Task DescribeLaterAsync(ContrClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(_describeRetryDelay, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        var details = await DescribeEngineAsync(client, cancellationToken).ConfigureAwait(false);
+        var current = _status.Value;
+
+        if (details is not null && current is { Engine: EngineState.Running, Details: null })
+        {
+            Publish(current with { Details = details });
+        }
     }
 
     /// <summary>Reads an engine operation's progress stream to its end; the state arrives through WatchState.</summary>
@@ -363,6 +430,15 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
         {
             // The connection is being disposed.
         }
+    }
+
+    private void PublishEngine(EngineState state, string problem, EngineDetails? details)
+    {
+        var current = _status.Value;
+        var since = current.Connection == DaemonConnectionState.Connected && current.Engine == state
+            ? current.Since
+            : DateTimeOffset.Now;
+        Publish(new DaemonStatus(DaemonConnectionState.Connected, state, problem) { Since = since, Details = details });
     }
 
     private void Publish(DaemonStatus status)

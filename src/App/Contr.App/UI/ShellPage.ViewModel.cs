@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,8 +32,26 @@ public sealed partial class ShellViewModel : ViewModel
     [ObservableProperty]
     public partial StatusSummary EngineStatus { get; set; }
 
+    /// <summary>The engine backend, such as <c>WSL 2</c>; empty until the daemon answered.</summary>
     [ObservableProperty]
-    public partial string DaemonText { get; set; }
+    [NotifyPropertyChangedFor(nameof(HasBackend))]
+    public partial string BackendText { get; set; }
+
+    [ObservableProperty]
+    public partial string DaemonVersionText { get; set; }
+
+    /// <summary>Such as <c>Stopped at 18:02</c>; empty unless the engine is stopped.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSince))]
+    public partial string SinceText { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEngineVersion))]
+    public partial string EngineVersionText { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasContext))]
+    public partial string ContextText { get; set; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartEngineCommand))]
@@ -52,10 +71,22 @@ public sealed partial class ShellViewModel : ViewModel
         _daemon = daemon;
         _notifications = notifications;
         EngineStatus = StatusSummary.From(daemon.Status);
-        DaemonText = string.Empty;
+        BackendText = string.Empty;
+        DaemonVersionText = string.Empty;
+        SinceText = string.Empty;
+        EngineVersionText = string.Empty;
+        ContextText = string.Empty;
         _navigationSubscription = navigationService.OnNavigated.Subscribe(OnNavigated);
         ApplyStatus(daemon.Status);
     }
+
+    public bool HasBackend => BackendText.Length > 0;
+
+    public bool HasSince => SinceText.Length > 0;
+
+    public bool HasEngineVersion => EngineVersionText.Length > 0;
+
+    public bool HasContext => ContextText.Length > 0;
 
     /// <summary>Shows a status; call it on the UI thread.</summary>
     public void ApplyStatus(DaemonStatus status)
@@ -67,9 +98,24 @@ public sealed partial class ShellViewModel : ViewModel
         CanStartEngine = connected
             && status.Engine is EngineState.Stopped or EngineState.Uninitialized or EngineState.Failed;
         CanStopEngine = connected && status.Engine == EngineState.Running;
-        DaemonText = _daemon.Identity is { } daemon
-            ? $"Daemon {daemon.Version} · {daemon.Backend} backend"
+        var daemon = connected ? _daemon.Identity : null;
+        BackendText = daemon is null ? string.Empty : $"{daemon.Backend} backend";
+        DaemonVersionText = daemon is null ? string.Empty : $"Daemon {daemon.Version}";
+        SinceText = status is { Engine: EngineState.Stopped, Since: { } since }
+            ? $"Stopped at {ShortTime(since)}"
             : string.Empty;
+        EngineVersionText = status.Details is { } engine ? $"Engine {engine.Version}" : string.Empty;
+        ContextText = status.Details is { DockerContext.Length: > 0 } context
+            ? $"Context {context.DockerContext}"
+            : string.Empty;
+    }
+
+    /// <summary>Such as <c>18:02</c>, in local time.</summary>
+    public static string ShortTime(DateTimeOffset moment)
+    {
+        var local = moment.ToLocalTime();
+
+        return local.ToString("t", CultureInfo.CurrentCulture);
     }
 
     protected override void Dispose(bool disposing)

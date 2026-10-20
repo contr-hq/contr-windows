@@ -7,7 +7,6 @@ using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace Contr.App.UI;
 
@@ -18,9 +17,11 @@ public sealed partial class ShellPage : Page
     private readonly INotificationService _notificationService;
     private readonly IReadOnlyList<IModule> _modules;
     private readonly IDaemonConnection _daemon;
+    private readonly IServiceProvider _services;
     private readonly ISubscription _subscription;
     private readonly Dictionary<string, NavigationViewItem> _navItemsByKey = new(StringComparer.Ordinal);
     private bool _isSyncingSelection;
+    private string? _currentPageKey;
 
     public ShellPage(
         ShellViewModel viewModel,
@@ -28,6 +29,7 @@ public sealed partial class ShellPage : Page
         INotificationService notificationService,
         IEnumerable<IModule> modules,
         IDaemonConnection daemon,
+        IServiceProvider services,
         ISubscription subscription)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -35,6 +37,7 @@ public sealed partial class ShellPage : Page
         ArgumentNullException.ThrowIfNull(notificationService);
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(subscription);
 
         ViewModel = viewModel;
@@ -42,6 +45,7 @@ public sealed partial class ShellPage : Page
         _notificationService = notificationService;
         _modules = [.. modules];
         _daemon = daemon;
+        _services = services;
         _subscription = subscription;
 
         InitializeComponent();
@@ -51,18 +55,6 @@ public sealed partial class ShellPage : Page
 
     /// <summary>The custom title bar, handed to the window so it becomes the draggable caption.</summary>
     public TitleBar TitleBar => AppTitleBar;
-
-    public static Brush ToneBrush(StatusTone tone)
-    {
-        var key = tone switch {
-            StatusTone.Good => "SystemFillColorSuccessBrush",
-            StatusTone.Busy => "SystemFillColorCautionBrush",
-            StatusTone.Problem => "SystemFillColorCriticalBrush",
-            _ => "SystemFillColorNeutralBrush",
-        };
-
-        return (Brush)Microsoft.UI.Xaml.Application.Current.Resources[key];
-    }
 
     public static object? ToolTipFor(string detail)
     {
@@ -94,13 +86,25 @@ public sealed partial class ShellPage : Page
     private void AddNavItem(NavigationItem item)
     {
         var pageKey = _navigationService.GetPageKey(item.PageType);
+        var badge = new TextBlock {
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = (Style)Resources["StatusBarTextStyle"],
+        };
         var navItem = new NavigationViewItem {
             Tag = pageKey,
-            Content = item.Title,
+            Content = NavItemContent(item.Title, badge),
             Icon = new FontIcon { Glyph = item.IconGlyph },
         };
         AutomationProperties.SetAutomationId(navItem, pageKey);
+        AutomationProperties.SetName(navItem, item.Title);
         _navItemsByKey[pageKey] = navItem;
+
+        if (item.Badge is { } source)
+        {
+            // Badge sources emit on background threads.
+            _subscription.Add(source(_services).Subscribe(
+                text => DispatcherQueue.TryEnqueue(() => badge.Text = text)));
+        }
 
         if (item.Placement == NavigationItemPlacement.Footer)
         {
@@ -110,6 +114,18 @@ public sealed partial class ShellPage : Page
         {
             NavView.MenuItems.Add(navItem);
         }
+    }
+
+    private static Grid NavItemContent(string title, TextBlock badge)
+    {
+        var content = new Grid { ColumnSpacing = 8 };
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.Children.Add(new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis });
+        Grid.SetColumn(badge, 1);
+        content.Children.Add(badge);
+
+        return content;
     }
 
     private void OnNavViewSelectionChanged(
@@ -133,9 +149,26 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    /// <summary>Returns to a section's page when its selected item is clicked again, as from a detail page.</summary>
+    private void OnNavViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        var pageKey = args.IsSettingsInvoked
+            ? HostNavigation.SettingsPageKey
+            : (args.InvokedItemContainer as NavigationViewItem)?.Tag as string;
+
+        if (pageKey is not null
+            && ReferenceEquals(args.InvokedItemContainer, NavView.SelectedItem)
+            && pageKey != _currentPageKey)
+        {
+            _navigationService.NavigateTo(pageKey);
+        }
+    }
+
     /// <summary>Follows back and programmatic navigation in the pane without navigating again.</summary>
     private void OnNavigated(NavigationEvent e)
     {
+        _currentPageKey = e.PageKey;
+
         var container = e.PageKey == HostNavigation.SettingsPageKey
             ? NavView.SettingsItem as NavigationViewItem
             : _navItemsByKey.GetValueOrDefault(e.PageKey);
@@ -160,11 +193,6 @@ public sealed partial class ShellPage : Page
     private void OnTitleBarBackRequested(TitleBar sender, object args)
     {
         _navigationService.GoBack();
-    }
-
-    private void OnTitleBarPaneToggleRequested(TitleBar sender, object args)
-    {
-        NavView.IsPaneOpen = !NavView.IsPaneOpen;
     }
 
     /// <summary>Undoes what loading did, so a second Loaded does not double the pane.</summary>

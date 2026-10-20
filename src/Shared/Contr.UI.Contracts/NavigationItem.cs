@@ -21,4 +21,11 @@ public sealed record NavigationItem(
     string Title,
     string IconGlyph,
     Type PageType,
-    NavigationItemPlacement Placement = NavigationItemPlacement.Menu);
+    NavigationItemPlacement Placement = NavigationItemPlacement.Menu)
+{
+    /// <summary>
+    /// Resolves the text shown at the end of the item, such as a count; an empty string hides it.
+    /// </summary>
+    /// <remarks>The observable may emit on any thread; the shell marshals to the UI thread.</remarks>
+    public Func<IServiceProvider, IObservable<string>>? Badge { get; init; }
+}

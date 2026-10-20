@@ -3,18 +3,27 @@
     x:Class="Contr.App.UI.ShellPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     Loaded="OnShellPageLoaded"
     Unloaded="OnShellPageUnloaded"
     mc:Ignorable="d">
+
+    <Page.Resources>
+        <Style x:Key="StatusBarTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+    </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TitleBar
@@ -23,8 +32,7 @@
             BackRequested="OnTitleBarBackRequested"
             Canvas.ZIndex="1"
             IsBackButtonVisible="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
-            IsPaneToggleButtonVisible="True"
-            PaneToggleRequested="OnTitleBarPaneToggleRequested">
+            IsPaneToggleButtonVisible="False">
             <TitleBar.LeftHeader>
                 <ImageIcon
                     Height="16"
@@ -43,16 +51,16 @@
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="True"
             IsTabStop="False"
-            OpenPaneLength="220"
+            OpenPaneLength="248"
             PaneDisplayMode="Left"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"
+            ItemInvoked="OnNavViewItemInvoked"
             SelectionChanged="OnNavViewSelectionChanged">
 
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <InfoBar
@@ -62,74 +70,74 @@
                     IsOpen="False" />
 
                 <Frame x:Name="NavFrame" Grid.Row="1" />
-
-                <Grid
-                    Grid.Row="2"
-                    Padding="12,6"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="0,1,0,0"
-                    ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Button
-                        x:Name="EngineStatusPill"
-                        Padding="10,3"
-                        AutomationProperties.AutomationId="EngineStatusPill"
-                        AutomationProperties.Name="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        CornerRadius="11"
-                        ToolTipService.ToolTip="{x:Bind local:ShellPage.ToolTipFor(ViewModel.EngineStatus.Detail), Mode=OneWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="7">
-                            <Ellipse
-                                Width="8"
-                                Height="8"
-                                VerticalAlignment="Center"
-                                Fill="{x:Bind local:ShellPage.ToneBrush(ViewModel.EngineStatus.Tone), Mode=OneWay}" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontSize="12"
-                                Text="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}" />
-                        </StackPanel>
-                        <Button.Flyout>
-                            <MenuFlyout Placement="TopEdgeAlignedLeft">
-                                <MenuFlyoutItem
-                                    Command="{x:Bind ViewModel.StartEngineCommand}"
-                                    Text="Start engine">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE768;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Command="{x:Bind ViewModel.StopEngineCommand}"
-                                    Text="Stop engine">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE71A;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Command="{x:Bind ViewModel.RestartEngineCommand}"
-                                    Text="Restart engine">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE72C;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <TextBlock
-                        Grid.Column="1"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Text="{x:Bind ViewModel.DaemonText, Mode=OneWay}" />
-                </Grid>
             </Grid>
         </NavigationView>
+
+        <StackPanel
+            Grid.Row="2"
+            Height="32"
+            Padding="12,0,16,0"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0"
+            Orientation="Horizontal"
+            Spacing="20">
+            <Button
+                x:Name="EngineStatusPill"
+                Padding="4,2"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="EngineStatusPill"
+                AutomationProperties.Name="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}"
+                Background="Transparent"
+                BorderThickness="0"
+                ToolTipService.ToolTip="{x:Bind local:ShellPage.ToolTipFor(ViewModel.EngineStatus.Detail), Mode=OneWay}">
+                <controls:StatusLabel
+                    FontSize="12"
+                    Kind="{x:Bind ViewModel.EngineStatus.Kind, Mode=OneWay}"
+                    Text="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}" />
+                <Button.Flyout>
+                    <MenuFlyout Placement="TopEdgeAlignedLeft">
+                        <MenuFlyoutItem
+                            Command="{x:Bind ViewModel.StartEngineCommand}"
+                            Text="Start engine">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE768;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Command="{x:Bind ViewModel.StopEngineCommand}"
+                            Text="Stop engine">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE71A;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Command="{x:Bind ViewModel.RestartEngineCommand}"
+                            Text="Restart engine">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE72C;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.SinceText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasSince, Mode=OneWay}" />
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.BackendText, Mode=OneWay}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.DaemonVersionText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasBackend, Mode=OneWay}" />
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.EngineVersionText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasEngineVersion, Mode=OneWay}" />
+            <TextBlock
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasContext, Mode=OneWay}" />
+        </StackPanel>
     </Grid>
 </Page>
