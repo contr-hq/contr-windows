@@ -68,7 +68,7 @@ public sealed class TrayService : IDisposable
         return $"Contr: {StatusSummary.From(status).Text}";
     }
 
-    /// <summary>The flyout, built once; its panel follows the engine and the containers only while it is open.</summary>
+    /// <summary>The flyout, built once; its panel follows the engine and containers only while open.</summary>
     private Flyout Flyout()
     {
         if (_flyout is not null)
