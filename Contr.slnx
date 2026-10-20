@@ -1,0 +1,130 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/scripts/">
+    <File Path="scripts/run-fake.ps1" />
+    <File Path="scripts/update-sdk.sh" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+    <File Path="Version.props" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/App/">
+    <Project Path="src/App/Contr.App.Infrastructure/Contr.App.Infrastructure.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/App/Contr.App/Contr.App.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Containers/">
+    <Project Path="src/Modules/Containers/Contr.Modules.Containers.Application/Contr.Modules.Containers.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Containers/Contr.Modules.Containers.Domain/Contr.Modules.Containers.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Containers/Contr.Modules.Containers.UI/Contr.Modules.Containers.UI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Modules/Images/">
+    <Project Path="src/Modules/Images/Contr.Modules.Images.Application/Contr.Modules.Images.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Images/Contr.Modules.Images.Domain/Contr.Modules.Images.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Images/Contr.Modules.Images.UI/Contr.Modules.Images.UI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Modules/Networks/">
+    <Project Path="src/Modules/Networks/Contr.Modules.Networks.Application/Contr.Modules.Networks.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Networks/Contr.Modules.Networks.Domain/Contr.Modules.Networks.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Networks/Contr.Modules.Networks.UI/Contr.Modules.Networks.UI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Modules/Volumes/">
+    <Project Path="src/Modules/Volumes/Contr.Modules.Volumes.Application/Contr.Modules.Volumes.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Volumes/Contr.Modules.Volumes.Domain/Contr.Modules.Volumes.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/Volumes/Contr.Modules.Volumes.UI/Contr.Modules.Volumes.UI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Contr.Application.Abstractions/Contr.Application.Abstractions.csproj" />
+    <Project Path="src/Shared/Contr.Daemon.UI/Contr.Daemon.UI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Shared/Contr.Interoperability/Contr.Interoperability.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Shared/Contr.Mediator/Contr.Mediator.csproj" />
+    <Project Path="src/Shared/Contr.SharedKernel/Contr.SharedKernel.csproj" />
+    <Project Path="src/Shared/Contr.UI.Common/Contr.UI.Common.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Shared/Contr.UI.Contracts/Contr.UI.Contracts.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/gen/">
+    <File Path="gen/CORE_COMMIT" />
+    <Project Path="gen/Contr.Sdk/Contr.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Contr.Analyzers/Contr.Analyzers.csproj" />
+    <Project Path="tools/Contr.Analyzers.CodeFixes/Contr.Analyzers.CodeFixes.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Contr.Analyzers.Tests/Contr.Analyzers.Tests.csproj" />
+    <Project Path="tests/Contr.App.Infrastructure.Tests/Contr.App.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Contr.App.Tests/Contr.App.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Contr.ArchitectureTests/Contr.ArchitectureTests.csproj" />
+    <Project Path="tests/Contr.Daemon.UI.Tests/Contr.Daemon.UI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Contr.Mediator.Tests/Contr.Mediator.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Containers.Application.Tests/Contr.Modules.Containers.Application.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Containers.Domain.Tests/Contr.Modules.Containers.Domain.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Containers.UI.Tests/Contr.Modules.Containers.UI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Contr.Modules.Images.Application.Tests/Contr.Modules.Images.Application.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Images.Domain.Tests/Contr.Modules.Images.Domain.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Images.UI.Tests/Contr.Modules.Images.UI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Contr.Modules.Networks.Application.Tests/Contr.Modules.Networks.Application.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Networks.Domain.Tests/Contr.Modules.Networks.Domain.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Networks.UI.Tests/Contr.Modules.Networks.UI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Contr.Modules.Volumes.Application.Tests/Contr.Modules.Volumes.Application.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Volumes.Domain.Tests/Contr.Modules.Volumes.Domain.Tests.csproj" />
+    <Project Path="tests/Contr.Modules.Volumes.UI.Tests/Contr.Modules.Volumes.UI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+</Solution>
