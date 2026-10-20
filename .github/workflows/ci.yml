@@ -16,6 +16,15 @@ jobs:
   comments:
     uses: contr-hq/.github/.github/workflows/comment-lint.yml@main
 
+  glyphs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # A Private Use Area character is invisible in editors and diffs; icons are written as escapes.
+      - name: Require icon glyphs to be written as escapes
+        run: |
+          if grep -rnP '[\x{E000}-\x{F8FF}]' --include='*.cs' --include='*.xaml' src tests; then exit 1; fi
+
   sdk:
     runs-on: ubuntu-latest
     steps:

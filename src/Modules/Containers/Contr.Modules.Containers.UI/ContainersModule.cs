@@ -28,6 +28,6 @@ public sealed class ContainersModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Containers", "", typeof(ContainersPage))];
+        return [new NavigationItem("Containers", "\uE7B8", typeof(ContainersPage))];
     }
 }
