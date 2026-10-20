@@ -144,8 +144,9 @@ module's items; `Tools` items, such as Troubleshoot, sit below a separator. The 
 Troubleshoot pages are items like the modules'.
 
 A surface outside a module reaches the module's data through a contract in `Contr.UI.Contracts`, never the module:
-the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, and
-the title bar's search asks every `ISearchSource` a module registers. A hit names the page and the arguments that
+the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, an
+image's Run button opens the Containers module's Run dialog through `IContainerRunner`, and the title bar's search
+asks every `ISearchSource` a module registers. A hit names the page and the arguments that
 show it, such as the Volumes page and a volume's name.
 Compose projects are read from the labels Compose puts on containers, so the Compose page lives in the Containers
 module. The status bar spans the window
