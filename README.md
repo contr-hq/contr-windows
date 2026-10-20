@@ -18,8 +18,10 @@ which of your WSL distributions reach the engine, and start at sign-in), and Set
 switch per WSL distribution where the daemon integrates them.
 
 Next: a Velopack installer that bundles a pinned core release.
-Screens and actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and
-down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
+Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from
+their menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the
+engine's CPU, memory and disk. Screens and actions whose daemon API does not exist yet (diagnostics, Kubernetes,
+Compose up and down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
