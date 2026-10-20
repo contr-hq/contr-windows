@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- The generated SDK project pins its own package versions. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>
