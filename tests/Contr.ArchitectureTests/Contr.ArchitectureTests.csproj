@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\Contr.SharedKernel\Contr.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Containers\Contr.Modules.Containers.Application\Contr.Modules.Containers.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Images\Contr.Modules.Images.Application\Contr.Modules.Images.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Volumes\Contr.Modules.Volumes.Application\Contr.Modules.Volumes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Networks\Contr.Modules.Networks.Application\Contr.Modules.Networks.Application.csproj" />
+  </ItemGroup>
+
+</Project>
