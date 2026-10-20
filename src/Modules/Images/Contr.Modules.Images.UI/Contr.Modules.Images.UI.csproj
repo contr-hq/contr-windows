@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Contr.Modules.Images.UI</RootNamespace>
+    <AssemblyName>Contr.Modules.Images.UI</AssemblyName>
+    <UseWinUI>true</UseWinUI>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <Platforms>x64;ARM64</Platforms>
+    <!-- The XAML type generator references a property the Windows App SDK deprecated. -->
+    <NoWarn>CS0612;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Contr.Modules.Images.UI.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\gen\Contr.Sdk\Contr.Sdk.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Contr.Daemon.UI\Contr.Daemon.UI.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Contr.UI.Common\Contr.UI.Common.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Contr.UI.Contracts\Contr.UI.Contracts.csproj" />
+    <ProjectReference Include="..\Contr.Modules.Images.Application\Contr.Modules.Images.Application.csproj" />
+  </ItemGroup>
+
+</Project>
