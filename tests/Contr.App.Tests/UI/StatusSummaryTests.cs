@@ -1,4 +1,5 @@
 using Contr.App.UI;
+using Contr.UI.Common.Controls;
 using Contr.UI.Contracts.Services.Daemon;
 using Xunit;
 
@@ -7,19 +8,19 @@ namespace Contr.App.Tests.UI;
 public sealed class StatusSummaryTests
 {
     [Theory]
-    [InlineData(EngineState.Running, "Engine running", StatusTone.Good)]
-    [InlineData(EngineState.Starting, "Engine starting", StatusTone.Busy)]
-    [InlineData(EngineState.Provisioning, "Engine starting", StatusTone.Busy)]
-    [InlineData(EngineState.Stopping, "Engine stopping", StatusTone.Busy)]
-    [InlineData(EngineState.Stopped, "Engine stopped", StatusTone.Neutral)]
-    [InlineData(EngineState.Failed, "Engine failed", StatusTone.Problem)]
-    [InlineData(EngineState.Unknown, "Connected", StatusTone.Busy)]
-    public void From_DescribesTheEngineWhileConnected(EngineState engine, string text, StatusTone tone)
+    [InlineData(EngineState.Running, "Engine running", StatusKind.Good)]
+    [InlineData(EngineState.Starting, "Engine starting", StatusKind.Busy)]
+    [InlineData(EngineState.Provisioning, "Engine starting", StatusKind.Busy)]
+    [InlineData(EngineState.Stopping, "Engine stopping", StatusKind.Busy)]
+    [InlineData(EngineState.Stopped, "Engine stopped", StatusKind.Neutral)]
+    [InlineData(EngineState.Failed, "Engine failed", StatusKind.Critical)]
+    [InlineData(EngineState.Unknown, "Connected", StatusKind.Busy)]
+    public void From_DescribesTheEngineWhileConnected(EngineState engine, string text, StatusKind kind)
     {
         var summary = StatusSummary.From(new DaemonStatus(DaemonConnectionState.Connected, engine, string.Empty));
 
         Assert.Equal(text, summary.Text);
-        Assert.Equal(tone, summary.Tone);
+        Assert.Equal(kind, summary.Kind);
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public sealed class StatusSummaryTests
         var summary = StatusSummary.From(status);
 
         Assert.Equal("Daemon unavailable", summary.Text);
-        Assert.Equal(StatusTone.Problem, summary.Tone);
+        Assert.Equal(StatusKind.Critical, summary.Kind);
         Assert.Equal("Cannot run contrd.exe", summary.Detail);
     }
 

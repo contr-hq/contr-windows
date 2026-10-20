@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.App.UI;
@@ -64,7 +65,40 @@ public sealed class ShellViewModelTests
 
         viewModel.ApplyStatus(Connected(EngineState.Running));
 
-        Assert.Equal("Daemon 0.1.0 · Fake backend", viewModel.DaemonText);
+        Assert.Equal("Fake backend", viewModel.BackendText);
+        Assert.Equal("Daemon 0.1.0", viewModel.DaemonVersionText);
+    }
+
+    [Fact]
+    public void ApplyStatus_DescribesTheRunningEngine()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ApplyStatus(Connected(EngineState.Running) with { Details = new EngineDetails("29.0.1", "contr") });
+
+        Assert.Equal("Engine 29.0.1", viewModel.EngineVersionText);
+        Assert.Equal("Context contr", viewModel.ContextText);
+    }
+
+    [Fact]
+    public void ApplyStatus_SaysWhenTheEngineStopped()
+    {
+        var viewModel = CreateViewModel();
+        var since = new DateTimeOffset(2026, 10, 20, 18, 2, 0, TimeSpan.Zero);
+
+        viewModel.ApplyStatus(Connected(EngineState.Stopped) with { Since = since });
+
+        Assert.Equal($"Stopped at {ShellViewModel.ShortTime(since)}", viewModel.SinceText);
+    }
+
+    [Fact]
+    public void ApplyStatus_HidesTheContextTheDaemonDidNotCreate()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ApplyStatus(Connected(EngineState.Running) with { Details = new EngineDetails("29.0.1", "") });
+
+        Assert.False(viewModel.HasContext);
     }
 
     [Fact]

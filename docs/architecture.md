@@ -16,7 +16,7 @@ src/Shared/Contr.Application.Abstractions
                                    mediator contracts, DaemonErrors, ListChange<T>
 src/Shared/Contr.Mediator          the in-process mediator and its logging behavior
 src/Shared/Contr.UI.Contracts      IModule, NavigationItem, platform services, IDaemonConnection
-src/Shared/Contr.UI.Common         PageHeader, styles, LiveCollection, LiveListViewModel, HumanFormat
+src/Shared/Contr.UI.Common         PageHeader, EngineGate, EmptyState, StatusLabel, Sparkline, styles, live lists
 src/Shared/Contr.Daemon.UI         the one daemon connection and the SDK call helpers
 src/Modules/<X>/Contr.Modules.<X>.{Domain,Application,UI}
                                    Containers, Images, Volumes, Networks
@@ -76,17 +76,27 @@ running either way.
 
 ## Pages
 
-Every page opens with `PageHeader` (breadcrumb on the left, commands as its content on the right).
-Pages start loading from `Loaded`, never `OnNavigatedTo`: pages come from the container and the
-navigation service sets `Frame.Content` directly. A list page derives its view model from
-`LiveListViewModel<TItem, TRow>`, which follows the module's Watch stream between `Loaded` and
-`Unloaded` and watches again three seconds after a failure. Rows are immutable records; the stream
-replaces them in place.
+Every page opens with `PageHeader`: a title or a breadcrumb trail, an optional subtitle, and the page's
+commands as its content on the right. Pages start loading from `Loaded`, never `OnNavigatedTo`: pages
+come from the container and the navigation service sets `Frame.Content` directly. A page that takes
+navigation parameters, such as a container's ID, implements `IHasViewModel`; the navigation service
+hands the parameters to `ViewModel.OnNavigatedTo` before the page loads. Pages reached from a module's
+own pages rather than the pane, such as the container page, come from `IModule.GetPages`.
 
-`x:Bind` calls small `public static` helpers on the page for formatting and brushes instead of value
-converters, because a function is compile-checked against its arguments.
+A list page derives its view model from `LiveListViewModel<TItem, TRow>`, which follows the module's
+Watch stream between `Loaded` and `Unloaded` and watches again three seconds after a failure. Rows are
+immutable records; the stream replaces them in place. A page over engine objects shows `EngineGate`
+instead of its content while the engine is not running, `EmptyState` when nothing is listed, and
+`StatusLabel` for every state, so an icon always comes with a word.
 
-The status bar's engine pill is a button: its menu starts, stops and restarts the engine.
+`x:Bind` calls small `public static` helpers on the page for formatting and visibility instead of value
+converters, because a function is compile-checked against its arguments. Brushes come from
+`{ThemeResource}` in XAML, or `ThemeResources.Brush` in code: `Application.Current.Resources` answers for
+the theme the app started in.
+
+A `NavigationItem` can carry a `Badge`, such as the Containers count. The status bar spans the window
+under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the
+backend, the engine version and the Docker context.
 
 ## Tests
 

@@ -34,6 +34,11 @@ public sealed class NavigationService : INavigationService
             {
                 Register(item.PageType);
             }
+
+            foreach (var pageType in module.GetPages())
+            {
+                Register(pageType);
+            }
         }
     }
 
@@ -98,7 +103,7 @@ public sealed class NavigationService : INavigationService
         }
 
         _current = new NavigationEntry(pageKey, args.ToArray());
-        _frame.Content = page;
+        Show(_frame, page, _current.Parameters);
         _navigated.OnNext(new NavigationEvent(pageKey, pageType, page, _current.Parameters));
 
         return true;
@@ -117,13 +122,25 @@ public sealed class NavigationService : INavigationService
         }
 
         _current = entry;
-        _frame.Content = page;
+        Show(_frame, page, entry.Parameters);
         _navigated.OnNext(new NavigationEvent(entry.PageKey, page.GetType(), page, entry.Parameters));
     }
 
     public void ClearBackStack()
     {
         _backStack.Clear();
+    }
+
+    /// <summary>Hands the parameters to the page's view model before the page loads.</summary>
+    private static void Show(Frame frame, Page page, object[] parameters)
+    {
+        if (frame.Content is IHasViewModel previous)
+        {
+            previous.ViewModel.OnNavigatedFrom();
+        }
+
+        (page as IHasViewModel)?.ViewModel.OnNavigatedTo(parameters);
+        frame.Content = page;
     }
 
     private sealed record NavigationEntry(string PageKey, object[] Parameters);

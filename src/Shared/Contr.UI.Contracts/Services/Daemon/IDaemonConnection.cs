@@ -14,6 +14,9 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
     /// <summary>The connected daemon; <see langword="null"/> while not connected.</summary>
     DaemonIdentity? Identity { get; }
 
+    /// <summary>Whether connecting starts a stopped or unprovisioned engine; the choice persists.</summary>
+    bool StartsEngineOnConnect { get; set; }
+
     /// <summary>Emits the current status on subscription, then every change.</summary>
     /// <remarks>Emits on a background thread; UI subscribers marshal to their dispatcher.</remarks>
     IObservable<DaemonStatus> StatusChanges { get; }
