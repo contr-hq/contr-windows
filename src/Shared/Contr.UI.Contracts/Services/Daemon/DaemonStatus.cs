@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Contr.UI.Contracts.Services.Daemon;
 
@@ -64,6 +65,9 @@ public sealed record DaemonStatus(DaemonConnectionState Connection, EngineState 
 
     /// <summary>The running engine's identity; absent unless <see cref="Engine"/> is running.</summary>
     public EngineDetails? Details { get; init; }
+
+    /// <summary>Why the engine failed, such as <c>VIRTUALIZATION_DISABLED</c>; empty without a reason.</summary>
+    public string ProblemCode { get; init; } = string.Empty;
 }
 
 /// <summary>The running engine as the daemon describes it.</summary>
@@ -75,5 +79,28 @@ public sealed record EngineDetails(string Version, string DockerContext);
 /// <param name="Endpoint">The local endpoint, such as <c>npipe:////./pipe/contr-S-1-5-21-…-api</c>.</param>
 /// <param name="Version">The daemon's release version.</param>
 /// <param name="ApiRevision">The daemon's <c>proto/API_REVISION</c>.</param>
-/// <param name="Backend">The engine backend, such as <c>WSL</c> or <c>Fake</c>.</param>
-public sealed record DaemonIdentity(string Endpoint, string Version, uint ApiRevision, string Backend);
+/// <param name="Backend">The engine backend, such as <c>WSL 2</c> or <c>Fake</c>.</param>
+public sealed record DaemonIdentity(string Endpoint, string Version, uint ApiRevision, string Backend)
+{
+    /// <summary>The optional features the daemon offers; a client hides every feature not listed.</summary>
+    public IReadOnlySet<DaemonCapability> Capabilities { get; init; } = new HashSet<DaemonCapability>();
+}
+
+/// <summary>An optional feature a daemon may offer, as its handshake lists them.</summary>
+public enum DaemonCapability
+{
+    /// <summary>Runs Compose projects for the client.</summary>
+    Compose,
+
+    /// <summary>Runs a Kubernetes cluster on the engine.</summary>
+    Kubernetes,
+
+    /// <summary>Limits the CPU, memory and disk the engine may use.</summary>
+    ResourceLimits,
+
+    /// <summary>Lets the user's WSL distributions reach the engine.</summary>
+    WslIntegration,
+
+    /// <summary>Forwards published ports to the host.</summary>
+    HostPortForwarding,
+}

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="Contr.App.UI.KubernetesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:common="using:Contr.UI.Common.Controls"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:winui="using:CommunityToolkit.WinUI"
+    mc:Ignorable="d">
+
+    <Grid Padding="36,24,36,0" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <common:PageHeader Title="Kubernetes" />
+
+        <ScrollViewer
+            Grid.Row="1"
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled">
+            <StackPanel Padding="0,0,0,24" Spacing="4">
+                <InfoBar
+                    Title="Kubernetes is not available yet"
+                    Margin="0,0,0,12"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.IsNotOffered}"
+                    Message="This version of the Contr daemon does not run a Kubernetes cluster. These settings wait for one that does."
+                    Severity="Informational" />
+
+                <controls:SettingsCard
+                    Description="Runs a single-node cluster as a container on your engine."
+                    Header="Kubernetes"
+                    HeaderIcon="{winui:FontIcon Glyph=&#xEA38;}"
+                    IsEnabled="False">
+                    <ToggleSwitch AutomationProperties.Name="Run Kubernetes" />
+                </controls:SettingsCard>
+
+                <TextBlock
+                    Margin="0,20,0,4"
+                    Style="{ThemeResource BodyStrongTextBlockStyle}"
+                    Text="Cluster" />
+                <controls:SettingsCard
+                    Description="The Kubernetes version the cluster runs."
+                    Header="Version"
+                    IsEnabled="False">
+                    <ComboBox MinWidth="150" PlaceholderText="—" />
+                </controls:SettingsCard>
+                <controls:SettingsCard
+                    Description="Whether kubectl uses this cluster unless told otherwise."
+                    Header="Make contr the current kubectl context"
+                    IsEnabled="False">
+                    <ToggleSwitch AutomationProperties.Name="Make contr the current kubectl context" />
+                </controls:SettingsCard>
+                <controls:SettingsCard
+                    Description="Routes Ingress resources to your services."
+                    Header="Traefik ingress controller"
+                    IsEnabled="False">
+                    <ToggleSwitch AutomationProperties.Name="Traefik ingress controller" />
+                </controls:SettingsCard>
+                <controls:SettingsCard
+                    Description="Where kubectl finds the cluster's address and credentials."
+                    Header="Kubeconfig"
+                    IsEnabled="False">
+                    <Button Content="Open folder" />
+                </controls:SettingsCard>
+
+                <TextBlock
+                    Margin="0,20,0,4"
+                    Style="{ThemeResource BodyStrongTextBlockStyle}"
+                    Text="Maintenance" />
+                <controls:SettingsCard
+                    Description="Copies images from your engine into the cluster, so pods can use them without a registry."
+                    Header="Use local images in the cluster"
+                    IsEnabled="False">
+                    <Button Content="Import images…" />
+                </controls:SettingsCard>
+                <controls:SettingsCard
+                    Description="Deletes all workloads and cluster data. Your images stay."
+                    Header="Reset cluster"
+                    IsEnabled="False">
+                    <Button Content="Reset…" />
+                </controls:SettingsCard>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

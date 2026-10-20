@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.Sdk;
+using Contr.Sdk.Common.V1;
 using Contr.Sdk.Daemon.V1;
 using Contr.Sdk.Engine.V1;
 using Contr.SharedKernel;
@@ -166,6 +169,29 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
         };
     }
 
+    private static HashSet<DaemonCapability> Capabilities(IEnumerable<Capability> capabilities)
+    {
+        var known = new HashSet<DaemonCapability>();
+        foreach (var capability in capabilities)
+        {
+            DaemonCapability? mapped = capability switch {
+                Capability.Compose => DaemonCapability.Compose,
+                Capability.Kubernetes => DaemonCapability.Kubernetes,
+                Capability.ResourceLimits => DaemonCapability.ResourceLimits,
+                Capability.WslIntegration => DaemonCapability.WslIntegration,
+                Capability.HostPortForwarding => DaemonCapability.HostPortForwarding,
+                _ => null,
+            };
+
+            if (mapped is { } value)
+            {
+                known.Add(value);
+            }
+        }
+
+        return known;
+    }
+
     private static string Describe(BackendKind backend)
     {
         return backend switch {
@@ -268,7 +294,9 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
             client.Endpoint.ToString(),
             handshake.DaemonVersion,
             handshake.ApiRevision,
-            Describe(handshake.BackendKind));
+            Describe(handshake.BackendKind)) {
+            Capabilities = Capabilities(handshake.Capabilities),
+        };
         Volatile.Write(ref _client, client);
         LogConnected(Identity.Endpoint, Identity.Version, Identity.Backend);
         Publish(new DaemonStatus(DaemonConnectionState.Connected, EngineState.Unknown, string.Empty));
@@ -287,13 +315,15 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                 .ConfigureAwait(false))
             {
                 var state = Map(update.State);
-                var problem = update.State == WireEngineState.Failed
-                    ? DaemonErrorMapping.Describe(update.FailureReason)
+                var failed = update.State == WireEngineState.Failed;
+                var problem = failed ? DaemonErrorMapping.Describe(update.FailureReason) : string.Empty;
+                var code = failed && update.FailureReason != ErrorReason.Unspecified
+                    ? ReasonCode(update.FailureReason)
                     : string.Empty;
                 var details = state == EngineState.Running
                     ? await DescribeEngineAsync(client, cancellationToken).ConfigureAwait(false)
                     : null;
-                PublishEngine(state, problem, details);
+                PublishEngine(state, problem, details, code);
 
                 if (state == EngineState.Running && details is null)
                 {
@@ -432,13 +462,35 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
         }
     }
 
-    private void PublishEngine(EngineState state, string problem, EngineDetails? details)
+    private void PublishEngine(EngineState state, string problem, EngineDetails? details, string code)
     {
         var current = _status.Value;
         var since = current.Connection == DaemonConnectionState.Connected && current.Engine == state
             ? current.Since
             : DateTimeOffset.Now;
-        Publish(new DaemonStatus(DaemonConnectionState.Connected, state, problem) { Since = since, Details = details });
+        Publish(new DaemonStatus(DaemonConnectionState.Connected, state, problem) {
+            Since = since,
+            Details = details,
+            ProblemCode = code,
+        });
+    }
+
+    /// <summary>The reason as the proto names it without its prefix, such as <c>VIRTUALIZATION_DISABLED</c>.</summary>
+    private static string ReasonCode(ErrorReason reason)
+    {
+        var name = reason.ToString();
+        var code = new StringBuilder(name.Length + 4);
+        for (var index = 0; index < name.Length; index++)
+        {
+            if (index > 0 && char.IsUpper(name[index]))
+            {
+                code.Append('_');
+            }
+
+            code.Append(char.ToUpperInvariant(name[index]));
+        }
+
+        return code.ToString();
     }
 
     private void Publish(DaemonStatus status)
