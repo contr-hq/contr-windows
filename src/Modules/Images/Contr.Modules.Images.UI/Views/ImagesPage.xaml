@@ -10,7 +10,150 @@
     xmlns:vm="using:Contr.Modules.Images.UI.ViewModels"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,16" RowSpacing="12">
+    <Page.Resources>
+        <!--  The header and every row share these widths, so the columns line up.  -->
+        <GridLength x:Key="TagColumnWidth">130</GridLength>
+        <GridLength x:Key="IdColumnWidth">130</GridLength>
+        <GridLength x:Key="CreatedColumnWidth">120</GridLength>
+        <GridLength x:Key="SizeColumnWidth">80</GridLength>
+        <GridLength x:Key="UsedByColumnWidth">120</GridLength>
+        <GridLength x:Key="ActionsColumnWidth">72</GridLength>
+
+        <Style
+            x:Key="ImageRowStyle"
+            BasedOn="{StaticResource GroupRowStyle}"
+            TargetType="Grid">
+            <Setter Property="Padding" Value="16,6,12,6" />
+            <Setter Property="MinHeight" Value="44" />
+        </Style>
+
+        <DataTemplate x:Key="LayerTemplate" x:DataType="vm:PullLayer">
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="200" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource MonoCellTextStyle}" Text="{x:Bind Id}" />
+                <ProgressBar
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Value="{x:Bind Progress, Mode=OneWay}" />
+                <TextBlock
+                    Grid.Column="2"
+                    Style="{StaticResource SecondaryCellTextStyle}"
+                    Text="{x:Bind StatusText, Mode=OneWay}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ImageTemplate" x:DataType="vm:ImageRow">
+            <Grid AutomationProperties.Name="{x:Bind DisplayName}" Style="{StaticResource ImageRowStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{StaticResource TagColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource IdColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource SizeColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <TextBlock
+                        FontWeight="SemiBold"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="{x:Bind Repository}" />
+                    <Border
+                        Padding="6,1"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Visibility="{x:Bind IsLocalBuild}">
+                        <TextBlock FontSize="12" Text="Local build" />
+                    </Border>
+                    <TextBlock
+                        Style="{StaticResource SecondaryCellTextStyle}"
+                        Text="{x:Bind OtherTags}"
+                        Visibility="{x:Bind HasOtherTags}" />
+                </StackPanel>
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind Tag}" />
+                <TextBlock
+                    Grid.Column="2"
+                    Style="{StaticResource MonoCellTextStyle}"
+                    Text="{x:Bind ShortId}" />
+                <TextBlock
+                    Grid.Column="3"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind Created}" />
+                <TextBlock
+                    Grid.Column="4"
+                    HorizontalAlignment="Right"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind Size}" />
+                <TextBlock
+                    Grid.Column="5"
+                    Margin="12,0,0,0"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind UsedBy}" />
+
+                <StackPanel
+                    Grid.Column="6"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Run"
+                        IsEnabled="False"
+                        Style="{StaticResource RowActionButtonStyle}"
+                        ToolTipService.ToolTip="Run">
+                        <FontIcon FontSize="14" Glyph="&#xE768;" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="More actions"
+                        Style="{StaticResource RowActionButtonStyle}"
+                        ToolTipService.ToolTip="More actions">
+                        <FontIcon FontSize="14" Glyph="&#xE712;" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyoutItem
+                                    Click="OnCopyReference"
+                                    Tag="{x:Bind}"
+                                    Text="Copy name">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="OnCopyId"
+                                    Tag="{x:Bind}"
+                                    Text="Copy ID">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem
+                                    Click="OnRemove"
+                                    Tag="{x:Bind}"
+                                    Text="Delete">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="36,24,36,0" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -18,194 +161,207 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Images">
+        <common:PageHeader Title="Images" Subtitle="{x:Bind views:ImagesPage.Shown(ViewModel.Subtitle, ViewModel.Engine.IsOpen), Mode=OneWay}" />
+
+        <StackPanel
+            Grid.Row="1"
+            Orientation="Horizontal"
+            Spacing="8"
+            Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
             <Button
-                AutomationProperties.AutomationId="PullImage"
+                AutomationProperties.AutomationId="PullImageButton"
                 Click="OnPull"
-                Style="{StaticResource AccentToolbarButtonStyle}">
+                Style="{StaticResource AccentButtonStyle}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon FontSize="14" Glyph="&#xE896;" />
                     <TextBlock Text="Pull image" />
                 </StackPanel>
             </Button>
-        </common:PageHeader>
+            <Button
+                AutomationProperties.AutomationId="RemoveUnusedImagesButton"
+                Click="OnRemoveUnused"
+                IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontSize="14" Glyph="&#xE74D;" />
+                    <TextBlock Text="{x:Bind ViewModel.RemoveUnusedText, Mode=OneWay}" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
 
-        <InfoBar
-            Grid.Row="1"
-            IsClosable="False"
-            IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
-            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-            Severity="{x:Bind views:ImagesPage.SeverityFor(ViewModel.IsEngineDown), Mode=OneWay}"
-            Visibility="{x:Bind ViewModel.HasError, Mode=OneWay}" />
+        <StackPanel Grid.Row="2" Spacing="12">
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind views:ImagesPage.ShowsError(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
+                Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                Severity="Error" />
 
-        <Border
-            Grid.Row="2"
-            Padding="16,12"
-            Style="{StaticResource ListCardStyle}"
-            Visibility="{x:Bind ViewModel.IsPulling, Mode=OneWay}">
-            <Grid ColumnSpacing="16" RowSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.PullTitle, Mode=OneWay}" />
-                <TextBlock
-                    Grid.Row="1"
-                    Style="{StaticResource SecondaryCellTextStyle}"
-                    Text="{x:Bind ViewModel.PullStatus, Mode=OneWay}" />
-                <ProgressBar
-                    Grid.Row="0"
-                    Grid.Column="1"
-                    Width="240"
-                    VerticalAlignment="Center"
-                    IsIndeterminate="{x:Bind ViewModel.IsPullIndeterminate, Mode=OneWay}"
-                    Value="{x:Bind ViewModel.PullProgress, Mode=OneWay}" />
+            <Border
+                Padding="16,12"
+                AutomationProperties.AutomationId="PullProgress"
+                Style="{StaticResource ListCardStyle}"
+                Visibility="{x:Bind ViewModel.IsPulling, Mode=OneWay}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon
+                            VerticalAlignment="Top"
+                            FontSize="16"
+                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                            Glyph="&#xE896;" />
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.PullTitle, Mode=OneWay}" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="{x:Bind views:ImagesPage.PlatformSuffix(ViewModel.PullPlatform), Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.HasPullPlatform, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind ViewModel.PullStatus, Mode=OneWay}" />
+                        </StackPanel>
+                        <Button
+                            Grid.Column="2"
+                            Click="OnCancelPull"
+                            Content="Cancel" />
+                    </Grid>
+                    <ProgressBar IsIndeterminate="{x:Bind ViewModel.IsPullIndeterminate, Mode=OneWay}" Value="{x:Bind ViewModel.PullProgress, Mode=OneWay}" />
+                    <ItemsRepeater ItemTemplate="{StaticResource LayerTemplate}" ItemsSource="{x:Bind ViewModel.PullLayers}">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Spacing="4" />
+                        </ItemsRepeater.Layout>
+                    </ItemsRepeater>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="3">
+            <common:EngineGate
+                Margin="0,0,0,48"
+                ViewModel="{x:Bind ViewModel.Engine}"
+                Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
+
+            <ProgressRing
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsActive="{x:Bind views:ImagesPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
+
+            <common:EmptyState
+                Title="No images yet"
+                Margin="0,0,0,48"
+                Glyph="&#xE8B9;"
+                Message="Pull one from a registry, or build one with docker build in a terminal. It will show up here right away."
+                Visibility="{x:Bind views:ImagesPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.IsEmpty), Mode=OneWay}">
                 <Button
-                    Grid.Row="1"
-                    Grid.Column="1"
-                    HorizontalAlignment="Right"
-                    Click="OnCancelPull"
-                    Content="Cancel" />
-            </Grid>
-        </Border>
+                    Click="OnPull"
+                    Content="Pull an image"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </common:EmptyState>
 
-        <Border Grid.Row="3" Style="{StaticResource ListCardStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+            <Border
+                VerticalAlignment="Top"
+                Style="{StaticResource ListCardStyle}"
+                Visibility="{x:Bind views:ImagesPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                <Grid ColumnSpacing="12" Style="{StaticResource ListHeaderStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2.4*" />
-                        <ColumnDefinition Width="1.2*" />
-                        <ColumnDefinition Width="1.2*" />
-                        <ColumnDefinition Width="1.2*" />
-                        <ColumnDefinition Width="0.8*" />
-                        <ColumnDefinition Width="48" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Repository" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Tag" />
-                    <TextBlock
-                        Grid.Column="2"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Image ID" />
-                    <TextBlock
-                        Grid.Column="3"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Created" />
-                    <TextBlock
-                        Grid.Column="4"
-                        HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Size" />
-                </Grid>
+                    <Grid Padding="16,10,12,8" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="{StaticResource TagColumnWidth}" />
+                            <ColumnDefinition Width="{StaticResource IdColumnWidth}" />
+                            <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
+                            <ColumnDefinition Width="{StaticResource SizeColumnWidth}" />
+                            <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
+                            <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Repository" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Tag" />
+                        <TextBlock
+                            Grid.Column="2"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Image ID" />
+                        <TextBlock
+                            Grid.Column="3"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Created" />
+                        <TextBlock
+                            Grid.Column="4"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Size" />
+                        <TextBlock
+                            Grid.Column="5"
+                            Margin="12,0,0,0"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Used by" />
+                        <TextBlock
+                            Grid.Column="6"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Text="Actions" />
+                    </Grid>
 
-                <ListView
-                    Grid.Row="1"
-                    AutomationProperties.Name="Images"
-                    ItemContainerStyle="{StaticResource ListRowStyle}"
-                    ItemsSource="{x:Bind ViewModel.Rows}"
-                    SelectionMode="None">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ImageRow">
-                            <Grid ColumnSpacing="12">
+                    <ScrollViewer Grid.Row="1">
+                        <StackPanel>
+                            <ItemsRepeater
+                                AutomationProperties.AutomationId="ImagesList"
+                                ItemTemplate="{StaticResource ImageTemplate}"
+                                ItemsSource="{x:Bind ViewModel.TaggedRows}" />
+                            <Grid Style="{StaticResource ImageRowStyle}" Visibility="{x:Bind ViewModel.HasDangling, Mode=OneWay}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2.4*" />
-                                    <ColumnDefinition Width="1.2*" />
-                                    <ColumnDefinition Width="1.2*" />
-                                    <ColumnDefinition Width="1.2*" />
-                                    <ColumnDefinition Width="0.8*" />
-                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="{StaticResource TagColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource IdColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource SizeColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
                                 </Grid.ColumnDefinitions>
-
-                                <StackPanel
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="8">
-                                    <TextBlock
-                                        FontWeight="SemiBold"
-                                        Style="{StaticResource CellTextStyle}"
-                                        Text="{x:Bind Repository}" />
-                                    <Border
-                                        Padding="6,1"
-                                        VerticalAlignment="Center"
-                                        Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-                                        CornerRadius="4"
-                                        Visibility="{x:Bind InUse}">
-                                        <TextBlock FontSize="11" Text="In use" />
-                                    </Border>
-                                </StackPanel>
-
-                                <StackPanel
+                                <TextBlock
+                                    FontStyle="Italic"
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="{x:Bind ViewModel.DanglingTitle, Mode=OneWay}" />
+                                <TextBlock
                                     Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="6">
-                                    <TextBlock Style="{StaticResource CellTextStyle}" Text="{x:Bind Tag}" />
-                                    <TextBlock
-                                        Style="{StaticResource SecondaryCellTextStyle}"
-                                        Text="{x:Bind OtherTags}"
-                                        Visibility="{x:Bind HasOtherTags}" />
-                                </StackPanel>
-
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="—" />
                                 <TextBlock
                                     Grid.Column="2"
-                                    Style="{StaticResource MonoCellTextStyle}"
-                                    Text="{x:Bind ShortId}" />
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="—" />
                                 <TextBlock
                                     Grid.Column="3"
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="{x:Bind Created}" />
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="Older builds" />
                                 <TextBlock
                                     Grid.Column="4"
                                     HorizontalAlignment="Right"
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="{x:Bind Size}" />
-
-                                <Button
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="{x:Bind ViewModel.DanglingSize, Mode=OneWay}" />
+                                <TextBlock
                                     Grid.Column="5"
+                                    Margin="12,0,0,0"
+                                    Style="{StaticResource CellTextStyle}"
+                                    Text="{x:Bind ViewModel.DanglingUsedBy, Mode=OneWay}" />
+                                <HyperlinkButton
+                                    Grid.Column="6"
                                     HorizontalAlignment="Right"
-                                    AutomationProperties.HelpText="{x:Bind DisplayName}"
-                                    AutomationProperties.Name="Delete"
-                                    Click="OnRemove"
-                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                    Style="{StaticResource RowActionButtonStyle}"
-                                    Tag="{x:Bind}"
-                                    ToolTipService.ToolTip="Delete">
-                                    <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                                </Button>
+                                    Click="OnRemoveDangling"
+                                    Content="Remove" />
                             </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-
-                <StackPanel
-                    Grid.Row="1"
-                    Margin="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="8"
-                    Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
-                    <FontIcon
-                        FontSize="28"
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Glyph="&#xE81E;" />
-                    <TextBlock Style="{StaticResource EmptyStateTextStyle}" Text="No images yet. Pull one to get started." />
-                </StackPanel>
-
-                <ProgressRing
-                    Grid.Row="1"
-                    IsActive="{x:Bind views:ImagesPage.IsWaiting(ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
-            </Grid>
-        </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

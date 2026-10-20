@@ -16,8 +16,13 @@ public interface IImagesGateway
     IAsyncEnumerable<ListChange<ImageDto>> WatchAsync(CancellationToken cancellationToken);
 
     /// <summary>Pulls the image; cancelling the enumeration cancels the pull.</summary>
-    IAsyncEnumerable<PullEvent> PullAsync(ImageReference reference, CancellationToken cancellationToken);
+    /// <param name="platform">Such as <c>linux/arm64</c>; empty pulls for the engine's own platform.</param>
+    IAsyncEnumerable<PullEvent> PullAsync(
+        ImageReference reference, string platform, CancellationToken cancellationToken);
 
     /// <summary>Removes one reference to the image and deletes it once nothing references it.</summary>
     Task<Result> RemoveAsync(ImageId id, CancellationToken cancellationToken);
+
+    /// <param name="all">Deletes every image no container uses; otherwise only untagged ones.</param>
+    Task<Result<PruneResult>> PruneAsync(bool all, CancellationToken cancellationToken);
 }

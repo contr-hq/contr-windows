@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="Contr.Modules.Images.UI.Views.PullImageDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Pull an image"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    IsPrimaryButtonEnabled="False"
+    PrimaryButtonText="Pull"
+    Style="{StaticResource DefaultContentDialogStyle}"
+    mc:Ignorable="d">
+
+    <StackPanel Width="440" Spacing="16">
+        <TextBox
+            x:Name="ImageNameBox"
+            AutomationProperties.AutomationId="PullImageName"
+            Header="Image name"
+            PlaceholderText="postgres, or registry.example.com/team/app"
+            TextChanged="OnInputChanged" />
+        <TextBox
+            x:Name="TagBox"
+            AutomationProperties.AutomationId="PullImageTag"
+            Header="Tag"
+            PlaceholderText="latest"
+            TextChanged="OnInputChanged" />
+        <ComboBox
+            x:Name="PlatformBox"
+            HorizontalAlignment="Stretch"
+            Header="Platform"
+            SelectedIndex="0">
+            <x:String>The engine's own platform</x:String>
+            <x:String>linux/amd64</x:String>
+            <x:String>linux/arm64</x:String>
+        </ComboBox>
+        <InfoBar
+            x:Name="ReferenceError"
+            IsClosable="False"
+            Severity="Error" />
+    </StackPanel>
+</ContentDialog>

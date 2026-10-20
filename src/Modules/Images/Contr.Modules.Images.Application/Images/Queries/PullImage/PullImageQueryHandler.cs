@@ -26,7 +26,7 @@ public sealed class PullImageQueryHandler : IRequestHandler<PullImageQuery, Resu
 
         var reference = ImageReference.Parse(request.Reference);
         var pull = reference.IsSuccess
-            ? Result.Success(_images.PullAsync(reference.Value, cancellationToken))
+            ? Result.Success(_images.PullAsync(reference.Value, request.Platform, cancellationToken))
             : Result.Failure<IAsyncEnumerable<PullEvent>>(reference.Error);
 
         return Task.FromResult(pull);

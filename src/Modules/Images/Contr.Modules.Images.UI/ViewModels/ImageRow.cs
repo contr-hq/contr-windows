@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Contr.Modules.Images.Application.Images;
 using Contr.Modules.Images.Domain;
 using Contr.UI.Common.Formatting;
@@ -7,14 +8,17 @@ namespace Contr.Modules.Images.UI.ViewModels;
 
 /// <summary>One row of the images list.</summary>
 /// <param name="OtherTags">Tags beyond the first, such as <c>+2 tags</c>; empty when there are none.</param>
+/// <param name="Containers">Containers created from the image; -1 when the engine did not count them.</param>
+/// <param name="IsLocalBuild">A tagged image no registry knows: built or loaded on this machine.</param>
 public sealed record ImageRow(
     ImageId ImageId,
     string Repository,
     string Tag,
     string OtherTags,
-    string Size,
+    long SizeBytes,
     string Created,
-    bool InUse)
+    long Containers,
+    bool IsLocalBuild)
 {
     private const string _none = "<none>";
 
@@ -24,8 +28,23 @@ public sealed record ImageRow(
 
     public bool HasOtherTags => OtherTags.Length > 0;
 
+    /// <summary>An image without a tag, left behind by a rebuild or a newer pull.</summary>
+    public bool IsDangling => Tag == _none;
+
+    public bool InUse => Containers > 0;
+
+    public string Size => HumanFormat.Bytes(SizeBytes);
+
+    /// <summary>Such as <c>2 containers</c> or <c>Not used</c>.</summary>
+    public string UsedBy => Containers switch {
+        < 0 => "—",
+        0 => "Not used",
+        1 => "1 container",
+        _ => $"{Containers.ToString(CultureInfo.CurrentCulture)} containers",
+    };
+
     /// <summary>The reference a removal names: the first tag, else the ID.</summary>
-    public string DisplayName => Tag == _none ? ShortId : $"{Repository}:{Tag}";
+    public string DisplayName => IsDangling ? ShortId : $"{Repository}:{Tag}";
 
     public static ImageRow From(ImageDto image)
     {
@@ -43,9 +62,10 @@ public sealed record ImageRow(
             repository,
             tag,
             otherTags,
-            HumanFormat.Bytes(image.SizeBytes),
+            image.SizeBytes,
             HumanFormat.Age(image.CreatedAt, DateTimeOffset.UtcNow),
-            image.Containers > 0);
+            image.Containers,
+            image.Tags.Count > 0 && !image.HasRegistryDigest);
     }
 
     public static int Compare(ImageRow? left, ImageRow? right)
