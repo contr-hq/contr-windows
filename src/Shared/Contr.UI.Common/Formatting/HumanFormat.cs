@@ -49,6 +49,25 @@ public static class HumanFormat
         };
     }
 
+    /// <summary>
+    /// Kakehashi's short relative time: <c>now</c>, <c>14m ago</c>, <c>3h ago</c>, <c>3d ago</c>, then the date,
+    /// such as <c>Oct 12, 2026</c>.
+    /// </summary>
+    public static string Ago(DateTimeOffset moment, DateTimeOffset now)
+    {
+        var elapsed = now - moment;
+
+        return elapsed switch {
+            { TotalMinutes: < 1 } => "now",
+            { TotalHours: < 1 } => $"{(int)elapsed.TotalMinutes}m ago",
+            { TotalDays: < 1 } => $"{(int)elapsed.TotalHours}h ago",
+            { TotalDays: < 7 } => $"{(int)elapsed.TotalDays}d ago",
+            _ => moment
+                .ToLocalTime()
+                .ToString("MMM d, yyyy", CultureInfo.CurrentCulture),
+        };
+    }
+
     private static string Plural(int count, string unit)
     {
         return count == 1 ? $"1 {unit} ago" : $"{count} {unit}s ago";

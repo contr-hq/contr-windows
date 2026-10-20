@@ -51,7 +51,7 @@ public sealed partial class TrayViewModel : ViewModel
         _containers = containers;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         StatusText = string.Empty;
-        RunningTitle = "Running";
+        RunningTitle = "RUNNING";
         DockerContext = string.Empty;
         Apply(daemon.Status);
     }
@@ -134,7 +134,7 @@ public sealed partial class TrayViewModel : ViewModel
             Running.Add(container);
         }
 
-        RunningTitle = $"Running · {running.Count.ToString(CultureInfo.CurrentCulture)}";
+        RunningTitle = $"RUNNING · {running.Count.ToString(CultureInfo.CurrentCulture)}";
     }
 
     private void OnUiThread(Action action)

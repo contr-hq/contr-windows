@@ -63,7 +63,7 @@ public sealed record ImageRow(
             tag,
             otherTags,
             image.SizeBytes,
-            HumanFormat.Age(image.CreatedAt, DateTimeOffset.UtcNow),
+            HumanFormat.Ago(image.CreatedAt, DateTimeOffset.UtcNow),
             image.Containers,
             image.Tags.Count > 0 && !image.HasRegistryDigest);
     }

@@ -9,9 +9,25 @@ using Contr.UI.Common.Formatting;
 
 namespace Contr.Modules.Containers.UI.ViewModels;
 
+/// <summary>How a fact's value reads.</summary>
+public enum FactKind
+{
+    /// <summary>A plain value, such as a policy or a count.</summary>
+    Text,
+
+    /// <summary>An identifier, a command or a path, in a monospaced font.</summary>
+    Code,
+
+    /// <summary>The absence of a value, such as "No limit".</summary>
+    Muted,
+}
+
 /// <summary>One labelled value of the inspect tab.</summary>
-/// <param name="IsCode">Shows the value in a monospaced font, as for a command or a path.</param>
-public sealed record InspectFact(string Label, string Value, bool IsCode = false);
+/// <param name="Note">A relative time after the value, such as "2h ago"; may be empty.</param>
+public sealed record InspectFact(string Label, string Value, FactKind Kind = FactKind.Text, string Note = "")
+{
+    public bool HasNote => Note.Length > 0;
+}
 
 /// <summary>The inspect tab's summary, read from the engine's inspection document (Docker Engine API).</summary>
 public sealed record InspectFacts(
@@ -24,14 +40,14 @@ public sealed record InspectFacts(
     /// <summary>Each mount as its kind and <c>source → destination</c>, paths as the engine sees them.</summary>
     public IReadOnlyList<InspectFact> Mounts { get; init; } = [];
 
-    /// <summary>Each network the container is attached to, with its address there.</summary>
+    /// <summary>Each network the container is attached to, then its address there.</summary>
     public IReadOnlyList<InspectFact> Networks { get; init; } = [];
 
     /// <summary>The <c>VAR=value</c> entries the container runs with.</summary>
     public IReadOnlyList<string> Environment { get; init; } = [];
 
-    /// <summary>Such as <c>Project shop-api · service api</c>; empty outside Compose.</summary>
-    public string Compose { get; init; } = string.Empty;
+    /// <summary>The Compose project and service that run the container, then its restart policy.</summary>
+    public IReadOnlyList<InspectFact> Setup { get; init; } = [];
 
     public static InspectFacts From(ContainerDetailsDto details, DateTimeOffset now)
     {
@@ -48,33 +64,55 @@ public sealed record InspectFacts(
                 .Concat(Strings(root, "Args"))
                 .Where(part => part.Length > 0));
 
+        var memory = Number(host, "Memory");
+        var restart = new InspectFact("Restart policy", RestartPolicy(Child(host, "RestartPolicy")));
         IReadOnlyList<InspectFact> configuration = [
-            new("Image", details.Container.Image),
-            new("Command", Or(command), IsCode: true),
-            new("Working folder", Or(details.WorkingDirectory), IsCode: true),
-            new("User", Or(Text(config, "User"), "Image default")),
-            new("Restart policy", RestartPolicy(Child(host, "RestartPolicy"))),
-            new("Hostname", Or(Text(config, "Hostname")), IsCode: true),
+            Code("Image", details.Container.Image),
+            Code("Command", command),
+            Code("Working folder", details.WorkingDirectory),
+            Code("User", Text(config, "User"), "Image default"),
+            restart,
+            Code("Hostname", Text(config, "Hostname")),
         ];
 
         IReadOnlyList<InspectFact> state = [
-            new("Started", details.StartedAt is { } started ? When(started, now) : "Never"),
-            new("Finished", details.FinishedAt is { } finished ? When(finished, now) : _none),
+            Moment("Started", details.StartedAt, now),
+            .. details.Container.State == ContainerState.Running || details.FinishedAt is null
+                ? Array.Empty<InspectFact>()
+                : [Moment("Finished", details.FinishedAt, now)],
             new("Restarts", details.RestartCount.ToString(CultureInfo.CurrentCulture)),
-            new("Health check", Health(details.Health)),
+            new("Health check", Health(details.Health), HealthKind(details.Health)),
         ];
 
         IReadOnlyList<InspectFact> limits = [
-            new("CPU", CpuLimit(host)),
-            new("Memory", Number(host, "Memory") is > 0 and var memory ? HumanFormat.Bytes(memory) : "No limit"),
+            CpuLimit(host),
+            memory > 0 ? new("Memory", HumanFormat.Bytes(memory)) : new("Memory", "No limit", FactKind.Muted),
         ];
 
         return new InspectFacts(configuration, state, limits) {
             Mounts = [.. details.Mounts.Select(Mount)],
             Networks = ReadNetworks(Child(Child(root, "NetworkSettings"), "Networks")),
             Environment = details.Environment,
-            Compose = ReadCompose(Child(config, "Labels")),
+            Setup = [.. ReadCompose(Child(config, "Labels")), restart with { Label = "Restart" }],
         };
+    }
+
+    private static InspectFact Code(string label, string value, string fallback = _none)
+    {
+        return value.Length > 0 ? new(label, value, FactKind.Code) : new(label, fallback, FactKind.Muted);
+    }
+
+    /// <summary>The date and time, then how long ago while that is under a week.</summary>
+    private static InspectFact Moment(string label, DateTimeOffset? moment, DateTimeOffset now)
+    {
+        if (moment is not { } at)
+        {
+            return new(label, "Never", FactKind.Muted);
+        }
+
+        var note = now - at < TimeSpan.FromDays(7) ? HumanFormat.Ago(at, now) : string.Empty;
+
+        return new(label, When(at, now), Note: note);
     }
 
     private static InspectFact Mount(MountDto mount)
@@ -82,7 +120,7 @@ public sealed record InspectFacts(
         var kind = mount.Kind.Length > 0 ? char.ToUpperInvariant(mount.Kind[0]) + mount.Kind[1..] : _none;
         var source = mount.Kind == "volume" && mount.Name.Length > 0 ? mount.Name : mount.Source;
 
-        return new InspectFact(kind, $"{source} → {mount.Destination}", IsCode: true);
+        return new InspectFact(kind, $"{source} → {mount.Destination}", FactKind.Code);
     }
 
     private static List<InspectFact> ReadNetworks(JsonElement networks)
@@ -90,21 +128,24 @@ public sealed record InspectFacts(
         return networks.ValueKind == JsonValueKind.Object
             ? [.. networks
                 .EnumerateObject()
-                .Select(network => new InspectFact(network.Name, Or(Text(network.Value, "IPAddress"), "No address")))]
+                .SelectMany(network => new[] {
+                    Code("Network", network.Name),
+                    Code("Address", Text(network.Value, "IPAddress"), "No address"),
+                })]
             : [];
     }
 
-    private static string ReadCompose(JsonElement labels)
+    private static IEnumerable<InspectFact> ReadCompose(JsonElement labels)
     {
         var project = Text(labels, "com.docker.compose.project");
         var service = Text(labels, "com.docker.compose.service");
 
         if (project.Length == 0)
         {
-            return string.Empty;
+            return [];
         }
 
-        return service.Length > 0 ? $"Project {project} · service {service}" : $"Project {project}";
+        return service.Length > 0 ? [Code("Project", project), Code("Service", service)] : [Code("Project", project)];
     }
 
     private static JsonDocument? Parse(string json)
@@ -151,11 +192,6 @@ public sealed record InspectFacts(
             : [];
     }
 
-    private static string Or(string value, string fallback = _none)
-    {
-        return value.Length > 0 ? value : fallback;
-    }
-
     private static string RestartPolicy(JsonElement policy)
     {
         var retries = Number(policy, "MaximumRetryCount");
@@ -169,14 +205,21 @@ public sealed record InspectFacts(
         };
     }
 
-    private static string CpuLimit(JsonElement host)
+    private static InspectFact CpuLimit(JsonElement host)
     {
         var nanoCpus = Number(host, "NanoCpus");
         var quota = Number(host, "CpuQuota");
         var period = Number(host, "CpuPeriod");
         var cpus = nanoCpus > 0 ? nanoCpus / 1e9 : quota > 0 && period > 0 ? (double)quota / period : 0;
 
-        return cpus > 0 ? $"{cpus.ToString("0.##", CultureInfo.CurrentCulture)} CPUs" : "No limit";
+        return cpus > 0
+            ? new("CPU", $"{cpus.ToString("0.##", CultureInfo.CurrentCulture)} CPUs")
+            : new("CPU", "No limit", FactKind.Muted);
+    }
+
+    private static FactKind HealthKind(ContainerHealth health)
+    {
+        return health == ContainerHealth.None ? FactKind.Muted : FactKind.Text;
     }
 
     private static string Health(ContainerHealth health)
@@ -196,6 +239,6 @@ public sealed record InspectFacts(
 
         return local.Date == now.ToLocalTime().Date
             ? $"Today at {time}"
-            : $"{local.ToString("d", CultureInfo.CurrentCulture)} at {time}";
+            : $"{local.ToString("MMM d, yyyy", CultureInfo.CurrentCulture)} at {time}";
     }
 }

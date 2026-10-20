@@ -1,0 +1,71 @@
+<UserControl
+    x:Class="Contr.UI.Common.Controls.PillView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Contr.UI.Common.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    VerticalAlignment="Center"
+    mc:Ignorable="d">
+
+    <Grid>
+        <Border
+            Background="{ThemeResource ControlFillColorDefaultBrush}"
+            CornerRadius="10"
+            Visibility="{x:Bind controls:PillView.Unless(Kind, 'Critical', 'Success'), Mode=OneWay}" />
+        <Border
+            Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+            CornerRadius="10"
+            Visibility="{x:Bind controls:PillView.When(Kind, 'Critical'), Mode=OneWay}" />
+        <Border
+            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+            CornerRadius="10"
+            Visibility="{x:Bind controls:PillView.When(Kind, 'Success'), Mode=OneWay}" />
+
+        <StackPanel
+            Padding="9,3"
+            Orientation="Horizontal"
+            Spacing="6">
+            <Grid VerticalAlignment="Center" Visibility="{x:Bind controls:PillView.Unless(Kind, 'Plain', 'Success'), Mode=OneWay}">
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    Fill="{ThemeResource SystemFillColorSuccessBrush}"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Good'), Mode=OneWay}" />
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Busy'), Mode=OneWay}" />
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    Fill="{ThemeResource SystemFillColorCautionBrush}"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Caution'), Mode=OneWay}" />
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    Stroke="{ThemeResource TextFillColorTertiaryBrush}"
+                    StrokeThickness="1.5"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Hollow'), Mode=OneWay}" />
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    Fill="{ThemeResource SystemFillColorCriticalBrush}"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Critical'), Mode=OneWay}" />
+                <FontIcon
+                    FontFamily="{StaticResource ContrIconsFontFamily}"
+                    FontSize="12"
+                    Glyph="{x:Bind icons:ContrIcons.Lock}"
+                    Visibility="{x:Bind controls:PillView.When(Kind, 'Locked'), Mode=OneWay}" />
+            </Grid>
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="12"
+                LineHeight="16"
+                Text="{x:Bind Text, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+    </Grid>
+</UserControl>

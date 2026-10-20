@@ -8,6 +8,7 @@ using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.UI.Infrastructure;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.Modules.Containers.UI.Views;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Containers;
@@ -42,11 +43,12 @@ public sealed class ContainersModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        var containers = new NavigationItem("Containers", "\uE7B8", typeof(ContainersPage)) {
+        var containers = new NavigationItem("Containers", ContrIcons.Containers, typeof(ContainersPage)) {
+            SelectedIconGlyph = ContrIcons.ContainersFilled,
             Badge = CountContainers,
             Order = 10,
         };
-        var compose = new NavigationItem("Compose", "\uE8FD", typeof(ComposePage)) { Order = 50 };
+        var compose = new NavigationItem("Compose", ContrIcons.Compose, typeof(ComposePage)) { Order = 50 };
 
         return [containers, compose];
     }

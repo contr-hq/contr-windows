@@ -5,6 +5,7 @@ using Contr.Modules.Networks.Application.Abstractions;
 using Contr.Modules.Networks.UI.Infrastructure;
 using Contr.Modules.Networks.UI.ViewModels;
 using Contr.Modules.Networks.UI.Views;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,6 @@ public sealed class NetworksModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Networks", "\uE968", typeof(NetworksPage)) { Order = 40 }];
+        return [new NavigationItem("Networks", ContrIcons.Networks, typeof(NetworksPage)) { Order = 40 }];
     }
 }

@@ -65,8 +65,15 @@ public sealed record ContainerRow(
         _ => State.ToString(),
     };
 
-    /// <summary>Such as <c>2 h</c>: how long it has been up, or since it exited.</summary>
-    public string Elapsed => ContainerStatusText.Elapsed(Status);
+    /// <summary>Such as <c>up 2h</c> or <c>14m ago</c>: how long it has been up, or since it stopped.</summary>
+    public string Elapsed => ContainerStatusText.Elapsed(Status) switch {
+        "" => string.Empty,
+        var elapsed when IsRunning => $"up {elapsed}",
+        var elapsed => $"{elapsed} ago",
+    };
+
+    /// <summary>The pill the row's status shows in.</summary>
+    public PillKind PillKind => PillView.For(StatusKind);
 
     public bool HasPorts => Ports.Count > 0;
 

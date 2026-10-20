@@ -9,23 +9,38 @@
     CloseButtonText="Cancel"
     DefaultButton="Primary"
     IsPrimaryButtonEnabled="False"
+    PrimaryButtonClick="OnPrimaryButtonClick"
     PrimaryButtonText="Pull"
     Style="{StaticResource DefaultContentDialogStyle}"
     mc:Ignorable="d">
 
+    <!--  The dialog's one error bar opens at the top of its body, and the dialog stays open.  -->
     <StackPanel Width="440" Spacing="16">
+        <InfoBar
+            x:Name="PullError"
+            IsClosable="False"
+            Severity="Error"
+            Visibility="Collapsed" />
         <TextBox
             x:Name="ImageNameBox"
             AutomationProperties.AutomationId="PullImageName"
-            Header="Image name"
+            FontFamily="Cascadia Mono,Consolas"
             PlaceholderText="postgres, or registry.example.com/team/app"
-            TextChanged="OnInputChanged" />
+            TextChanged="OnInputChanged">
+            <TextBox.Header>
+                <TextBlock FontFamily="{ThemeResource ContentControlThemeFontFamily}" Text="Image name" />
+            </TextBox.Header>
+        </TextBox>
         <TextBox
             x:Name="TagBox"
             AutomationProperties.AutomationId="PullImageTag"
-            Header="Tag"
+            FontFamily="Cascadia Mono,Consolas"
             PlaceholderText="latest"
-            TextChanged="OnInputChanged" />
+            TextChanged="OnInputChanged">
+            <TextBox.Header>
+                <TextBlock FontFamily="{ThemeResource ContentControlThemeFontFamily}" Text="Tag" />
+            </TextBox.Header>
+        </TextBox>
         <ComboBox
             x:Name="PlatformBox"
             HorizontalAlignment="Stretch"
@@ -35,9 +50,5 @@
             <x:String>linux/amd64</x:String>
             <x:String>linux/arm64</x:String>
         </ComboBox>
-        <InfoBar
-            x:Name="ReferenceError"
-            IsClosable="False"
-            Severity="Error" />
     </StackPanel>
 </ContentDialog>

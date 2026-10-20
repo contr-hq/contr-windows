@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Modules.Volumes.Application.Volumes.Queries.WatchVolumes;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Search;
 
@@ -40,7 +41,7 @@ public sealed class VolumeSearch : ISearchSource
             .Select(volume => new SearchHit(
                 volume.Name.Value,
                 volume.ComposeProject.Length > 0 ? $"Volume · {volume.ComposeProject} project" : "Volume",
-                "\uEDA2",
+                ContrIcons.Volumes,
                 _pageKey,
                 [volume.Name.Value]))];
     }

@@ -39,9 +39,9 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
     [ObservableProperty]
     public partial bool IsPulling { get; set; }
 
-    /// <summary>Such as <c>Pulling postgres:17.2-alpine</c>.</summary>
+    /// <summary>Such as <c>postgres:17.2-alpine</c>.</summary>
     [ObservableProperty]
-    public partial string PullTitle { get; set; }
+    public partial string PullReference { get; set; }
 
     /// <summary>Such as <c>linux/arm64</c>; empty for the engine's own platform.</summary>
     [ObservableProperty]
@@ -59,7 +59,7 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
 
     /// <summary>Counted over every image, tagged or not.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<StatCard> StatCards { get; set; }
+    public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
     /// <summary>Such as <c>Remove unused (1.1 GB)</c>.</summary>
     [ObservableProperty]
@@ -100,10 +100,10 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         _notifications = notifications;
         _clipboard = clipboard;
         Engine = new EngineGateViewModel(daemon);
-        PullTitle = string.Empty;
+        PullReference = string.Empty;
         PullPlatform = string.Empty;
         PullStatus = string.Empty;
-        StatCards = [];
+        SummaryPills = [];
         RemoveUnusedText = "Remove unused";
         DanglingTitle = string.Empty;
         DanglingSize = string.Empty;
@@ -113,12 +113,10 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
 
     public EngineGateViewModel Engine { get; }
 
-    /// <summary>The tagged images; untagged ones are summed up in one row.</summary>
-    public ObservableCollection<ImageRow> TaggedRows { get; } = [];
+    /// <summary>The tagged images, five to a page; untagged ones are summed up in one row after the last.</summary>
+    public Paging<ImageRow> Page { get; } = new("IMAGES", row => row.Id);
 
     public ObservableCollection<PullLayer> PullLayers { get; } = [];
-
-    public bool HasPullPlatform => PullPlatform.Length > 0;
 
     /// <summary>Starts following the engine and the list; call it from the page's <c>Loaded</c>.</summary>
     public void Activate()
@@ -135,9 +133,13 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         Engine.Stop();
     }
 
-    /// <summary>Pulls <paramref name="reference"/>, replacing any pull in progress.</summary>
+    /// <summary>The pull the progress card follows; complete while there is none.</summary>
+    public Task Pulling { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Starts pulling <paramref name="reference"/>, replacing any pull in progress.</summary>
     /// <param name="platform">Such as <c>linux/arm64</c>; empty pulls for the engine's own platform.</param>
-    public async Task PullAsync(string reference, string platform = "")
+    /// <returns>Why the engine refused to start; absent once the pull runs.</returns>
+    public async Task<string?> StartPullAsync(string reference, string platform = "")
     {
         ArgumentNullException.ThrowIfNull(reference);
 
@@ -145,44 +147,12 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
 
         if (started.IsFailure)
         {
-            _notifications.Show(started.Error.Message, InfoBarSeverity.Error, "Cannot pull");
-
-            return;
+            return started.Error.Message;
         }
 
-        CancelPull();
-        var pull = new CancellationTokenSource();
-        _pull = pull;
-        _layers.Clear();
-        PullLayers.Clear();
-        PullTitle = $"Pulling {reference.Trim()}";
-        PullPlatform = platform;
-        OnPropertyChanged(nameof(HasPullPlatform));
-        PullStatus = "Starting";
-        PullProgress = 0;
-        IsPullIndeterminate = true;
-        IsPulling = true;
-        try
-        {
-            await foreach (var pullEvent in started.Value.WithCancellation(pull.Token))
-            {
-                Apply(pullEvent);
-            }
-        }
-        catch (OperationCanceledException) when (pull.IsCancellationRequested)
-        {
-            // Cancelled from the progress panel, or replaced by another pull.
-        }
-        finally
-        {
-            if (ReferenceEquals(_pull, pull))
-            {
-                IsPulling = false;
-                _pull = null;
-            }
+        Pulling = FollowAsync(reference, platform, started.Value);
 
-            pull.Dispose();
-        }
+        return null;
     }
 
     public void CancelPull()
@@ -256,37 +226,56 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         base.Dispose(disposing);
     }
 
-    private List<StatCard> Summarize(bool isUsageKnown, long unusedBytes, int untagged)
+    private async Task FollowAsync(string reference, string platform, IAsyncEnumerable<PullEvent> events)
     {
-        var inUse = Rows.Count(row => row.InUse);
-        var unused = Rows.Count(row => row.Containers == 0);
+        CancelPull();
+        var pull = new CancellationTokenSource();
+        _pull = pull;
+        _layers.Clear();
+        PullLayers.Clear();
+        PullReference = reference.Trim();
+        PullPlatform = platform;
+        PullStatus = "Starting";
+        PullProgress = 0;
+        IsPullIndeterminate = true;
+        IsPulling = true;
+        try
+        {
+            await foreach (var pullEvent in events.WithCancellation(pull.Token))
+            {
+                Apply(pullEvent);
+            }
+        }
+        catch (OperationCanceledException) when (pull.IsCancellationRequested)
+        {
+            // Cancelled from the progress panel, or replaced by another pull.
+        }
+        finally
+        {
+            if (ReferenceEquals(_pull, pull))
+            {
+                IsPulling = false;
+                _pull = null;
+            }
 
-        return [
-            new StatCard(
-                "IMAGES",
-                Count(Rows.Count),
-                untagged == 0 ? "all tagged" : $"{Count(untagged)} untagged",
-                "\uE8B9",
-                StatKind.Accent),
-            new StatCard(
-                "TOTAL SIZE",
-                HumanFormat.Bytes(Rows.Sum(row => row.SizeBytes)),
-                "summed over the images",
-                "\uEDA2",
-                StatKind.Accent),
-            new StatCard(
-                "IN USE",
-                isUsageKnown ? Count(inUse) : "—",
-                isUsageKnown ? "by a container" : "not reported",
-                "\uE7B8",
-                isUsageKnown && inUse > 0 ? StatKind.Positive : StatKind.Muted),
-            new StatCard(
-                "UNUSED",
-                isUsageKnown ? HumanFormat.Bytes(unusedBytes) : "—",
-                isUsageKnown ? $"{Count(unused)} images no container uses" : "not reported",
-                "\uE74D",
-                isUsageKnown && unused > 0 ? StatKind.Warning : StatKind.Muted),
+            pull.Dispose();
+        }
+    }
+
+    private List<PillItem> Summarize(bool isUsageKnown, long unusedBytes)
+    {
+        var images = Rows.Count == 1 ? "1 image" : $"{Count(Rows.Count)} images";
+        List<PillItem> pills = [
+            new(images, PillKind.Plain),
+            new($"{HumanFormat.Bytes(Rows.Sum(row => row.SizeBytes))} on disk", PillKind.Plain),
         ];
+
+        if (isUsageKnown && unusedBytes > 0)
+        {
+            pills.Add(new($"{HumanFormat.Bytes(unusedBytes)} unused", PillKind.Hollow));
+        }
+
+        return pills;
     }
 
     private static string Count(long count)
@@ -326,7 +315,7 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         var tagged = Rows
             .Where(row => !row.IsDangling)
             .ToList();
-        CollectionSync.Sync(TaggedRows, tagged, row => row.Id);
+        Page.Show(tagged);
 
         var dangling = Rows
             .Where(row => row.IsDangling)
@@ -346,11 +335,11 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
             ? $"Remove unused ({HumanFormat.Bytes(unusedBytes)})"
             : "Remove unused";
 
-        var cards = Summarize(isUsageKnown, unusedBytes, dangling.Count);
+        var pills = Summarize(isUsageKnown, unusedBytes);
 
-        if (!cards.SequenceEqual(StatCards))
+        if (!pills.SequenceEqual(SummaryPills))
         {
-            StatCards = cards;
+            SummaryPills = pills;
         }
     }
 

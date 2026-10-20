@@ -7,78 +7,89 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:winui="using:CommunityToolkit.WinUI"
     mc:Ignorable="d">
 
-    <Grid Padding="36,24,36,0" RowSpacing="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ms-appx:///Styles/SettingsGroups.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
 
-        <common:PageHeader Title="Kubernetes" />
+    <ScrollViewer>
+        <Grid Padding="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
+            </Grid.ColumnDefinitions>
 
-        <ScrollViewer
-            Grid.Row="1"
-            HorizontalScrollBarVisibility="Disabled"
-            HorizontalScrollMode="Disabled">
-            <StackPanel Padding="0,0,0,24" Spacing="4">
+            <StackPanel Spacing="16">
+                <common:PageHeader Title="Kubernetes" />
+
                 <InfoBar
                     Title="Kubernetes is not available yet"
-                    Margin="0,0,0,12"
                     IsClosable="False"
                     IsOpen="{x:Bind ViewModel.IsNotOffered}"
                     Message="This version of the Contr daemon does not run a Kubernetes cluster. These settings wait for one that does."
-                    Severity="Informational" />
+                    Severity="Informational"
+                    Visibility="{x:Bind ViewModel.IsNotOffered}" />
 
-                <controls:SettingsCard
-                    Description="Runs a single-node cluster as a container on your engine."
-                    Header="Kubernetes"
-                    HeaderIcon="{winui:FontIcon Glyph=&#xEA38;}"
-                    IsEnabled="False">
-                    <ToggleSwitch AutomationProperties.Name="Run Kubernetes" />
-                </controls:SettingsCard>
+                <Border Style="{StaticResource SettingsGroupStyle}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="CLUSTER" />
+                        <controls:SettingsCard
+                            BorderThickness="0"
+                            Description="Runs a single-node cluster as a container on your engine."
+                            Header="Kubernetes"
+                            IsEnabled="False">
+                            <ToggleSwitch AutomationProperties.Name="Run Kubernetes" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard
+                            Description="Changing it recreates the cluster. Images stay."
+                            Header="Version"
+                            IsEnabled="False">
+                            <ComboBox MinWidth="140" PlaceholderText="—" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard
+                            Description="Whether kubectl uses this cluster unless told otherwise."
+                            Header="Make contr the current kubectl context"
+                            IsEnabled="False">
+                            <ToggleSwitch AutomationProperties.Name="Make contr the current kubectl context" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard
+                            Description="Routes Ingress resources to your services."
+                            Header="Traefik ingress controller"
+                            IsEnabled="False">
+                            <ToggleSwitch AutomationProperties.Name="Traefik ingress controller" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard
+                            Description="Where kubectl finds the cluster's address and credentials."
+                            Header="Kubeconfig"
+                            IsEnabled="False">
+                            <Button Content="Open folder" />
+                        </controls:SettingsCard>
+                    </StackPanel>
+                </Border>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Cluster" />
-                <controls:SettingsCard
-                    Description="The Kubernetes version the cluster runs."
-                    Header="Version"
-                    IsEnabled="False">
-                    <ComboBox MinWidth="150" PlaceholderText="—" />
-                </controls:SettingsCard>
-                <controls:SettingsCard
-                    Description="Whether kubectl uses this cluster unless told otherwise."
-                    Header="Make contr the current kubectl context"
-                    IsEnabled="False">
-                    <ToggleSwitch AutomationProperties.Name="Make contr the current kubectl context" />
-                </controls:SettingsCard>
-                <controls:SettingsCard
-                    Description="Routes Ingress resources to your services."
-                    Header="Traefik ingress controller"
-                    IsEnabled="False">
-                    <ToggleSwitch AutomationProperties.Name="Traefik ingress controller" />
-                </controls:SettingsCard>
-                <controls:SettingsCard
-                    Description="Where kubectl finds the cluster's address and credentials."
-                    Header="Kubeconfig"
-                    IsEnabled="False">
-                    <Button Content="Open folder" />
-                </controls:SettingsCard>
-
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Maintenance" />
-                <controls:SettingsCard
-                    Description="Copies images from your engine into the cluster, so pods can use them without a registry."
-                    Header="Use local images in the cluster"
-                    IsEnabled="False">
-                    <Button Content="Import images…" />
-                </controls:SettingsCard>
-                <controls:SettingsCard
-                    Description="Deletes all workloads and cluster data. Your images stay."
-                    Header="Reset cluster"
-                    IsEnabled="False">
-                    <Button Content="Reset…" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                </controls:SettingsCard>
+                <Border Style="{StaticResource SettingsGroupStyle}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="MAINTENANCE" />
+                        <controls:SettingsCard
+                            BorderThickness="0"
+                            Description="Copies images from your engine into the cluster, so pods can use them without a registry."
+                            Header="Use local images in the cluster"
+                            IsEnabled="False">
+                            <Button Content="Import images…" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard
+                            Description="Deletes all workloads and cluster data. Your images stay."
+                            Header="Reset cluster"
+                            IsEnabled="False">
+                            <Button Content="Reset…" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </controls:SettingsCard>
+                    </StackPanel>
+                </Border>
             </StackPanel>
-        </ScrollViewer>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Page>

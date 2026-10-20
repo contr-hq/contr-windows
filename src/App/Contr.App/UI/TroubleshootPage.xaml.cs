@@ -1,7 +1,9 @@
 using System;
 using Contr.UI.Contracts;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.UI.Text;
 
 namespace Contr.App.UI;
 
@@ -25,9 +27,10 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
 
     Contr.UI.Contracts.ViewModel IHasViewModel.ViewModel => ViewModel;
 
-    public static string Summary(string summary)
+    /// <summary>A failed check's name stands out from the ones that passed.</summary>
+    public static FontWeight Weight(bool isFailed)
     {
-        return summary.Length > 0 ? $"· {summary}" : string.Empty;
+        return isFailed ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     /// <summary>Continuation lines, such as stack frames, recede behind the entries they belong to.</summary>

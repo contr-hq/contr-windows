@@ -38,13 +38,16 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     /// <summary>The id a search asked for, until that network is listed.</summary>
     private string? _requested;
 
+    /// <summary>Whether the next list turns to the selection: a search asked for it.</summary>
+    private bool _reveal;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial NetworkRow? Selected { get; set; }
 
     /// <summary>Counted over every network.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<StatCard> StatCards { get; set; }
+    public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
     [ObservableProperty]
     public partial string EndpointsNote { get; set; }
@@ -65,7 +68,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         _dialogs = dialogs;
         _notifications = notifications;
         Engine = new EngineGateViewModel(daemon);
-        StatCards = [];
+        SummaryPills = [];
         EndpointsNote = string.Empty;
         Rows.CollectionChanged += OnRowsChanged;
     }
@@ -73,6 +76,9 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     public EngineGateViewModel Engine { get; }
 
     public ObservableCollection<NetworkRow> Items { get; } = [];
+
+    /// <summary>The rows five to a page; the page turns to a network a search selects.</summary>
+    public Paging<NetworkRow> Page { get; } = new("NETWORKS", row => row.Id);
 
     /// <summary>The running containers connected to the selected network.</summary>
     public ObservableCollection<NetworkEndpointDto> Endpoints { get; } = [];
@@ -183,17 +189,13 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         base.Dispose(disposing);
     }
 
-    private static List<StatCard> Summarize(List<NetworkRow> rows)
+    private static List<PillItem> Summarize(List<NetworkRow> rows)
     {
         var builtIn = rows.Count(row => row.IsBuiltIn);
-        var compose = rows.Count(row => !row.IsBuiltIn && row.HasProject);
-        var custom = rows.Count - builtIn - compose;
 
         return [
-            new StatCard("NETWORKS", Count(rows.Count), "on this engine", "\uE968", StatKind.Accent),
-            new StatCard("BUILT IN", Count(builtIn), "the engine keeps these", "\uE72E", StatKind.Muted),
-            new StatCard("COMPOSE", Count(compose), "removed with their project", "\uE8FD", StatKind.Accent),
-            new StatCard("CUSTOM", Count(custom), "created outside Compose", "\uE710", StatKind.Accent),
+            new(rows.Count == 1 ? "1 network" : $"{Count(rows.Count)} networks", PillKind.Plain),
+            new($"{Count(builtIn)} built in", PillKind.Plain),
         ];
     }
 
@@ -215,6 +217,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         if (_requested is { } requested && Rows.Any(row => row.Id == requested))
         {
             _requested = null;
+            _reveal = true;
         }
 
         return wanted;
@@ -229,13 +232,20 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
             .ToList();
 
         CollectionSync.Sync(Items, items, row => row.Id);
+        Page.Show(items);
         Selected = items.FirstOrDefault(row => row.IsSelected);
 
-        var cards = Summarize(items);
-
-        if (!cards.SequenceEqual(StatCards))
+        if (_reveal && Selected is { } shown)
         {
-            StatCards = cards;
+            Page.Reveal(shown);
+            _reveal = false;
+        }
+
+        var pills = Summarize(items);
+
+        if (!pills.SequenceEqual(SummaryPills))
+        {
+            SummaryPills = pills;
         }
 
         if (Selected is { } row && (row.Id != previous || Endpoints.Count == 0))

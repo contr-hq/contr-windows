@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.StreamContainerLogs;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.SharedKernel;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
@@ -60,6 +62,10 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
     [ObservableProperty]
     public partial bool HasProjects { get; set; }
 
+    /// <summary>Counted over every project.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
+
     public ComposeViewModel(
         ISender sender, INotificationService notifications, IDaemonConnection daemon)
         : this(sender, notifications, daemon, new ContainerUsage())
@@ -81,6 +87,7 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
         _notifications = notifications;
         Engine = new EngineGateViewModel(daemon);
         ConfigFile = string.Empty;
+        SummaryPills = [];
         IsFollowing = true;
         Rows.CollectionChanged += OnRowsChanged;
     }
@@ -198,6 +205,32 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
         }
     }
 
+    private static List<PillItem> Summarize(List<ComposeProjectItem> projects)
+    {
+        var running = projects.Count(project => project.Running > 0);
+        var stopped = projects.Count - running;
+        List<PillItem> pills = [
+            new(projects.Count == 1 ? "1 project" : $"{Count(projects.Count)} projects", PillKind.Plain),
+        ];
+
+        if (running > 0)
+        {
+            pills.Add(new($"{Count(running)} running", PillKind.Good));
+        }
+
+        if (stopped > 0)
+        {
+            pills.Add(new($"{Count(stopped)} stopped", PillKind.Hollow));
+        }
+
+        return pills;
+    }
+
+    private static string Count(int count)
+    {
+        return count.ToString(CultureInfo.CurrentCulture);
+    }
+
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         Show();
@@ -228,6 +261,13 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
         CollectionSync.Sync(Projects, projects, project => project.Name);
 
         HasProjects = projects.Count > 0;
+        var pills = Summarize(projects);
+
+        if (!pills.SequenceEqual(SummaryPills))
+        {
+            SummaryPills = pills;
+        }
+
         _selectedName = selected;
         Selected = projects.FirstOrDefault(project => project.IsSelected);
 

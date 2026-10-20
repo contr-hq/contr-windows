@@ -49,8 +49,8 @@ public sealed class ComposeViewModelTests
 
         Assert.Equal(["docs", "shop"], viewModel.Projects.Select(project => project.Name));
         var shop = viewModel.Projects.Single(project => project.Name == "shop");
-        Assert.Equal("1 of 2", shop.StatusText);
-        Assert.Equal(StatusKind.Caution, shop.StatusKind);
+        Assert.Equal("1 of 2 running", shop.StatusText);
+        Assert.Equal(PillKind.Caution, shop.PillKind);
         Assert.Equal("docs", viewModel.Selected?.Name);
         Assert.Equal(["All", "web"], viewModel.Filters);
     }

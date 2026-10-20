@@ -29,9 +29,10 @@ public sealed partial class ImagesPage : Page, IHasViewModel
         return engineOpen ? text : string.Empty;
     }
 
+    /// <summary>Such as <c>· linux/arm64</c>; nothing for the engine's own platform.</summary>
     public static string PlatformSuffix(string platform)
     {
-        return $"· {platform}";
+        return platform.Length > 0 ? $"· {platform}" : string.Empty;
     }
 
     public static Visibility ShowsBoth(bool first, bool second)
@@ -54,6 +55,11 @@ public sealed partial class ImagesPage : Page, IHasViewModel
         return engineOpen && !isLoaded && !hasError;
     }
 
+    public static Visibility WaitVisibility(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return IsWaiting(engineOpen, isLoaded, hasError) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private static ImageRow? RowOf(object sender)
     {
         return (sender as FrameworkElement)?.Tag as ImageRow;
@@ -72,12 +78,12 @@ public sealed partial class ImagesPage : Page, IHasViewModel
     private async void OnPull(object sender, RoutedEventArgs e)
     {
         // A dialog's popup does not inherit the theme the window content requests.
-        var dialog = new PullImageDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme };
+        var dialog = new PullImageDialog(ViewModel.StartPullAsync) {
+            XamlRoot = XamlRoot,
+            RequestedTheme = ActualTheme,
+        };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-        {
-            await ViewModel.PullAsync(dialog.Reference, dialog.Platform);
-        }
+        await dialog.ShowAsync();
     }
 
     private void OnCancelPull(object sender, RoutedEventArgs e)

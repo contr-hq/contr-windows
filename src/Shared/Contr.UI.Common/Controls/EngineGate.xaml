@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -20,7 +21,10 @@
                 Style="{StaticResource AccentButtonStyle}"
                 Visibility="{x:Bind controls:EngineGate.ShowsEither(ViewModel.IsStopped, ViewModel.IsFailed), Mode=OneWay}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontSize="14" Glyph="&#xE768;" />
+                    <FontIcon
+                        FontFamily="{StaticResource ContrIconsFontFamily}"
+                        FontSize="16"
+                        Glyph="{x:Bind icons:ContrIcons.Play}" />
                     <TextBlock Text="Start engine" />
                 </StackPanel>
             </Button>
@@ -34,8 +38,6 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Text="Containers with a restart policy start too."
                 Visibility="{x:Bind ViewModel.IsStopped, Mode=OneWay}" />
-        </StackPanel>
-        <controls:EmptyState.Footer>
             <CheckBox
                 Margin="0,8,0,0"
                 HorizontalAlignment="Center"
@@ -43,6 +45,6 @@
                 Content="Start the engine whenever Contr starts"
                 IsChecked="{x:Bind ViewModel.StartsEngineOnConnect, Mode=TwoWay}"
                 Visibility="{x:Bind ViewModel.IsStopped, Mode=OneWay}" />
-        </controls:EmptyState.Footer>
+        </StackPanel>
     </controls:EmptyState>
 </UserControl>

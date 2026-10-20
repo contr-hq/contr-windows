@@ -1,5 +1,6 @@
 using System;
 using Contr.Modules.Containers.UI.ViewModels;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
@@ -44,7 +45,7 @@ public sealed partial class ContainersPage : Page, IHasViewModel
 
     public static string ChevronGlyph(bool expanded)
     {
-        return expanded ? "\uE70D" : "\uE76C";
+        return expanded ? ContrIcons.ChevronDown : ContrIcons.ChevronRight;
     }
 
     public static string ExpandName(bool expanded)
@@ -55,6 +56,18 @@ public sealed partial class ContainersPage : Page, IHasViewModel
     public static string Shown(string text, bool engineOpen)
     {
         return engineOpen ? text : string.Empty;
+    }
+
+    /// <summary>The dot between a group's counts and its Compose file; nothing without a file.</summary>
+    public static string FileSeparator(string file)
+    {
+        return file.Length > 0 ? " · " : string.Empty;
+    }
+
+    /// <summary>Whether the view switch's button for <paramref name="view"/> shows pressed.</summary>
+    public static bool IsView(int current, int view)
+    {
+        return current == view;
     }
 
     public static Visibility ShowsBoth(bool first, bool second)
@@ -242,6 +255,21 @@ public sealed partial class ContainersPage : Page, IHasViewModel
     private void OnPullImage(object sender, RoutedEventArgs e)
     {
         _navigation.NavigateTo(_imagesPageKey);
+    }
+
+    private void OnByProject(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ViewIndex = 0;
+    }
+
+    private void OnFlatList(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ViewIndex = 1;
+    }
+
+    private void OnOpenCompose(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenCompose();
     }
 
     private void OnCopyTryCommand(object sender, RoutedEventArgs e)

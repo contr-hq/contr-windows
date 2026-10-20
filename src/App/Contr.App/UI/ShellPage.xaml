@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:search="using:Contr.UI.Contracts.Services.Search"
@@ -33,7 +34,8 @@
             BackRequested="OnTitleBarBackRequested"
             Canvas.ZIndex="1"
             IsBackButtonVisible="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
-            IsPaneToggleButtonVisible="False">
+            IsPaneToggleButtonVisible="True"
+            PaneToggleRequested="OnTitleBarPaneToggleRequested">
             <TitleBar.LeftHeader>
                 <ImageIcon
                     Height="16"
@@ -61,6 +63,7 @@
                             </Grid.ColumnDefinitions>
                             <FontIcon
                                 VerticalAlignment="Center"
+                                FontFamily="{StaticResource ContrIconsFontFamily}"
                                 FontSize="16"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Glyph="{x:Bind Glyph}" />
@@ -88,26 +91,18 @@
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="True"
             IsTabStop="False"
-            OpenPaneLength="248"
+            OpenPaneLength="240"
             PaneDisplayMode="Left"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"
             ItemInvoked="OnNavViewItemInvoked"
             SelectionChanged="OnNavViewSelectionChanged">
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+            <!--  The design's pane icons are 20 px, where the item template boxes them at 16.  -->
+            <NavigationView.Resources>
+                <x:Double x:Key="NavigationViewItemOnLeftIconBoxHeight">20</x:Double>
+            </NavigationView.Resources>
 
-                <InfoBar
-                    x:Name="AppNotificationBar"
-                    Margin="16,8,16,0"
-                    IsClosable="True"
-                    IsOpen="False" />
-
-                <Frame x:Name="NavFrame" Grid.Row="1" />
-            </Grid>
+            <Frame x:Name="NavFrame" />
         </NavigationView>
 
         <StackPanel
@@ -137,21 +132,21 @@
                             Command="{x:Bind ViewModel.StartEngineCommand}"
                             Text="Start engine">
                             <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE768;" />
+                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Play}" />
                             </MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
                         <MenuFlyoutItem
                             Command="{x:Bind ViewModel.StopEngineCommand}"
                             Text="Stop engine">
                             <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE71A;" />
+                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Stop}" />
                             </MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
                         <MenuFlyoutItem
                             Command="{x:Bind ViewModel.RestartEngineCommand}"
                             Text="Restart engine">
                             <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE72C;" />
+                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Restart}" />
                             </MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
                     </MenuFlyout>

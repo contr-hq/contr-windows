@@ -5,38 +5,54 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:views="using:Contr.Modules.Containers.UI.Views"
     xmlns:vm="using:Contr.Modules.Containers.UI.ViewModels"
     mc:Ignorable="d">
 
     <Page.Resources>
         <!--  The header and every row share these widths, so the columns line up across cards.  -->
-        <GridLength x:Key="StatusColumnWidth">150</GridLength>
-        <GridLength x:Key="PortsColumnWidth">180</GridLength>
-        <GridLength x:Key="CpuColumnWidth">64</GridLength>
-        <GridLength x:Key="MemoryColumnWidth">88</GridLength>
-        <GridLength x:Key="ActionsColumnWidth">112</GridLength>
+        <GridLength x:Key="NameColumnWidth">2.4*</GridLength>
+        <GridLength x:Key="StatusColumnWidth">1.2*</GridLength>
+        <GridLength x:Key="PortsColumnWidth">1.1*</GridLength>
+        <GridLength x:Key="CpuColumnWidth">72</GridLength>
+        <GridLength x:Key="MemoryColumnWidth">108</GridLength>
+        <GridLength x:Key="ActionsColumnWidth">120</GridLength>
 
+        <Style x:Key="RowIconStyle" TargetType="FontIcon">
+            <Setter Property="FontFamily" Value="{StaticResource ContrIconsFontFamily}" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+
+        <!--  One wrapping text, so a long mapping continues on the next line; the line break between runs is a space.  -->
         <DataTemplate x:Key="PortTemplate" x:DataType="vm:PortLink">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <HyperlinkButton
-                    Padding="0"
-                    Content="{x:Bind Address}"
-                    NavigateUri="{x:Bind Uri}"
-                    Visibility="{x:Bind IsLink}" />
+            <Grid>
                 <TextBlock
-                    VerticalAlignment="Center"
-                    Text="{x:Bind Address}"
-                    Visibility="{x:Bind IsText}" />
+                    FontFamily="Cascadia Mono,Consolas"
+                    FontSize="13"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind IsLink}">
+                    <Hyperlink NavigateUri="{x:Bind Uri}" UnderlineStyle="None">
+                        <Run Text="{x:Bind Address}" />
+                    </Hyperlink>
+                    <Run
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind Target}" />
+                </TextBlock>
                 <TextBlock
-                    VerticalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{x:Bind Target}"
-                    Visibility="{x:Bind HasTarget}" />
-            </StackPanel>
+                    FontFamily="Cascadia Mono,Consolas"
+                    FontSize="13"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind IsText}">
+                    <Run Text="{x:Bind Address}" />
+                    <Run
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind Target}" />
+                </TextBlock>
+            </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="RowTemplate" x:DataType="vm:ContainerRow">
@@ -46,9 +62,9 @@
                 Tag="{x:Bind}"
                 Tapped="OnRowTapped">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource StatusColumnWidth}" />
-                    <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource NameColumnWidth}" MinWidth="200" />
+                    <ColumnDefinition Width="{StaticResource StatusColumnWidth}" MinWidth="150" />
+                    <ColumnDefinition Width="{StaticResource PortsColumnWidth}" MinWidth="140" />
                     <ColumnDefinition Width="{StaticResource CpuColumnWidth}" />
                     <ColumnDefinition Width="{StaticResource MemoryColumnWidth}" />
                     <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
@@ -59,15 +75,20 @@
                         FontWeight="SemiBold"
                         Style="{StaticResource CellTextStyle}"
                         Text="{x:Bind Name}" />
-                    <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind Image}" />
+                    <TextBlock
+                        FontSize="12"
+                        Style="{StaticResource IdentifierTextStyle}"
+                        Text="{x:Bind Image}" />
                 </StackPanel>
 
-                <common:StatusLabel
+                <StackPanel
                     Grid.Column="1"
                     VerticalAlignment="Center"
-                    Detail="{x:Bind Elapsed}"
-                    Kind="{x:Bind StatusKind}"
-                    Text="{x:Bind StatusText}" />
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <common:PillView Kind="{x:Bind PillKind}" Text="{x:Bind StatusText}" />
+                    <TextBlock Style="{StaticResource TimeTextStyle}" Text="{x:Bind Elapsed}" />
+                </StackPanel>
 
                 <ItemsControl
                     Grid.Column="2"
@@ -96,7 +117,8 @@
                 <StackPanel
                     Grid.Column="5"
                     HorizontalAlignment="Right"
-                    Orientation="Horizontal">
+                    Orientation="Horizontal"
+                    Spacing="2">
                     <Button
                         AutomationProperties.Name="Start"
                         Click="OnStart"
@@ -104,7 +126,7 @@
                         Tag="{x:Bind}"
                         ToolTipService.ToolTip="Start"
                         Visibility="{x:Bind CanStart}">
-                        <FontIcon FontSize="14" Glyph="&#xE768;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource RowIconStyle}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="Stop"
@@ -113,7 +135,7 @@
                         Tag="{x:Bind}"
                         ToolTipService.ToolTip="Stop"
                         Visibility="{x:Bind CanStop}">
-                        <FontIcon FontSize="14" Glyph="&#xE71A;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Stop}" Style="{StaticResource RowIconStyle}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="Open terminal"
@@ -122,7 +144,7 @@
                         Tag="{x:Bind}"
                         ToolTipService.ToolTip="Open terminal"
                         Visibility="{x:Bind OffersTerminal}">
-                        <FontIcon FontSize="14" Glyph="&#xE756;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource RowIconStyle}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="View logs"
@@ -131,7 +153,7 @@
                         Tag="{x:Bind}"
                         ToolTipService.ToolTip="View logs"
                         Visibility="{x:Bind OffersLogs}">
-                        <FontIcon FontSize="14" Glyph="&#xE8A5;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Logs}" Style="{StaticResource RowIconStyle}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="Delete"
@@ -140,13 +162,13 @@
                         Tag="{x:Bind}"
                         ToolTipService.ToolTip="Delete"
                         Visibility="{x:Bind OffersDelete}">
-                        <FontIcon FontSize="14" Glyph="&#xE74D;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource RowIconStyle}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="More actions"
                         Style="{StaticResource RowActionButtonStyle}"
                         ToolTipService.ToolTip="More actions">
-                        <FontIcon FontSize="14" Glyph="&#xE712;" />
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.More}" Style="{StaticResource RowIconStyle}" />
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
                                 <MenuFlyoutItem
@@ -154,7 +176,7 @@
                                     Tag="{x:Bind}"
                                     Text="Open details">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8A7;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Open}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
@@ -162,7 +184,7 @@
                                     Tag="{x:Bind}"
                                     Text="View logs">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8A5;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Logs}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
@@ -171,7 +193,7 @@
                                     Tag="{x:Bind}"
                                     Text="Open terminal">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE756;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
@@ -180,7 +202,7 @@
                                     Tag="{x:Bind}"
                                     Text="Restart">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE72C;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
@@ -188,7 +210,7 @@
                                     Tag="{x:Bind}"
                                     Text="Copy ID">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8C8;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutSeparator />
@@ -196,9 +218,9 @@
                                     Click="OnRemove"
                                     IsEnabled="{x:Bind CanRemove}"
                                     Tag="{x:Bind}"
-                                    Text="Delete">
+                                    Text="Delete…">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE74D;" />
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource RowIconStyle}" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                             </MenuFlyout>
@@ -212,8 +234,9 @@
             <Border Style="{StaticResource GroupCardStyle}">
                 <StackPanel>
                     <Grid
-                        Padding="8,8,12,8"
-                        ColumnSpacing="8"
+                        MinHeight="48"
+                        Padding="12,8"
+                        ColumnSpacing="12"
                         Visibility="{x:Bind HasHeader}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -223,26 +246,37 @@
                         </Grid.ColumnDefinitions>
 
                         <Button
+                            Width="20"
+                            Height="20"
+                            Padding="0"
                             AutomationProperties.Name="{x:Bind views:ContainersPage.ExpandName(IsExpanded), Mode=OneWay}"
                             Click="OnToggleGroup"
-                            Style="{StaticResource RowActionButtonStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource SubtleButtonStyle}"
                             Tag="{x:Bind}">
-                            <FontIcon FontSize="10" Glyph="{x:Bind views:ContainersPage.ChevronGlyph(IsExpanded), Mode=OneWay}" />
+                            <FontIcon
+                                FontFamily="{StaticResource ContrIconsFontFamily}"
+                                FontSize="12"
+                                Glyph="{x:Bind views:ContainersPage.ChevronGlyph(IsExpanded), Mode=OneWay}" />
                         </Button>
                         <FontIcon
                             Grid.Column="1"
-                            FontSize="16"
+                            FontFamily="{StaticResource ContrIconsFontFamily}"
+                            FontSize="20"
                             Glyph="{x:Bind Glyph}" />
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock
                                 FontWeight="SemiBold"
                                 Style="{StaticResource CellTextStyle}"
                                 Text="{x:Bind Title}" />
-                            <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind Summary, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource SecondaryCellTextStyle}">
+                                <Run Text="{x:Bind Summary, Mode=OneWay}" /><Run Text="{x:Bind views:ContainersPage.FileSeparator(ComposeFile), Mode=OneWay}" /><Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind ComposeFile, Mode=OneWay}" />
+                            </TextBlock>
                         </StackPanel>
                         <StackPanel
                             Grid.Column="3"
                             Orientation="Horizontal"
+                            Spacing="4"
                             Visibility="{x:Bind IsProject}">
                             <Button
                                 AutomationProperties.Name="Start all"
@@ -251,7 +285,7 @@
                                 Tag="{x:Bind}"
                                 ToolTipService.ToolTip="Start all"
                                 Visibility="{x:Bind CanStartAll, Mode=OneWay}">
-                                <FontIcon FontSize="14" Glyph="&#xE768;" />
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource RowIconStyle}" />
                             </Button>
                             <Button
                                 AutomationProperties.Name="Stop all"
@@ -260,7 +294,7 @@
                                 Tag="{x:Bind}"
                                 ToolTipService.ToolTip="Stop all"
                                 Visibility="{x:Bind CanStopAll, Mode=OneWay}">
-                                <FontIcon FontSize="14" Glyph="&#xE71A;" />
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Stop}" Style="{StaticResource RowIconStyle}" />
                             </Button>
                             <Button
                                 AutomationProperties.Name="Restart all"
@@ -269,7 +303,22 @@
                                 Tag="{x:Bind}"
                                 ToolTipService.ToolTip="Restart all"
                                 Visibility="{x:Bind CanStopAll, Mode=OneWay}">
-                                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource RowIconStyle}" />
+                            </Button>
+                            <Button
+                                AutomationProperties.Name="More actions for the project"
+                                Style="{StaticResource RowActionButtonStyle}"
+                                ToolTipService.ToolTip="More actions">
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.More}" Style="{StaticResource RowIconStyle}" />
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                        <MenuFlyoutItem Click="OnOpenCompose" Text="Open in Compose">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Compose}" Style="{StaticResource RowIconStyle}" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -283,238 +332,239 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,0">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <common:PageHeader Title="Containers">
-            <StackPanel
-                Orientation="Horizontal"
-                Spacing="2"
-                Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
-                <Button
-                    AutomationProperties.AutomationId="RunContainerButton"
-                    AutomationProperties.Name="Run container"
-                    IsEnabled="False"
-                    Style="{StaticResource AccentToolbarButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE768;" />
-                        <TextBlock Text="Run container" />
-                    </StackPanel>
-                </Button>
-                <Border Style="{StaticResource CommandBarDividerStyle}" />
-                <Button
-                    AutomationProperties.AutomationId="PruneStoppedButton"
-                    AutomationProperties.Name="Prune stopped"
-                    Click="OnPruneStopped"
-                    IsEnabled="{x:Bind ViewModel.CanPrune, Mode=OneWay}"
-                    Style="{StaticResource ToolbarButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                        <TextBlock Text="Prune stopped" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </common:PageHeader>
-
-        <!--  Counted over every container, never the filtered set.  -->
-        <common:StatStrip
-            Grid.Row="1"
-            Margin="0,16,0,0"
-            AutomationProperties.AutomationId="ContainerStats"
-            Cards="{x:Bind ViewModel.StatCards, Mode=OneWay}"
-            Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
-
-        <!--  Margins rather than row spacing, so a closed bar leaves no gap behind.  -->
-        <StackPanel Grid.Row="2">
-            <InfoBar
-                Title="Container stopped"
-                Margin="0,16,0,0"
-                AutomationProperties.AutomationId="ExitNotice"
-                IsOpen="{x:Bind ViewModel.IsExitNoticeOpen, Mode=TwoWay}"
-                Message="{x:Bind ViewModel.ExitNotice, Mode=OneWay}"
-                Severity="Error"
-                Visibility="{x:Bind ViewModel.IsExitNoticeOpen, Mode=OneWay}">
-                <InfoBar.Content>
-                    <StackPanel
-                        Margin="0,0,0,12"
-                        Orientation="Horizontal"
-                        Spacing="8">
-                        <Button Click="OnViewExitedLogs" Content="View logs" />
-                        <Button Click="OnRestartExited" Content="Restart" />
-                    </StackPanel>
-                </InfoBar.Content>
-            </InfoBar>
-            <InfoBar
-                Title="Couldn't list containers"
-                Margin="0,16,0,0"
-                IsClosable="False"
-                IsOpen="{x:Bind views:ContainersPage.ShowsError(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
-                Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-                Severity="Error"
-                Visibility="{x:Bind views:ContainersPage.ErrorVisibility(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
-        </StackPanel>
-
-        <Grid
-            Grid.Row="3"
-            Margin="0,16,0,0"
-            ColumnSpacing="12"
-            Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+    <!--  Kakehashi's page frame: 24 px padding, 16 px between blocks; the grouped table is not paged.  -->
+    <ScrollViewer>
+        <Grid Padding="24">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
             </Grid.ColumnDefinitions>
 
-            <AutoSuggestBox
-                VerticalAlignment="Center"
-                AutomationProperties.AutomationId="ContainersFilter"
-                AutomationProperties.Name="Filter containers"
-                PlaceholderText="Filter by name, image or port"
-                QueryIcon="Filter"
-                Text="{x:Bind ViewModel.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <toolkit:Segmented
-                Grid.Column="1"
-                VerticalAlignment="Center"
-                AutomationProperties.Name="Grouping"
-                SelectedIndex="{x:Bind ViewModel.ViewIndex, Mode=TwoWay}"
-                Style="{StaticResource ButtonSegmentedStyle}">
-                <toolkit:SegmentedItem Content="By project" />
-                <toolkit:SegmentedItem Content="Flat list" />
-            </toolkit:Segmented>
-            <StackPanel
-                Grid.Column="3"
-                VerticalAlignment="Center"
-                Orientation="Horizontal"
-                Spacing="12">
-                <TextBlock VerticalAlignment="Center" Text="Show stopped" />
-                <ToggleSwitch
-                    MinWidth="0"
-                    VerticalAlignment="Center"
-                    AutomationProperties.AutomationId="ShowStoppedToggle"
-                    AutomationProperties.Name="Show stopped"
-                    IsOn="{x:Bind ViewModel.ShowStopped, Mode=TwoWay}"
-                    OffContent=""
-                    OnContent="" />
-            </StackPanel>
-        </Grid>
+            <StackPanel>
+                <common:PageHeader Title="Containers">
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                        <Button
+                            AutomationProperties.AutomationId="RunContainerButton"
+                            AutomationProperties.Name="Run container"
+                            IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource RowIconStyle}" />
+                                <TextBlock Text="Run container" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            AutomationProperties.AutomationId="PruneStoppedButton"
+                            AutomationProperties.Name="Prune stopped"
+                            Click="OnPruneStopped"
+                            IsEnabled="{x:Bind ViewModel.CanPrune, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource RowIconStyle}" />
+                                <TextBlock Text="Prune stopped" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </common:PageHeader>
 
-        <Grid Grid.Row="4" Margin="0,16,0,0">
-            <common:EngineGate
-                Margin="0,0,0,48"
-                ViewModel="{x:Bind ViewModel.Engine}"
-                Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
-
-            <ProgressRing
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                IsActive="{x:Bind views:ContainersPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
-
-            <common:EmptyState
-                Title="No containers yet"
-                Margin="0,0,0,48"
-                Glyph="&#xE7B8;"
-                Message="Run one from an image here, or start a project with docker compose up in a terminal. It will show up here right away."
-                Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.IsEmpty), Mode=OneWay}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button
-                        Content="Run a container"
-                        IsEnabled="False"
-                        Style="{StaticResource AccentButtonStyle}" />
-                    <Button Click="OnPullImage" Content="Pull an image" />
+                <!--  The page's messages sit right under the breadcrumb, before any card.  -->
+                <StackPanel>
+                    <InfoBar
+                        Title="Container stopped"
+                        Margin="0,16,0,0"
+                        AutomationProperties.AutomationId="ExitNotice"
+                        IsOpen="{x:Bind ViewModel.IsExitNoticeOpen, Mode=TwoWay}"
+                        Message="{x:Bind ViewModel.ExitNotice, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind ViewModel.IsExitNoticeOpen, Mode=OneWay}">
+                        <InfoBar.Content>
+                            <StackPanel
+                                Margin="0,0,0,12"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <Button Click="OnViewExitedLogs" Content="View logs" />
+                                <Button Click="OnRestartExited" Content="Restart" />
+                            </StackPanel>
+                        </InfoBar.Content>
+                    </InfoBar>
+                    <InfoBar
+                        Title="Couldn't list containers"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="{x:Bind views:ContainersPage.ShowsError(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
+                        Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind views:ContainersPage.ErrorVisibility(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
                 </StackPanel>
-                <common:EmptyState.Footer>
-                    <Border
-                        Margin="0,24,0,0"
-                        Padding="16"
-                        Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="10">
-                            <TextBlock FontWeight="SemiBold" Text="Try it from a terminal" />
-                            <Grid
-                                Padding="10,6,6,6"
-                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                CornerRadius="4">
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontFamily="Cascadia Mono,Consolas"
-                                    IsTextSelectionEnabled="True"
-                                    Text="{x:Bind views:ContainersPage.TryCommand}" />
-                                <Button
-                                    HorizontalAlignment="Right"
-                                    Click="OnCopyTryCommand"
-                                    Content="Copy" />
-                            </Grid>
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Then open localhost:8080 in your browser." />
+
+                <!--  Counted over every container, never the filtered set.  -->
+                <common:PillRow
+                    Margin="0,16,0,0"
+                    AutomationProperties.AutomationId="ContainerSummary"
+                    Pills="{x:Bind ViewModel.SummaryPills, Mode=OneWay}"
+                    Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
+
+                <Grid
+                    Margin="0,16,0,0"
+                    ColumnSpacing="16"
+                    Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!--  The filter glyph leads the box, as in the design's text boxes.  -->
+                    <Grid VerticalAlignment="Center">
+                        <TextBox
+                            Padding="34,5,10,6"
+                            AutomationProperties.AutomationId="ContainersFilter"
+                            AutomationProperties.Name="Filter containers"
+                            PlaceholderText="Filter by name, image or port"
+                            Text="{x:Bind ViewModel.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <FontIcon
+                            Margin="11,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Glyph="{x:Bind icons:ContrIcons.Filter}"
+                            IsHitTestVisible="False"
+                            Style="{StaticResource RowIconStyle}" />
+                    </Grid>
+                    <Border Grid.Column="1" Style="{StaticResource SegmentGroupStyle}">
+                        <StackPanel AutomationProperties.Name="Group by" Orientation="Horizontal">
+                            <ToggleButton
+                                Click="OnByProject"
+                                Content="By project"
+                                IsChecked="{x:Bind views:ContainersPage.IsView(ViewModel.ViewIndex, 0), Mode=OneWay}"
+                                Style="{StaticResource SegmentToggleButtonStyle}" />
+                            <Border Width="1" Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                            <ToggleButton
+                                Click="OnFlatList"
+                                Content="Flat list"
+                                IsChecked="{x:Bind views:ContainersPage.IsView(ViewModel.ViewIndex, 1), Mode=OneWay}"
+                                Style="{StaticResource SegmentToggleButtonStyle}" />
                         </StackPanel>
                     </Border>
-                </common:EmptyState.Footer>
-            </common:EmptyState>
-
-            <TextBlock
-                Margin="0,48,0,0"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Style="{StaticResource EmptyStateTextStyle}"
-                Text="No containers match the filter."
-                Visibility="{x:Bind views:ContainersPage.ShowsNoMatches(ViewModel.Engine.IsOpen, ViewModel.HasRows, ViewModel.HasMatches), Mode=OneWay}" />
-
-            <Grid Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasMatches), Mode=OneWay}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid Padding="45,0,13,8" ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="{StaticResource StatusColumnWidth}" />
-                        <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
-                        <ColumnDefinition Width="{StaticResource CpuColumnWidth}" />
-                        <ColumnDefinition Width="{StaticResource MemoryColumnWidth}" />
-                        <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Style="{StaticResource ColumnHeadStyle}"
-                        Text="Status" />
-                    <TextBlock
-                        Grid.Column="2"
-                        Style="{StaticResource ColumnHeadStyle}"
-                        Text="Ports" />
-                    <TextBlock
+                    <StackPanel
                         Grid.Column="3"
-                        HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeadStyle}"
-                        Text="CPU" />
-                    <TextBlock
-                        Grid.Column="4"
-                        HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeadStyle}"
-                        Text="Memory" />
-                    <TextBlock
-                        Grid.Column="5"
-                        HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeadStyle}"
-                        Text="Actions" />
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Spacing="12">
+                        <TextBlock VerticalAlignment="Center" Text="Show stopped" />
+                        <ToggleSwitch
+                            MinWidth="0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.AutomationId="ShowStoppedToggle"
+                            AutomationProperties.Name="Show stopped"
+                            IsOn="{x:Bind ViewModel.ShowStopped, Mode=TwoWay}"
+                            OffContent=""
+                            OnContent="" />
+                    </StackPanel>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1" Padding="0,0,0,16">
-                    <ItemsRepeater
-                        AutomationProperties.AutomationId="ContainersList"
-                        ItemTemplate="{StaticResource GroupTemplate}"
-                        ItemsSource="{x:Bind ViewModel.Groups}" />
-                </ScrollViewer>
-            </Grid>
+                <Grid Margin="0,16,0,0">
+                    <common:EngineGate ViewModel="{x:Bind ViewModel.Engine}" Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
+
+                    <ProgressRing
+                        Margin="0,48,0,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        IsActive="{x:Bind views:ContainersPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
+
+                    <common:EmptyState
+                        Title="No containers yet"
+                        Glyph="{x:Bind icons:ContrIcons.Containers}"
+                        IsAccent="False"
+                        Message="Run one from an image here, or start a project with docker compose up in a terminal. It will show up here right away."
+                        Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.IsEmpty), Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button
+                                Content="Run a container"
+                                IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}" />
+                            <Button Click="OnPullImage" Content="Pull an image" />
+                        </StackPanel>
+                        <common:EmptyState.Footer>
+                            <Border Style="{StaticResource CaptionedCardStyle}">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="TRY IT FROM A TERMINAL" />
+                                    <Grid
+                                        Padding="10,6,6,6"
+                                        Background="{ThemeResource SolidBackgroundFillColorBaseAltBrush}"
+                                        CornerRadius="4">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontFamily="Cascadia Mono,Consolas"
+                                            IsTextSelectionEnabled="True"
+                                            Text="{x:Bind views:ContainersPage.TryCommand}" />
+                                        <Button
+                                            HorizontalAlignment="Right"
+                                            Click="OnCopyTryCommand"
+                                            Content="Copy"
+                                            Style="{StaticResource ToolbarButtonStyle}" />
+                                    </Grid>
+                                    <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                        <Run Text="Then open " /><Run FontFamily="Cascadia Mono,Consolas" Text="localhost:8080" /><Run Text=" in your browser." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </common:EmptyState.Footer>
+                    </common:EmptyState>
+
+                    <TextBlock
+                        Margin="0,48,0,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Style="{StaticResource EmptyStateTextStyle}"
+                        Text="No containers match the filter."
+                        Visibility="{x:Bind views:ContainersPage.ShowsNoMatches(ViewModel.Engine.IsOpen, ViewModel.HasRows, ViewModel.HasMatches), Mode=OneWay}" />
+
+                    <StackPanel Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasMatches), Mode=OneWay}">
+                        <Grid Padding="45,0,13,8" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{StaticResource NameColumnWidth}" MinWidth="200" />
+                                <ColumnDefinition Width="{StaticResource StatusColumnWidth}" MinWidth="150" />
+                                <ColumnDefinition Width="{StaticResource PortsColumnWidth}" MinWidth="140" />
+                                <ColumnDefinition Width="{StaticResource CpuColumnWidth}" />
+                                <ColumnDefinition Width="{StaticResource MemoryColumnWidth}" />
+                                <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Style="{StaticResource ColumnHeadStyle}"
+                                Text="Status" />
+                            <TextBlock
+                                Grid.Column="2"
+                                Style="{StaticResource ColumnHeadStyle}"
+                                Text="Ports" />
+                            <TextBlock
+                                Grid.Column="3"
+                                HorizontalAlignment="Right"
+                                Style="{StaticResource ColumnHeadStyle}"
+                                Text="CPU" />
+                            <TextBlock
+                                Grid.Column="4"
+                                HorizontalAlignment="Right"
+                                Style="{StaticResource ColumnHeadStyle}"
+                                Text="Memory" />
+                            <TextBlock
+                                Grid.Column="5"
+                                HorizontalAlignment="Right"
+                                Style="{StaticResource ColumnHeadStyle}"
+                                Text="Actions" />
+                        </Grid>
+
+                        <ItemsRepeater
+                            AutomationProperties.AutomationId="ContainersList"
+                            ItemTemplate="{StaticResource GroupTemplate}"
+                            ItemsSource="{x:Bind ViewModel.Groups}" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </Page>

@@ -5,6 +5,7 @@ using Contr.Modules.Volumes.Application.Abstractions;
 using Contr.Modules.Volumes.UI.Infrastructure;
 using Contr.Modules.Volumes.UI.ViewModels;
 using Contr.Modules.Volumes.UI.Views;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,6 @@ public sealed class VolumesModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Volumes", "\uEDA2", typeof(VolumesPage)) { Order = 30 }];
+        return [new NavigationItem("Volumes", ContrIcons.Volumes, typeof(VolumesPage)) { Order = 30 }];
     }
 }

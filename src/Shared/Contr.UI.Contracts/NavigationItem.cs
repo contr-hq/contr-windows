@@ -17,7 +17,7 @@ public enum NavigationItemPlacement
 
 /// <summary>A navigation destination a module contributes to the host shell.</summary>
 /// <param name="Title">The label shown in the navigation menu.</param>
-/// <param name="IconGlyph">A Segoe Fluent Icons glyph, written as an escape such as <c>\uE7B8</c>.</param>
+/// <param name="IconGlyph">A Contr Icons glyph, such as <c>ContrIcons.Containers</c>.</param>
 /// <param name="PageType">The page navigated to when the item is selected.</param>
 /// <param name="Placement">Where the shell places the item.</param>
 public sealed record NavigationItem(
@@ -34,4 +34,7 @@ public sealed record NavigationItem(
 
     /// <summary>The item's position within its placement; lower comes first.</summary>
     public int Order { get; init; }
+
+    /// <summary>The glyph shown while the item is selected, such as a filled variant; null keeps the icon.</summary>
+    public string? SelectedIconGlyph { get; init; }
 }

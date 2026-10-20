@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.UI.ViewModels;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Search;
 
@@ -42,7 +43,7 @@ public sealed class ContainerSearch : ISearchSource
             .Select(container => new SearchHit(
                 container.Name,
                 $"Container · {container.Image}",
-                "\uE7B8",
+                ContrIcons.Containers,
                 _detailPageKey,
                 [container.Id, ContainerDetailTab.Logs]))];
     }

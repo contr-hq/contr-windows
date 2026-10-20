@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -121,9 +122,10 @@ public sealed partial class SettingsViewModel : ViewModel
         ContextName = daemon.Status.Details?.DockerContext ?? string.Empty;
         OffersWslIntegration = daemon.Identity?.Capabilities.Contains(DaemonCapability.WslIntegration) == true;
         OffersResourceLimits = daemon.Identity?.Capabilities.Contains(DaemonCapability.ResourceLimits) == true;
-        VersionText = daemon.Identity is { } identity
-            ? $"Contr {ClientVersion()} · daemon {identity.Version} · API revision {identity.ApiRevision}"
-            : $"Contr {ClientVersion()}";
+        AppVersion = ClientVersion();
+        DaemonVersion = daemon.Identity is { } known
+            ? $"{known.Version} · API revision {known.ApiRevision.ToString(CultureInfo.InvariantCulture)}"
+            : "—";
     }
 
     public bool HasAccentChoice { get; }
@@ -145,8 +147,11 @@ public sealed partial class SettingsViewModel : ViewModel
 
     public bool LacksResourceLimits => !OffersResourceLimits;
 
-    /// <summary>Such as <c>Contr 0.1.0 · daemon 0.1.0 · API revision 3</c>.</summary>
-    public string VersionText { get; }
+    /// <summary>This app's version, such as <c>0.1.0</c>.</summary>
+    public string AppVersion { get; }
+
+    /// <summary>Such as <c>0.1.0 · API revision 6</c>; a dash while no daemon answered.</summary>
+    public string DaemonVersion { get; }
 
     public bool HasToolsNote => ToolsNote.Length > 0;
 

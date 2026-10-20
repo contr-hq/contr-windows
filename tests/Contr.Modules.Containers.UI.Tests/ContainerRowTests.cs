@@ -44,11 +44,11 @@ public sealed class ContainerRowTests
     }
 
     [Theory]
-    [InlineData(ContainerState.Running, "Up 2 hours", StatusKind.Good, "Running", "2 h")]
-    [InlineData(ContainerState.Running, "Up 2 hours (unhealthy)", StatusKind.Caution, "Unhealthy", "2 h")]
-    [InlineData(ContainerState.Exited, "Exited (1) 14 minutes ago", StatusKind.Critical, "Exited (1)", "14 min")]
-    [InlineData(ContainerState.Exited, "Exited (0) 3 days ago", StatusKind.Neutral, "Exited (0)", "3 d")]
-    [InlineData(ContainerState.Paused, "Up 5 hours (Paused)", StatusKind.Paused, "Paused", "5 h")]
+    [InlineData(ContainerState.Running, "Up 2 hours", StatusKind.Good, "Running", "up 2h")]
+    [InlineData(ContainerState.Running, "Up 2 hours (unhealthy)", StatusKind.Caution, "Unhealthy", "up 2h")]
+    [InlineData(ContainerState.Exited, "Exited (1) 14 minutes ago", StatusKind.Critical, "Exited (1)", "14m ago")]
+    [InlineData(ContainerState.Exited, "Exited (0) 3 days ago", StatusKind.Neutral, "Exited (0)", "3d ago")]
+    [InlineData(ContainerState.Paused, "Up 5 hours (Paused)", StatusKind.Paused, "Paused", "up 5h")]
     [InlineData(ContainerState.Created, "Created", StatusKind.Neutral, "Created", "")]
     public void Status_ReadsTheEngineText(
         ContainerState state, string status, StatusKind kind, string text, string elapsed)

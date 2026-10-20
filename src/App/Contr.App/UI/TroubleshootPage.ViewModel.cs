@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
@@ -12,8 +13,14 @@ using Microsoft.UI.Dispatching;
 namespace Contr.App.UI;
 
 /// <summary>One line of the system checks: what was checked, its outcome and what was found.</summary>
-/// <param name="Outcome">Such as <c>Passed</c> or <c>Failed</c>; the icon repeats it.</param>
-public sealed record CheckRow(StatusKind Kind, string Outcome, string Name, string Detail);
+/// <param name="Outcome">Such as <c>Passed</c> or <c>Failed</c>; the pill's dot repeats it.</param>
+/// <param name="Requirement">What passes, such as <c>At least 10 GB on C:</c>; empty where the name says it.</param>
+public sealed record CheckRow(StatusKind Kind, string Outcome, string Name, string Detail, string Requirement = "")
+{
+    public PillKind PillKind => PillView.For(Kind);
+
+    public bool IsFailed => Kind == StatusKind.Critical;
+}
 
 /// <summary>Backs Troubleshoot: why the engine is down, the checks the client can make, and the client's log.</summary>
 public sealed partial class TroubleshootViewModel : ViewModel
@@ -41,9 +48,13 @@ public sealed partial class TroubleshootViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(HasProblemCode))]
     public partial string ProblemCode { get; set; }
 
-    /// <summary>Such as <c>ran at 10:52 · 1 problem</c>.</summary>
+    /// <summary>Such as <c>ran at 10:52</c>.</summary>
     [ObservableProperty]
     public partial string ChecksSummary { get; set; }
+
+    /// <summary>The problems and warnings the checks found, as pills; none when all passed.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<PillItem> CheckPills { get; set; }
 
     [ObservableProperty]
     public partial bool HasLog { get; set; }
@@ -57,6 +68,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
         ProblemMessage = string.Empty;
         ProblemCode = string.Empty;
         ChecksSummary = string.Empty;
+        CheckPills = [];
     }
 
     public ObservableCollection<CheckRow> Checks { get; } = [];
@@ -218,7 +230,20 @@ public sealed partial class TroubleshootViewModel : ViewModel
         var problems = checks.Count(check => check.Kind == StatusKind.Critical);
         var warnings = checks.Count(check => check.Kind == StatusKind.Caution);
         var ranAt = DateTimeOffset.Now.ToString("t", CultureInfo.CurrentCulture);
-        ChecksSummary = $"ran at {ranAt} · {Plural(problems, "problem")}, {Plural(warnings, "warning")}";
+        ChecksSummary = $"ran at {ranAt}";
+        List<PillItem> pills = [];
+
+        if (problems > 0)
+        {
+            pills.Add(new(Plural(problems, "problem"), PillKind.Critical));
+        }
+
+        if (warnings > 0)
+        {
+            pills.Add(new(Plural(warnings, "warning"), PillKind.Caution));
+        }
+
+        CheckPills = pills;
 
         HasProblem = status.Connection == DaemonConnectionState.Unavailable || status.Engine == EngineState.Failed;
         ProblemTitle = status.Connection == DaemonConnectionState.Unavailable

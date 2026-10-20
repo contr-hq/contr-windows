@@ -45,7 +45,7 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(Trail), nameof(StatusKind), nameof(StatusLine), nameof(Image))]
     [NotifyPropertyChangedFor(nameof(CanStart), nameof(CanStop), nameof(CanRestart), nameof(CanRemove))]
     [NotifyPropertyChangedFor(nameof(ShortId), nameof(FirstPort), nameof(HasPort), nameof(Ports))]
-    [NotifyPropertyChangedFor(nameof(IsRunning))]
+    [NotifyPropertyChangedFor(nameof(IsRunning), nameof(PillKind), nameof(StatusText), nameof(Elapsed))]
     public partial ContainerRow? Row { get; set; }
 
     [ObservableProperty]
@@ -115,6 +115,13 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     };
 
     public string Image => Row?.Image ?? string.Empty;
+
+    public PillKind PillKind => Row?.PillKind ?? PillKind.Hollow;
+
+    public string StatusText => Row?.StatusText ?? string.Empty;
+
+    /// <summary>Such as <c>up 2h</c>.</summary>
+    public string Elapsed => Row?.Elapsed ?? string.Empty;
 
     public bool CanStart => !IsGone && Row?.CanStart == true;
 
@@ -277,7 +284,8 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
     private static string RunningLine(ContainerRow row)
     {
-        var running = row.Elapsed.Length > 0 ? $"Running for {row.Elapsed}" : "Running";
+        var elapsed = ContainerStatusText.Elapsed(row.Status);
+        var running = elapsed.Length > 0 ? $"Running for {elapsed}" : "Running";
 
         return ContainerStatusText.Health(row.Status) switch {
             ContainerHealth.Healthy => $"{running} · healthy",

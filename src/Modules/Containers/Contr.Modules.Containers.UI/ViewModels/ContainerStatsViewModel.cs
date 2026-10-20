@@ -36,6 +36,7 @@ public sealed partial class ContainerStatsViewModel : ObservableObject, IDisposa
     public partial bool HasSamples { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
     public partial string? Error { get; set; }
 
     [ObservableProperty]
@@ -112,6 +113,8 @@ public sealed partial class ContainerStatsViewModel : ObservableObject, IDisposa
     }
 
     public bool HasNoSamples => !HasSamples;
+
+    public bool HasError => !string.IsNullOrEmpty(Error);
 
     /// <summary>Samples <paramref name="id"/> until stopped; another container starts a new history.</summary>
     public void Start(ContainerId id)

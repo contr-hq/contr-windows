@@ -6,6 +6,7 @@
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:contracts="using:Contr.UI.Contracts.Services.Containers"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Width="360"
@@ -32,8 +33,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Ellipse
-                    Width="8"
-                    Height="8"
+                    Width="7"
+                    Height="7"
                     VerticalAlignment="Center"
                     Fill="{ThemeResource SystemFillColorSuccessBrush}" />
                 <StackPanel
@@ -52,6 +53,7 @@
                     Padding="2,0"
                     VerticalAlignment="Center"
                     Content="{x:Bind Port}"
+                    FontFamily="Cascadia Mono,Consolas"
                     FontSize="12"
                     NavigateUri="{x:Bind Link}"
                     Visibility="{x:Bind local:TrayPanel.WhenLink(Link)}" />
@@ -62,7 +64,7 @@
                     Style="{StaticResource RowActionButtonStyle}"
                     Tag="{x:Bind}"
                     ToolTipService.ToolTip="Stop">
-                    <FontIcon FontSize="12" Glyph="&#xE71A;" />
+                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Stop}" Style="{StaticResource IconStyle}" />
                 </Button>
             </Grid>
         </DataTemplate>
@@ -82,11 +84,14 @@
                 Width="32"
                 Height="32"
                 Source="ms-appx:///Assets/ContrLogo.png" />
-            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <StackPanel
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Spacing="4">
                 <TextBlock FontWeight="SemiBold" Text="Contr" />
-                <common:StatusLabel
-                    FontSize="12"
-                    Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}"
+                <common:PillView
+                    HorizontalAlignment="Left"
+                    Kind="{x:Bind local:TrayPanel.Pill(ViewModel.StatusKind), Mode=OneWay}"
                     Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
             </StackPanel>
             <Button
@@ -95,7 +100,7 @@
                 Click="OnOpen"
                 Style="{StaticResource RowActionButtonStyle}"
                 ToolTipService.ToolTip="Open Contr">
-                <FontIcon FontSize="14" Glyph="&#xE8A7;" />
+                <FontIcon Glyph="{x:Bind icons:ContrIcons.Open}" Style="{StaticResource IconStyle}" />
             </Button>
             <Button
                 Grid.Column="3"
@@ -103,16 +108,15 @@
                 Click="OnSettings"
                 Style="{StaticResource RowActionButtonStyle}"
                 ToolTipService.ToolTip="Settings">
-                <FontIcon FontSize="14" Glyph="&#xE713;" />
+                <FontIcon Glyph="{x:Bind icons:ContrIcons.Settings}" Style="{StaticResource IconStyle}" />
             </Button>
         </Grid>
 
         <StackPanel Visibility="{x:Bind ViewModel.HasContainers}">
             <MenuFlyoutSeparator />
             <TextBlock
-                Margin="12,8,12,4"
-                FontSize="12"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Margin="16,10,16,4"
+                Style="{StaticResource CaptionLabelStyle}"
                 Text="{x:Bind ViewModel.RunningTitle, Mode=OneWay}" />
             <ItemsRepeater ItemTemplate="{StaticResource RunningTemplate}" ItemsSource="{x:Bind ViewModel.Running}" />
             <HyperlinkButton
@@ -126,12 +130,13 @@
             <MenuFlyoutSeparator />
             <Grid Padding="12,8">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <FontIcon FontSize="14" Glyph="&#xE756;" />
+                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource IconStyle}" />
                     <TextBlock Text="Docker context" />
                 </StackPanel>
                 <TextBlock
                     HorizontalAlignment="Right"
-                    FontFamily="Cascadia Mono,Consolas"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IdentifierTextStyle}"
                     Text="{x:Bind ViewModel.DockerContext, Mode=OneWay}" />
             </Grid>
         </StackPanel>
@@ -142,7 +147,7 @@
             Style="{StaticResource TrayCommandStyle}"
             Visibility="{x:Bind ViewModel.CanStartEngine, Mode=OneWay}">
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <FontIcon FontSize="14" Glyph="&#xE768;" />
+                <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource IconStyle}" />
                 <TextBlock Text="Start engine" />
             </StackPanel>
         </Button>
@@ -151,20 +156,20 @@
             Style="{StaticResource TrayCommandStyle}"
             Visibility="{x:Bind ViewModel.CanRestartEngine, Mode=OneWay}">
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource IconStyle}" />
                 <TextBlock Text="Restart engine" />
             </StackPanel>
         </Button>
         <Button Click="OnTroubleshoot" Style="{StaticResource TrayCommandStyle}">
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <FontIcon FontSize="14" Glyph="&#xE90F;" />
+                <FontIcon Glyph="{x:Bind icons:ContrIcons.Troubleshoot}" Style="{StaticResource IconStyle}" />
                 <TextBlock Text="Troubleshoot" />
             </StackPanel>
         </Button>
         <Button Click="OnQuit" Style="{StaticResource TrayCommandStyle}">
             <Grid Width="320">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <FontIcon FontSize="14" Glyph="&#xE711;" />
+                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Dismiss}" Style="{StaticResource IconStyle}" />
                     <TextBlock Text="Quit Contr" />
                 </StackPanel>
                 <TextBlock

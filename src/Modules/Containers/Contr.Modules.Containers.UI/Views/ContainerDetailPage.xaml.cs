@@ -4,11 +4,12 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using Contr.Modules.Containers.UI.ViewModels;
+using Contr.UI.Common.Controls;
+using Contr.UI.Common.Helpers;
 using Contr.UI.Contracts;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
 namespace Contr.Modules.Containers.UI.Views;
@@ -18,8 +19,6 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
 {
     /// <summary>The log follows new output while the view is within this distance of the end.</summary>
     private const double _followSlack = 48;
-
-    private static readonly FontFamily _codeFont = new("Cascadia Mono,Consolas");
 
     private ScrollViewer? _logScroller;
 
@@ -43,9 +42,9 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         return tab.ToString() == shown ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public static FontFamily FactFont(bool isCode)
+    public static Visibility WhenFact(FactKind kind, string shown)
     {
-        return isCode ? _codeFont : FontFamily.XamlAutoFontFamily;
+        return kind.ToString() == shown ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Client notes are dimmed against the container's own output.</summary>
@@ -95,24 +94,48 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         return ports is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    public static string StatsWaitTitle(bool isRunning, string? error)
+    /// <summary>Whether a tab's message shows: its tab is open and it has something to say.</summary>
+    public static bool Shows(ContainerDetailTab tab, string shown, bool hasMessage)
     {
-        if (!string.IsNullOrEmpty(error))
-        {
-            return "Couldn't read usage";
-        }
-
-        return isRunning ? "Waiting for the first sample" : "Not running";
+        return hasMessage && tab.ToString() == shown;
     }
 
-    public static string StatsWaitText(bool isRunning, string? error)
+    public static Visibility WhenShown(ContainerDetailTab tab, string shown, bool hasMessage)
     {
-        if (!string.IsNullOrEmpty(error))
+        return Shows(tab, shown, hasMessage) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Shows the log's hint while no line arrived and nothing failed.</summary>
+    public static Visibility WhenQuiet(int lines, bool hasError)
+    {
+        return lines == 0 && !hasError ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static PillKind TerminalPill(bool isConnected)
+    {
+        return isConnected ? PillKind.Good : PillKind.Hollow;
+    }
+
+    public static string ShowText(bool isShown)
+    {
+        return isShown ? "Hide" : "Show";
+    }
+
+    public static string StatsWaitTitle(bool isRunning, bool hasError)
+    {
+        if (!isRunning)
         {
-            return error;
+            return "Not running";
         }
 
-        return isRunning ? "Waiting for the first sample." : "Stats appear while the container runs.";
+        return hasError ? "No usage to show" : "Waiting for the first sample";
+    }
+
+    public static string StatsWaitText(bool isRunning)
+    {
+        return isRunning
+            ? "CPU, memory, network and disk appear here as the engine reports them."
+            : "Usage appears while the container runs.";
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -290,7 +313,7 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
             return;
         }
 
-        _logScroller ??= FindScroller(LogList);
+        _logScroller ??= VisualTree.FindDescendant<ScrollViewer>(LogList);
 
         if (_logScroller is null || _logScroller.VerticalOffset >= _logScroller.ScrollableHeight - _followSlack)
         {
@@ -298,23 +321,4 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         }
     }
 
-    private static ScrollViewer? FindScroller(DependencyObject root)
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-
-            if (child is ScrollViewer scroller)
-            {
-                return scroller;
-            }
-
-            if (FindScroller(child) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
 }

@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Contr.UI.Common.Controls;
+using Contr.UI.Common.Helpers;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
@@ -26,6 +29,7 @@ public sealed partial class ShellPage : Page
     private readonly ISubscription _subscription;
     private readonly GlobalSearch _search;
     private readonly Dictionary<string, NavigationViewItem> _navItemsByKey = new(StringComparer.Ordinal);
+    private readonly Dictionary<NavigationViewItem, NavigationItem> _itemsByContainer = [];
     private bool _isSyncingSelection;
     private string? _currentPageKey;
     private NavigationViewItemSeparator? _toolsSeparator;
@@ -76,7 +80,6 @@ public sealed partial class ShellPage : Page
     {
         _navigationService.Initialize(NavFrame);
         _navigationService.Register([.. HostNavigation.ShellPages]);
-        _notificationService.Initialize(AppNotificationBar);
 
         var items = _modules
             .SelectMany(module => module.GetNavigationItems())
@@ -96,6 +99,11 @@ public sealed partial class ShellPage : Page
         _subscription.Add(_daemon.StatusChanges.Subscribe(
             status => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyStatus(status))));
 
+        if (NavView.SettingsItem is NavigationViewItem settings)
+        {
+            settings.Icon = Icon(ContrIcons.Settings);
+        }
+
         NavView.SelectedItem = NavView.MenuItems
             .OfType<NavigationViewItem>()
             .FirstOrDefault();
@@ -111,8 +119,9 @@ public sealed partial class ShellPage : Page
         var navItem = new NavigationViewItem {
             Tag = pageKey,
             Content = NavItemContent(item.Title, badge),
-            Icon = new FontIcon { Glyph = item.IconGlyph },
+            Icon = Icon(item.IconGlyph),
         };
+        _itemsByContainer[navItem] = item;
         AutomationProperties.SetAutomationId(navItem, pageKey);
         AutomationProperties.SetName(navItem, item.Title);
         _navItemsByKey[pageKey] = navItem;
@@ -140,6 +149,39 @@ public sealed partial class ShellPage : Page
         NavView.MenuItems.Add(navItem);
     }
 
+    private static FontIcon Icon(string glyph)
+    {
+        var style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["IconStyle"];
+
+        return new FontIcon { Glyph = glyph, Style = style, FontSize = 20 };
+    }
+
+    /// <summary>Gives the selected item its selected glyph, such as a filled one, and every other its own.</summary>
+    private void ShowSelectedIcons(object? selected)
+    {
+        foreach (var (container, item) in _itemsByContainer)
+        {
+            if (container.Icon is FontIcon icon)
+            {
+                icon.Glyph = ReferenceEquals(container, selected) && item.SelectedIconGlyph is { } filled
+                    ? filled
+                    : item.IconGlyph;
+            }
+        }
+
+        if (NavView.SettingsItem is NavigationViewItem { Icon: FontIcon settings })
+        {
+            settings.Glyph = ReferenceEquals(NavView.SettingsItem, selected)
+                ? ContrIcons.SettingsFilled
+                : ContrIcons.Settings;
+        }
+    }
+
+    private void OnTitleBarPaneToggleRequested(TitleBar sender, object args)
+    {
+        NavView.IsPaneOpen = !NavView.IsPaneOpen;
+    }
+
     private static Grid NavItemContent(string title, TextBlock badge)
     {
         var content = new Grid { ColumnSpacing = 8 };
@@ -155,6 +197,8 @@ public sealed partial class ShellPage : Page
     private void OnNavViewSelectionChanged(
         NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
+        ShowSelectedIcons(args.SelectedItemContainer);
+
         if (_isSyncingSelection)
         {
             return;
@@ -188,10 +232,44 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    /// <summary>Notifications show under the breadcrumb of the page that is open.</summary>
+    private void ShowNoticesOnceLoaded(object content)
+    {
+        if (content is not FrameworkElement page)
+        {
+            return;
+        }
+
+        if (page.IsLoaded)
+        {
+            ShowNoticesOn(page);
+        }
+        else
+        {
+            page.Loaded += OnPageLoaded;
+        }
+    }
+
+    private void OnPageLoaded(object sender, RoutedEventArgs e)
+    {
+        var page = (FrameworkElement)sender;
+        page.Loaded -= OnPageLoaded;
+        ShowNoticesOn(page);
+    }
+
+    private void ShowNoticesOn(FrameworkElement page)
+    {
+        if (VisualTree.FindDescendant<PageHeader>(page) is { } header)
+        {
+            _notificationService.Initialize(header.Notice);
+        }
+    }
+
     /// <summary>Follows back and programmatic navigation in the pane without navigating again.</summary>
     private void OnNavigated(NavigationEvent e)
     {
         _currentPageKey = e.PageKey;
+        ShowNoticesOnceLoaded(e.Content);
 
         var container = e.PageKey == HostNavigation.SettingsPageKey
             ? NavView.SettingsItem as NavigationViewItem
@@ -265,7 +343,7 @@ public sealed partial class ShellPage : Page
         return new SearchHit(
             $"Nothing matches \u201C{text.Trim()}\u201D",
             "Containers, images, volumes and networks",
-            "\uE721",
+            ContrIcons.Search,
             string.Empty,
             []);
     }

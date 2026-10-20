@@ -41,7 +41,8 @@ public sealed partial class OnboardingViewModel : ViewModel
     private readonly IClipboardService _clipboard;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StepLabel), nameof(IsChecking), nameof(IsWsl), nameof(IsEngine))]
+    [NotifyPropertyChangedFor(nameof(StepCaption), nameof(StepNumber), nameof(StepTitle), nameof(StepLead))]
+    [NotifyPropertyChangedFor(nameof(IsChecking), nameof(IsWsl), nameof(IsEngine))]
     [NotifyPropertyChangedFor(nameof(IsTools), nameof(IsReady), nameof(CanGoBack), nameof(NextText))]
     public partial int StepIndex { get; set; }
 
@@ -50,6 +51,7 @@ public sealed partial class OnboardingViewModel : ViewModel
     public partial bool IsBusy { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NextText))]
     public partial bool IsWslMissing { get; set; }
 
     [ObservableProperty]
@@ -125,7 +127,7 @@ public sealed partial class OnboardingViewModel : ViewModel
             new OnboardingStep(1, "Check this PC"),
             new OnboardingStep(2, "Install WSL"),
             new OnboardingStep(3, "Set up the engine"),
-            new OnboardingStep(4, "Tools and integration"),
+            new OnboardingStep(4, "Connect your tools"),
             new OnboardingStep(5, "Ready"),
         ];
     }
@@ -143,7 +145,30 @@ public sealed partial class OnboardingViewModel : ViewModel
 
     public ObservableCollection<CheckRow> Summary { get; } = [];
 
-    public string StepLabel => $"Step {StepIndex + 1} of {Steps.Count}";
+    /// <summary>Such as <c>STEP 4 OF 5 · CONNECT YOUR TOOLS</c>.</summary>
+    public string StepCaption =>
+        $"STEP {StepNumber} OF {Steps.Count} · {Steps[StepIndex].Title.ToUpperInvariant()}";
+
+    /// <summary>The step from 1, for the progress bar.</summary>
+    public int StepNumber => StepIndex + 1;
+
+    public string StepTitle => StepIndex switch {
+        0 => "Welcome to Contr",
+        1 => "Install WSL",
+        2 => "Setting up the engine",
+        3 => "Connect your tools",
+        _ => "You're all set",
+    };
+
+    public string StepLead => StepIndex switch {
+        0 => "Contr runs containers on this PC with a Docker-compatible engine. First, a quick check that this PC "
+            + "is ready.",
+        1 => "Contr runs its engine inside WSL 2, the Linux layer built into Windows.",
+        2 => "You can keep working while this runs. The tray icon shows when the engine is ready.",
+        3 => "Choose how the docker command and your other tools reach the engine. You can change all of this "
+            + "later in Settings.",
+        _ => "Contr stays in the notification area when you close its window.",
+    };
 
     /// <summary>The user's WSL distributions; the checked ones reach the engine once setup applies step 4.</summary>
     public ObservableCollection<WslDistributionItem> Distributions { get; } = [];
@@ -163,6 +188,7 @@ public sealed partial class OnboardingViewModel : ViewModel
     public bool CanGoNext => !IsBusy && (StepIndex != 2 || IsEngineRunning);
 
     public string NextText => StepIndex switch {
+        1 when IsWslMissing => "Try again",
         3 => "Finish setup",
         4 => "Open Contr",
         _ => "Next",
@@ -237,15 +263,21 @@ public sealed partial class OnboardingViewModel : ViewModel
         var free = $"{HumanFormat.Bytes(freeBytes)} free on {drive}";
 
         return [
-            TroubleshootViewModel.WindowsCheck(windowsBuild),
+            TroubleshootViewModel.WindowsCheck(windowsBuild) with {
+                Requirement = "WSL 2 needs Windows 10 build 19041 or later",
+            },
             virtualization switch {
                 true => new CheckRow(StatusKind.Good, "Passed", "Virtualization", "Turned on"),
                 false => new CheckRow(StatusKind.Critical, "Failed", "Virtualization", "Turned off in the firmware"),
                 null => new CheckRow(StatusKind.Neutral, "Unknown", "Virtualization", "The engine's start checks it"),
+            } with {
+                Requirement = "WSL 2 needs it turned on in the firmware",
             },
-            freeBytes >= _lowDiskBytes
+            (freeBytes >= _lowDiskBytes
                 ? new CheckRow(StatusKind.Good, "Passed", "Free disk space", free)
-                : new CheckRow(StatusKind.Caution, "Warning", "Free disk space", $"{free} · images need room"),
+                : new CheckRow(StatusKind.Caution, "Warning", "Free disk space", $"{free} · images need room")) with {
+                Requirement = $"At least {HumanFormat.Bytes(_lowDiskBytes)} for images",
+            },
         ];
     }
 

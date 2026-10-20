@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:helpers="using:Contr.UI.Common.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:views="using:Contr.Modules.Containers.UI.Views"
@@ -17,129 +18,240 @@
                 <ResourceDictionary x:Key="Default">
                     <SolidColorBrush x:Key="LogBackgroundBrush" Color="#0C0C0C" />
                     <SolidColorBrush x:Key="LogMatchBrush" Color="#4D6B2A2A" />
+                    <SolidColorBrush x:Key="JsonStringBrush" Color="#E6C07B" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="LogBackgroundBrush" Color="#FBFBFB" />
                     <SolidColorBrush x:Key="LogMatchBrush" Color="#33C42B1C" />
+                    <SolidColorBrush x:Key="JsonStringBrush" Color="#8A5300" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
             <FontFamily x:Key="LogFontFamily">Cascadia Mono,Consolas</FontFamily>
 
+            <!--  A field row: identifiers in mono, plain values SemiBold, absent ones secondary.  -->
             <DataTemplate x:Key="FactTemplate" x:DataType="vm:InspectFact">
-                <Grid Padding="0,3" ColumnSpacing="12">
+                <Grid ColumnSpacing="16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind Label}" />
+                    <TextBlock
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="{x:Bind Label}"
+                        TextTrimming="CharacterEllipsis" />
                     <TextBlock
                         Grid.Column="1"
-                        FontFamily="{x:Bind views:ContainerDetailPage.FactFont(IsCode)}"
                         IsTextSelectionEnabled="True"
+                        Style="{StaticResource IdentifierTextStyle}"
                         Text="{x:Bind Value}"
-                        TextWrapping="Wrap" />
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Code')}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        IsTextSelectionEnabled="True"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Text')}">
+                        <Run FontWeight="SemiBold" Text="{x:Bind Value}" />
+                        <Run
+                            FontSize="11"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Text="{x:Bind Note}" />
+                    </TextBlock>
+                    <TextBlock
+                        Grid.Column="1"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind Value}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Muted')}" />
                 </Grid>
             </DataTemplate>
+
+            <!--  The same row in a side column, whose labels are short.  -->
+            <DataTemplate x:Key="NarrowFactTemplate" x:DataType="vm:InspectFact">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="{x:Bind Label}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Grid.Column="1"
+                        IsTextSelectionEnabled="True"
+                        Style="{StaticResource IdentifierTextStyle}"
+                        Text="{x:Bind Value}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Code')}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        IsTextSelectionEnabled="True"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Text')}">
+                        <Run FontWeight="SemiBold" Text="{x:Bind Value}" />
+                        <Run
+                            FontSize="11"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Text="{x:Bind Note}" />
+                    </TextBlock>
+                    <TextBlock
+                        Grid.Column="1"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind Value}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenFact(Kind, 'Muted')}" />
+                </Grid>
+            </DataTemplate>
+
+            <StackLayout x:Key="FieldRowsLayout" Spacing="10" />
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,16">
+    <Grid Padding="24,24,24,16">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1440" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="TerminalActions.(Grid.Row)" Value="0" />
+                        <Setter Target="TerminalActions.(Grid.Column)" Value="5" />
+                        <Setter Target="TerminalActions.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="TerminalActions.Margin" Value="0" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
+        </Grid.ColumnDefinitions>
 
-        <common:PageHeader Trail="{x:Bind ViewModel.Trail, Mode=OneWay}" TrailClicked="OnTrailClicked">
-            <common:PageHeader.Subtitle>
-                <StackPanel
-                    Margin="0,4,0,0"
-                    Orientation="Horizontal"
-                    Spacing="16">
-                    <common:StatusLabel
-                        FontSize="14"
-                        Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}"
-                        Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="{x:Bind ViewModel.Image, Mode=OneWay}" />
-                    <StackPanel Orientation="Horizontal" Spacing="2">
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Style="{StaticResource MonoCellTextStyle}"
-                            Text="{x:Bind ViewModel.ShortId, Mode=OneWay}" />
-                        <Button
-                            AutomationProperties.Name="Copy ID"
-                            Click="OnCopyId"
-                            Style="{StaticResource RowActionButtonStyle}"
-                            ToolTipService.ToolTip="Copy ID">
-                            <FontIcon FontSize="12" Glyph="&#xE8C8;" />
-                        </Button>
-                    </StackPanel>
+        <StackPanel Spacing="16">
+            <common:PageHeader Trail="{x:Bind ViewModel.Trail, Mode=OneWay}" TrailClicked="OnTrailClicked">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        AutomationProperties.AutomationId="DetailStartButton"
+                        Click="OnStart"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Visibility="{x:Bind ViewModel.CanStart, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource IconStyle}" />
+                            <TextBlock Text="Start" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.AutomationId="DetailStopButton"
+                        Click="OnStop"
+                        Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Stop}" Style="{StaticResource IconStyle}" />
+                            <TextBlock Text="Stop" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.AutomationId="DetailRestartButton"
+                        Click="OnRestart"
+                        Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource IconStyle}" />
+                            <TextBlock Text="Restart" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.AutomationId="DetailOpenPortButton"
+                        Click="OnOpenPort"
+                        Visibility="{x:Bind views:ContainerDetailPage.WhenPort(ViewModel.HasPort, ViewModel.IsRunning), Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Open}" Style="{StaticResource IconStyle}" />
+                            <TextBlock Text="{x:Bind views:ContainerDetailPage.OpenText(ViewModel.FirstPort), Mode=OneWay}" />
+                        </StackPanel>
+                    </Button>
+                    <!--  A stopped container's delete is an action of its own; a running one keeps it in More.  -->
+                    <Button
+                        AutomationProperties.AutomationId="DetailDeleteButton"
+                        Click="OnRemove"
+                        IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.CanStart, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource IconStyle}" />
+                            <TextBlock Text="Delete…" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Width="40"
+                        AutomationProperties.Name="More actions"
+                        ToolTipService.ToolTip="More actions">
+                        <FontIcon Glyph="{x:Bind icons:ContrIcons.More}" Style="{StaticResource IconStyle}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyoutItem Click="OnCopyId" Text="Copy ID">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource IconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem
+                                    Click="OnRemove"
+                                    IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}"
+                                    Text="Delete…">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource IconStyle}" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
-            </common:PageHeader.Subtitle>
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <Button
-                    AutomationProperties.AutomationId="DetailStartButton"
-                    Click="OnStart"
-                    Style="{StaticResource AccentToolbarButtonStyle}"
-                    Visibility="{x:Bind ViewModel.CanStart, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE768;" />
-                        <TextBlock Text="Start" />
-                    </StackPanel>
-                </Button>
-                <Button
-                    AutomationProperties.AutomationId="DetailStopButton"
-                    Click="OnStop"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE71A;" />
-                        <TextBlock Text="Stop" />
-                    </StackPanel>
-                </Button>
-                <Button
-                    AutomationProperties.AutomationId="DetailRestartButton"
-                    Click="OnRestart"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                        <TextBlock Text="Restart" />
-                    </StackPanel>
-                </Button>
-                <Button
-                    AutomationProperties.AutomationId="DetailOpenPortButton"
-                    Click="OnOpenPort"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Visibility="{x:Bind views:ContainerDetailPage.WhenPort(ViewModel.HasPort, ViewModel.IsRunning), Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE8A7;" />
-                        <TextBlock Text="{x:Bind views:ContainerDetailPage.OpenText(ViewModel.FirstPort), Mode=OneWay}" />
-                    </StackPanel>
-                </Button>
-                <Border Style="{StaticResource CommandBarDividerStyle}" />
-                <Button
-                    AutomationProperties.AutomationId="DetailDeleteButton"
-                    Click="OnRemove"
-                    IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}"
-                    Style="{StaticResource DangerToolbarButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                        <TextBlock Text="Delete" />
-                    </StackPanel>
-                </Button>
+            </common:PageHeader>
+
+            <!--  What used to be the status line, as pills: state, uptime, image, then the ID.  -->
+            <StackPanel
+                AutomationProperties.Name="Summary"
+                Orientation="Horizontal"
+                Spacing="8">
+                <common:PillView Kind="{x:Bind ViewModel.PillKind, Mode=OneWay}" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+                <TextBlock Style="{StaticResource TimeTextStyle}" Text="{x:Bind ViewModel.Elapsed, Mode=OneWay}" />
+                <Border Padding="9,3" Style="{StaticResource PillStyle}">
+                    <TextBlock
+                        FontFamily="Cascadia Mono,Consolas"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Text="{x:Bind ViewModel.Image, Mode=OneWay}" />
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <TextBlock
+                        FontSize="12"
+                        Style="{StaticResource IdentifierTextStyle}"
+                        Text="{x:Bind ViewModel.ShortId, Mode=OneWay}" />
+                    <Button
+                        Width="24"
+                        Height="24"
+                        AutomationProperties.Name="Copy ID"
+                        Click="OnCopyId"
+                        Style="{StaticResource RowActionButtonStyle}"
+                        ToolTipService.ToolTip="Copy ID">
+                        <FontIcon
+                            FontFamily="{StaticResource ContrIconsFontFamily}"
+                            FontSize="12"
+                            Glyph="{x:Bind icons:ContrIcons.Copy}" />
+                    </Button>
+                </StackPanel>
             </StackPanel>
-        </common:PageHeader>
+        </StackPanel>
 
         <Grid
-            Grid.Row="1"
-            Margin="0,12,0,0"
+            Grid.Row="2"
+            Margin="0,16,0,0"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
             <SelectorBar x:Name="Tabs" SelectionChanged="OnTabSelectionChanged">
@@ -148,7 +260,7 @@
                     AutomationProperties.AutomationId="LogsTab"
                     Text="Logs">
                     <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE8A5;" />
+                        <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Logs}" />
                     </SelectorBarItem.Icon>
                 </SelectorBarItem>
                 <SelectorBarItem
@@ -156,15 +268,16 @@
                     AutomationProperties.AutomationId="InspectTab"
                     Text="Inspect">
                     <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE943;" />
+                        <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Inspect}" />
                     </SelectorBarItem.Icon>
                 </SelectorBarItem>
                 <SelectorBarItem
                     x:Name="ExecTab"
                     AutomationProperties.AutomationId="ExecTab"
+                    IsEnabled="{x:Bind ViewModel.IsRunning, Mode=OneWay}"
                     Text="Exec">
                     <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE756;" />
+                        <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Terminal}" />
                     </SelectorBarItem.Icon>
                 </SelectorBarItem>
                 <SelectorBarItem
@@ -172,7 +285,7 @@
                     AutomationProperties.AutomationId="StatsTab"
                     Text="Stats">
                     <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE9D9;" />
+                        <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Stats}" />
                     </SelectorBarItem.Icon>
                 </SelectorBarItem>
             </SelectorBar>
@@ -182,7 +295,7 @@
                 Orientation="Horizontal"
                 Spacing="8"
                 Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Stats'), Mode=OneWay}">
-                <TextBlock VerticalAlignment="Center" Text="Show" />
+                <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Show" />
                 <ComboBox AutomationProperties.Name="Show" SelectedIndex="{x:Bind ViewModel.Stats.WindowIndex, Mode=TwoWay}">
                     <x:String>Last minute</x:String>
                     <x:String>Last 5 minutes</x:String>
@@ -191,8 +304,8 @@
             </StackPanel>
         </Grid>
 
-        <!--  Margins rather than row spacing, so a closed bar leaves no gap behind.  -->
-        <StackPanel Grid.Row="2">
+        <!--  The page's messages, under the breadcrumb and before the tabs; margins, so a closed bar leaves no gap.  -->
+        <StackPanel Grid.Row="1">
             <InfoBar
                 Title="This container no longer exists"
                 Margin="0,16,0,0"
@@ -209,6 +322,38 @@
                 Message="{x:Bind ViewModel.Error, Mode=OneWay}"
                 Severity="Error"
                 Visibility="{x:Bind ViewModel.HasError, Mode=OneWay}" />
+            <InfoBar
+                Title="Couldn't read the log"
+                Margin="0,16,0,0"
+                IsClosable="False"
+                IsOpen="{x:Bind views:ContainerDetailPage.Shows(ViewModel.Tab, 'Logs', ViewModel.Logs.HasError), Mode=OneWay}"
+                Message="{x:Bind ViewModel.Logs.Error, Mode=OneWay}"
+                Severity="Error"
+                Visibility="{x:Bind views:ContainerDetailPage.WhenShown(ViewModel.Tab, 'Logs', ViewModel.Logs.HasError), Mode=OneWay}" />
+            <InfoBar
+                Title="Couldn't read the details"
+                Margin="0,16,0,0"
+                IsClosable="False"
+                IsOpen="{x:Bind views:ContainerDetailPage.Shows(ViewModel.Tab, 'Inspect', ViewModel.Inspect.HasError), Mode=OneWay}"
+                Message="{x:Bind ViewModel.Inspect.Error, Mode=OneWay}"
+                Severity="Error"
+                Visibility="{x:Bind views:ContainerDetailPage.WhenShown(ViewModel.Tab, 'Inspect', ViewModel.Inspect.HasError), Mode=OneWay}" />
+            <InfoBar
+                Title="The shell stopped"
+                Margin="0,16,0,0"
+                IsClosable="False"
+                IsOpen="{x:Bind views:ContainerDetailPage.Shows(ViewModel.Tab, 'Exec', ViewModel.Terminal.HasError), Mode=OneWay}"
+                Message="{x:Bind ViewModel.Terminal.Error, Mode=OneWay}"
+                Severity="Error"
+                Visibility="{x:Bind views:ContainerDetailPage.WhenShown(ViewModel.Tab, 'Exec', ViewModel.Terminal.HasError), Mode=OneWay}" />
+            <InfoBar
+                Title="Couldn't read usage"
+                Margin="0,16,0,0"
+                IsClosable="False"
+                IsOpen="{x:Bind views:ContainerDetailPage.Shows(ViewModel.Tab, 'Stats', ViewModel.Stats.HasError), Mode=OneWay}"
+                Message="{x:Bind ViewModel.Stats.Error, Mode=OneWay}"
+                Severity="Error"
+                Visibility="{x:Bind views:ContainerDetailPage.WhenShown(ViewModel.Tab, 'Stats', ViewModel.Stats.HasError), Mode=OneWay}" />
         </StackPanel>
 
         <!--  Logs  -->
@@ -234,26 +379,37 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <AutoSuggestBox
-                        x:Name="LogSearch"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AutomationId="LogSearch"
-                        AutomationProperties.Name="Search the log"
-                        KeyDown="OnLogSearchKeyDown"
-                        PlaceholderText="Search the log"
-                        QueryIcon="Find"
-                        Text="{x:Bind ViewModel.Logs.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="{x:Bind ViewModel.Logs.MatchText, Mode=OneWay}" />
+                    <Grid VerticalAlignment="Center">
+                        <TextBox
+                            x:Name="LogSearch"
+                            Padding="34,5,64,6"
+                            AutomationProperties.AutomationId="LogSearch"
+                            AutomationProperties.Name="Search the log"
+                            KeyDown="OnLogSearchKeyDown"
+                            PlaceholderText="Search the log"
+                            Text="{x:Bind ViewModel.Logs.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <FontIcon
+                            Margin="11,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Glyph="{x:Bind icons:ContrIcons.Search}"
+                            IsHitTestVisible="False"
+                            Style="{StaticResource IconStyle}" />
+                        <TextBlock
+                            Margin="0,0,12,0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            IsHitTestVisible="False"
+                            Text="{x:Bind ViewModel.Logs.MatchText, Mode=OneWay}" />
+                    </Grid>
                     <StackPanel
                         Grid.Column="2"
                         Orientation="Horizontal"
                         Spacing="8">
-                        <TextBlock VerticalAlignment="Center" Text="Since" />
+                        <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Since" />
                         <ComboBox AutomationProperties.Name="Since" SelectedIndex="{x:Bind ViewModel.Logs.SinceIndex, Mode=TwoWay}">
                             <x:String>Last start</x:String>
                             <x:String>Last hour</x:String>
@@ -264,7 +420,7 @@
                         Grid.Column="3"
                         Orientation="Horizontal"
                         Spacing="8">
-                        <TextBlock VerticalAlignment="Center" Text="Timestamps" />
+                        <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Timestamps" />
                         <ToggleSwitch
                             MinWidth="0"
                             AutomationProperties.Name="Timestamps"
@@ -279,16 +435,14 @@
                         Style="{StaticResource ToolbarButtonStyle}" />
                 </Grid>
 
-                <InfoBar
-                    Title="Couldn't read the log"
-                    Grid.Row="1"
-                    Margin="12,0,12,10"
-                    IsClosable="False"
-                    IsOpen="{x:Bind ViewModel.Logs.HasError, Mode=OneWay}"
-                    Message="{x:Bind ViewModel.Logs.Error, Mode=OneWay}"
-                    Severity="Error"
-                    Visibility="{x:Bind ViewModel.Logs.HasError, Mode=OneWay}" />
-
+                <TextBlock
+                    Grid.Row="2"
+                    Margin="14,16"
+                    Canvas.ZIndex="1"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="No output yet. Lines appear here as the container writes them."
+                    Visibility="{x:Bind views:ContainerDetailPage.WhenQuiet(ViewModel.Logs.Lines.Count, ViewModel.Logs.HasError), Mode=OneWay}" />
                 <ListView
                     x:Name="LogList"
                     Grid.Row="2"
@@ -348,67 +502,25 @@
             ColumnSpacing="16"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Inspect'), Mode=OneWay}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="5*" />
-                <ColumnDefinition Width="7*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="400" />
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer>
-                <StackPanel Spacing="10">
-                    <InfoBar
-                        IsClosable="False"
-                        IsOpen="{x:Bind ViewModel.Inspect.HasError, Mode=OneWay}"
-                        Message="{x:Bind ViewModel.Inspect.Error, Mode=OneWay}"
-                        Severity="Error" />
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Configuration" />
-                            <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.Configuration, Mode=OneWay}" />
-                        </StackPanel>
-                    </Border>
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="State" />
-                            <Grid ColumnSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="130" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Status" />
-                                <common:StatusLabel
-                                    Grid.Column="1"
-                                    Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}"
-                                    Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
-                            </Grid>
-                            <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.State, Mode=OneWay}" />
-                        </StackPanel>
-                    </Border>
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Limits" />
-                            <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.Limits, Mode=OneWay}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
-
-            <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+            <Border VerticalAlignment="Top" Style="{StaticResource CardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Grid Padding="12,8" ColumnSpacing="8">
+                    <Grid Padding="12,8,8,8" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="200" />
+                            <ColumnDefinition Width="220" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Style="{StaticResource CardHeadingStyle}"
-                            Text="Raw JSON" />
+                        <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="RAW JSON" />
                         <TextBox
                             Grid.Column="1"
                             VerticalAlignment="Center"
@@ -466,7 +578,7 @@
                                             MaxWidth="360"
                                             FontFamily="{StaticResource LogFontFamily}"
                                             FontSize="13"
-                                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                            Foreground="{ThemeResource JsonStringBrush}"
                                             IsTextSelectionEnabled="True"
                                             Text="{x:Bind Value}"
                                             TextTrimming="CharacterEllipsis"
@@ -481,7 +593,7 @@
                                         <TextBlock
                                             FontFamily="{StaticResource LogFontFamily}"
                                             FontSize="13"
-                                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                            Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                                             Text="{x:Bind Value}"
                                             Visibility="{x:Bind views:ContainerDetailPage.WhenKind(Kind, 'Literal')}" />
                                         <TextBlock
@@ -504,6 +616,55 @@
                         TextWrapping="Wrap" />
                 </Grid>
             </Border>
+
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Spacing="16">
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="CONFIGURATION" />
+                            <ItemsRepeater
+                                ItemTemplate="{StaticResource FactTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Inspect.Configuration, Mode=OneWay}"
+                                Layout="{StaticResource FieldRowsLayout}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="STATE" />
+                            <StackPanel Spacing="10">
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource FieldLabelStyle}"
+                                        Text="Status" />
+                                    <common:PillView
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Left"
+                                        Kind="{x:Bind ViewModel.PillKind, Mode=OneWay}"
+                                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+                                </Grid>
+                                <ItemsRepeater
+                                    ItemTemplate="{StaticResource FactTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Inspect.State, Mode=OneWay}"
+                                    Layout="{StaticResource FieldRowsLayout}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="LIMITS" />
+                            <ItemsRepeater
+                                ItemTemplate="{StaticResource FactTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Inspect.Limits, Mode=OneWay}"
+                                Layout="{StaticResource FieldRowsLayout}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <!--  Exec  -->
@@ -514,7 +675,7 @@
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Exec'), Mode=OneWay}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="400" />
             </Grid.ColumnDefinitions>
 
             <Border Style="{StaticResource CardStyle}">
@@ -523,7 +684,16 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid Padding="12,8" ColumnSpacing="8">
+                    <Grid
+                        Padding="12,8,8,8"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        ColumnSpacing="8"
+                        RowSpacing="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
@@ -532,7 +702,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" Text="Shell" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource ColumnHeadStyle}"
+                            Text="Shell" />
                         <ComboBox
                             Grid.Column="1"
                             AutomationProperties.Name="Shell"
@@ -543,35 +716,30 @@
                         </ComboBox>
                         <TextBlock
                             Grid.Column="2"
-                            Margin="8,0,0,0"
+                            Margin="4,0,0,0"
                             VerticalAlignment="Center"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="User" />
                         <ComboBox
                             Grid.Column="3"
                             AutomationProperties.Name="User"
                             SelectedIndex="{x:Bind ViewModel.Terminal.UserIndex, Mode=TwoWay}">
-                            <x:String>Container's user</x:String>
+                            <x:String>Image default</x:String>
                             <x:String>root</x:String>
                         </ComboBox>
                         <StackPanel
                             Grid.Column="4"
-                            Margin="8,0,0,0"
-                            VerticalAlignment="Center"
+                            Margin="4,0,0,0"
                             Orientation="Horizontal"
-                            Spacing="6">
-                            <Ellipse
-                                Width="8"
-                                Height="8"
-                                VerticalAlignment="Center"
-                                Fill="{ThemeResource SystemFillColorSuccessBrush}"
-                                Visibility="{x:Bind ViewModel.Terminal.IsConnected, Mode=OneWay}" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                Style="{StaticResource SecondaryCellTextStyle}"
-                                Text="{x:Bind ViewModel.Terminal.StatusText, Mode=OneWay}" />
+                            Spacing="8">
+                            <common:PillView Kind="{x:Bind views:ContainerDetailPage.TerminalPill(ViewModel.Terminal.IsConnected), Mode=OneWay}" Text="{x:Bind ViewModel.Terminal.StatusText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource TimeTextStyle}" Text="{x:Bind ViewModel.Terminal.SizeText, Mode=OneWay}" />
                         </StackPanel>
                         <StackPanel
-                            Grid.Column="5"
+                            x:Name="TerminalActions"
+                            Grid.Row="1"
+                            Grid.ColumnSpan="6"
+                            Margin="-4,0,0,0"
                             Orientation="Horizontal"
                             Spacing="4">
                             <Button
@@ -579,11 +747,13 @@
                                 Content="Clear"
                                 Style="{StaticResource ToolbarButtonStyle}" />
                             <Button
+                                Width="32"
+                                Padding="0"
                                 AutomationProperties.Name="Copy selection"
                                 Click="OnCopyTerminal"
                                 Style="{StaticResource ToolbarButtonStyle}"
                                 ToolTipService.ToolTip="Copy selection">
-                                <FontIcon FontSize="14" Glyph="&#xE8C8;" />
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource IconStyle}" />
                             </Button>
                             <Button
                                 AutomationProperties.AutomationId="TerminalConnectButton"
@@ -610,126 +780,146 @@
             </Border>
 
             <ScrollViewer Grid.Column="1">
-                <StackPanel Spacing="10">
-                    <Border Padding="16,12" Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="2">
-                                <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="CPU" />
-                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind views:ContainerDetailPage.OrDash(ViewModel.Stats.CpuText), Mode=OneWay}" />
-                                <ProgressBar Maximum="100" Value="{x:Bind views:ContainerDetailPage.Latest(ViewModel.Stats.Cpu), Mode=OneWay}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Spacing="2">
-                                <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="Memory" />
-                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind views:ContainerDetailPage.OrDash(ViewModel.Stats.MemoryText), Mode=OneWay}" />
-                                <ProgressBar Maximum="100" Value="{x:Bind ViewModel.Stats.MemoryShare, Mode=OneWay}" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <Border Style="{StaticResource CaptionedCardStyle}">
                         <StackPanel Spacing="12">
-                            <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Ports" />
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.Ports, Mode=OneWay}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:PortLink">
-                                            <Grid>
-                                                <HyperlinkButton
-                                                    Padding="0"
-                                                    Content="{x:Bind Address}"
-                                                    NavigateUri="{x:Bind Uri}"
-                                                    Visibility="{x:Bind IsLink}" />
-                                                <TextBlock Text="{x:Bind Address}" Visibility="{x:Bind IsText}" />
-                                                <TextBlock
-                                                    HorizontalAlignment="Right"
-                                                    VerticalAlignment="Center"
-                                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                                    Text="{x:Bind Target}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <TextBlock
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="No published ports."
-                                    Visibility="{x:Bind views:ContainerDetailPage.WhenNone(ViewModel.Ports), Mode=OneWay}" />
-                            </StackPanel>
-                            <MenuFlyoutSeparator />
-                            <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Mounts" />
-                                <TextBlock
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="No mounts."
-                                    Visibility="{x:Bind views:ContainerDetailPage.WhenNoFacts(ViewModel.Inspect.Mounts), Mode=OneWay}" />
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.Inspect.Mounts, Mode=OneWay}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:InspectFact">
-                                            <StackPanel Margin="0,0,0,6">
-                                                <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind Label}" />
-                                                <TextBlock
-                                                    FontFamily="{StaticResource LogFontFamily}"
-                                                    FontSize="12"
-                                                    IsTextSelectionEnabled="True"
-                                                    Text="{x:Bind Value}"
-                                                    TextWrapping="Wrap" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <MenuFlyoutSeparator />
-                            <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Network" />
-                                <TextBlock
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="Not attached to a network."
-                                    Visibility="{x:Bind views:ContainerDetailPage.WhenNoFacts(ViewModel.Inspect.Networks), Mode=OneWay}" />
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.Inspect.Networks, Mode=OneWay}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:InspectFact">
-                                            <Grid>
-                                                <TextBlock Text="{x:Bind Label}" />
-                                                <TextBlock
-                                                    HorizontalAlignment="Right"
-                                                    Style="{StaticResource MonoCellTextStyle}"
-                                                    Text="{x:Bind Value}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <MenuFlyoutSeparator />
-                            <Grid ColumnSpacing="8">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="USAGE" />
+                            <Grid ColumnSpacing="16">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Environment" />
-                                    <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind ViewModel.Inspect.EnvironmentSummary, Mode=OneWay}" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CPU" />
+                                    <TextBlock
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        LineHeight="28"
+                                        Text="{x:Bind views:ContainerDetailPage.OrDash(ViewModel.Stats.CpuText), Mode=OneWay}" />
+                                    <ProgressBar
+                                        Margin="0,6,0,0"
+                                        Maximum="100"
+                                        Value="{x:Bind views:ContainerDetailPage.Latest(ViewModel.Stats.Cpu), Mode=OneWay}" />
                                 </StackPanel>
-                                <ToggleButton
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Content="Show"
-                                    IsChecked="{x:Bind ViewModel.Inspect.IsEnvironmentShown, Mode=TwoWay}" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Memory" />
+                                    <TextBlock
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        LineHeight="28"
+                                        Text="{x:Bind views:ContainerDetailPage.OrDash(ViewModel.Stats.MemoryText), Mode=OneWay}" />
+                                    <ProgressBar
+                                        Margin="0,6,0,0"
+                                        Maximum="100"
+                                        Value="{x:Bind ViewModel.Stats.MemoryShare, Mode=OneWay}" />
+                                </StackPanel>
                             </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="NETWORK" />
+                            <StackPanel Spacing="10">
+                                <ItemsRepeater ItemsSource="{x:Bind ViewModel.Ports, Mode=OneWay}" Layout="{StaticResource FieldRowsLayout}">
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PortLink">
+                                            <Grid ColumnSpacing="16">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Port" />
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    Style="{StaticResource IdentifierTextStyle}"
+                                                    TextWrapping="Wrap"
+                                                    Visibility="{x:Bind IsLink}">
+                                                    <Hyperlink NavigateUri="{x:Bind Uri}" UnderlineStyle="None">
+                                                        <Run Text="{x:Bind Address}" />
+                                                    </Hyperlink>
+                                                    <Run Text="{x:Bind Target}" />
+                                                </TextBlock>
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    Style="{StaticResource IdentifierTextStyle}"
+                                                    TextWrapping="Wrap"
+                                                    Visibility="{x:Bind IsText}">
+                                                    <Run Text="{x:Bind Address}" />
+                                                    <Run Text="{x:Bind Target}" />
+                                                </TextBlock>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                                <Grid ColumnSpacing="16" Visibility="{x:Bind views:ContainerDetailPage.WhenNone(ViewModel.Ports), Mode=OneWay}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Port" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="None published" />
+                                </Grid>
+                                <ItemsRepeater
+                                    ItemTemplate="{StaticResource NarrowFactTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Inspect.Networks, Mode=OneWay}"
+                                    Layout="{StaticResource FieldRowsLayout}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="MOUNTS" />
                             <TextBlock
-                                FontFamily="{StaticResource LogFontFamily}"
-                                FontSize="12"
-                                IsTextSelectionEnabled="True"
-                                Text="{x:Bind ViewModel.Inspect.EnvironmentText, Mode=OneWay}"
-                                TextWrapping="Wrap" />
-                            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.Inspect.HasCompose, Mode=OneWay}">
-                                <MenuFlyoutSeparator />
-                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Compose" />
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="No mounts."
+                                Visibility="{x:Bind views:ContainerDetailPage.WhenNoFacts(ViewModel.Inspect.Mounts), Mode=OneWay}" />
+                            <ItemsRepeater
+                                ItemTemplate="{StaticResource NarrowFactTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Inspect.Mounts, Mode=OneWay}"
+                                Layout="{StaticResource FieldRowsLayout}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="CONFIGURATION" />
+                            <StackPanel Spacing="10">
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource FieldLabelStyle}"
+                                        Text="Environment" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Text="{x:Bind ViewModel.Inspect.EnvironmentSummary, Mode=OneWay}" />
+                                    <ToggleButton
+                                        Grid.Column="2"
+                                        AutomationProperties.Name="Show the variables"
+                                        Content="{x:Bind views:ContainerDetailPage.ShowText(ViewModel.Inspect.IsEnvironmentShown), Mode=OneWay}"
+                                        IsChecked="{x:Bind ViewModel.Inspect.IsEnvironmentShown, Mode=TwoWay}" />
+                                </Grid>
                                 <TextBlock
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="{x:Bind ViewModel.Inspect.Compose, Mode=OneWay}"
-                                    TextWrapping="Wrap" />
+                                    IsTextSelectionEnabled="True"
+                                    Style="{StaticResource IdentifierTextStyle}"
+                                    Text="{x:Bind ViewModel.Inspect.EnvironmentText, Mode=OneWay}"
+                                    TextWrapping="Wrap"
+                                    Visibility="{x:Bind ViewModel.Inspect.HasEnvironmentText, Mode=OneWay}" />
+                                <ItemsRepeater
+                                    ItemTemplate="{StaticResource NarrowFactTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Inspect.Setup, Mode=OneWay}"
+                                    Layout="{StaticResource FieldRowsLayout}" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -743,13 +933,13 @@
             Margin="0,16,0,0"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Stats'), Mode=OneWay}">
             <common:EmptyState
-                Title="{x:Bind views:ContainerDetailPage.StatsWaitTitle(ViewModel.CanStop, ViewModel.Stats.Error), Mode=OneWay}"
+                Title="{x:Bind views:ContainerDetailPage.StatsWaitTitle(ViewModel.CanStop, ViewModel.Stats.HasError), Mode=OneWay}"
                 Margin="0,0,0,48"
-                Glyph="&#xE9D9;"
-                Message="{x:Bind views:ContainerDetailPage.StatsWaitText(ViewModel.CanStop, ViewModel.Stats.Error), Mode=OneWay}"
+                Glyph="{x:Bind icons:ContrIcons.Stats}"
+                Message="{x:Bind views:ContainerDetailPage.StatsWaitText(ViewModel.CanStop), Mode=OneWay}"
                 Visibility="{x:Bind ViewModel.Stats.HasNoSamples, Mode=OneWay}" />
             <ScrollViewer Visibility="{x:Bind ViewModel.Stats.HasSamples, Mode=OneWay}">
-                <Grid ColumnSpacing="12" RowSpacing="12">
+                <Grid ColumnSpacing="16" RowSpacing="16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -759,17 +949,19 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource CaptionedCardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="CPU" />
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="CPU" />
                             <TextBlock
                                 HorizontalAlignment="Right"
-                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                LineHeight="28"
                                 Text="{x:Bind ViewModel.Stats.CpuText, Mode=OneWay}" />
                             <TextBlock
                                 Grid.Row="1"
@@ -784,18 +976,19 @@
 
                     <Border
                         Grid.Column="1"
-                        Padding="16"
-                        Style="{StaticResource CardStyle}">
+                        Style="{StaticResource CaptionedCardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Memory" />
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="MEMORY" />
                             <TextBlock
                                 HorizontalAlignment="Right"
-                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                LineHeight="28"
                                 Text="{x:Bind ViewModel.Stats.MemoryText, Mode=OneWay}" />
                             <TextBlock
                                 Grid.Row="1"
@@ -811,17 +1004,17 @@
 
                     <Border
                         Grid.Row="1"
-                        Padding="16"
-                        Style="{StaticResource CardStyle}">
+                        Style="{StaticResource CaptionedCardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Network" />
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="NETWORK" />
                             <TextBlock
                                 HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
                                 Style="{StaticResource SecondaryCellTextStyle}"
                                 Text="{x:Bind ViewModel.Stats.NetworkText, Mode=OneWay}" />
                             <StackPanel
@@ -850,17 +1043,17 @@
                     <Border
                         Grid.Row="1"
                         Grid.Column="1"
-                        Padding="16"
-                        Style="{StaticResource CardStyle}">
+                        Style="{StaticResource CaptionedCardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Disk" />
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="DISK" />
                             <TextBlock
                                 HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
                                 Style="{StaticResource SecondaryCellTextStyle}"
                                 Text="{x:Bind ViewModel.Stats.DiskText, Mode=OneWay}" />
                             <TextBlock

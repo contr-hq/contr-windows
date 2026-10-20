@@ -22,6 +22,7 @@ public sealed class DialogService : IDialogService
     {
         var dialog = Create(title, new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         dialog.PrimaryButtonText = primaryText;
+        dialog.PrimaryButtonStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DestructiveButtonStyle"];
         dialog.CloseButtonText = closeText;
         dialog.DefaultButton = ContentDialogButton.Close;
 

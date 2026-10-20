@@ -36,10 +36,10 @@ public sealed class ImagesViewModelTests
         GivenPull(Result.Failure<IAsyncEnumerable<PullEvent>>(refused));
         var viewModel = CreateViewModel();
 
-        await viewModel.PullAsync("A");
+        var error = await viewModel.StartPullAsync("A");
 
+        Assert.Equal("'A' is not valid.", error);
         Assert.False(viewModel.IsPulling);
-        _notifications.Received(1).Show("'A' is not valid.", InfoBarSeverity.Error, "Cannot pull");
     }
 
     [Fact]
@@ -59,7 +59,8 @@ public sealed class ImagesViewModelTests
             new PullEvent.Layer("a", "Pull complete", 100, 100),
             new PullEvent.Pulled("nginx:1.29", "sha256:5e1a"))));
 
-        await viewModel.PullAsync("nginx:1.29");
+        Assert.Null(await viewModel.StartPullAsync("nginx:1.29"));
+        await viewModel.Pulling;
 
         Assert.Equal(
             [
@@ -82,7 +83,9 @@ public sealed class ImagesViewModelTests
         GivenPull(Result.Success(TestStreams.Of<PullEvent>(
             new PullEvent.Failed(new Error("Daemon.Failed", "manifest unknown")))));
 
-        await CreateViewModel().PullAsync("nginx:nope");
+        var viewModel = CreateViewModel();
+        await viewModel.StartPullAsync("nginx:nope");
+        await viewModel.Pulling;
 
         _notifications.Received(1).Show("manifest unknown", InfoBarSeverity.Error, "Pull failed");
     }

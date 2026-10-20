@@ -79,7 +79,7 @@ public sealed class ContainersViewModelTests
         Assert.Equal(["docs", "shop", ContainerGroup.StandaloneKey], viewModel.Groups.Select(group => group.Key));
         Assert.Equal(["shop-db", "shop-web"], viewModel.Groups[1].Rows.Select(row => row.Name));
         Assert.Equal("2 containers · 2 running", viewModel.Groups[1].Summary);
-        Assert.Equal(["4", "0", "0", "2"], viewModel.StatCards.Select(card => card.Value));
+        Assert.Equal(["4 running", "2 compose projects"], viewModel.SummaryPills.Select(pill => pill.Text));
     }
 
     [Fact]

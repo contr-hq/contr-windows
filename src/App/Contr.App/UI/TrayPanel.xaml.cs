@@ -1,4 +1,5 @@
 using System;
+using Contr.UI.Common.Controls;
 using Contr.UI.Contracts.Services.Containers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -26,6 +27,11 @@ public sealed partial class TrayPanel : UserControl
     public static string ProjectText(string project)
     {
         return project.Length > 0 ? $"· {project}" : string.Empty;
+    }
+
+    public static PillKind Pill(StatusKind kind)
+    {
+        return PillView.For(kind);
     }
 
     public static Visibility WhenLink(Uri? link)

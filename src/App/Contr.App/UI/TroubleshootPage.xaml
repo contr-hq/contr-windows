@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -28,24 +29,24 @@
 
             <DataTemplate x:Key="CheckTemplate" x:DataType="local:CheckRow">
                 <Grid
-                    MinHeight="40"
-                    Padding="16,6"
+                    MinHeight="44"
+                    Padding="0,6"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,0"
                     ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="92" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <common:StatusLabel
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        Kind="{x:Bind Kind}"
+                    <common:PillView
+                        HorizontalAlignment="Left"
+                        Kind="{x:Bind PillKind}"
                         Text="{x:Bind Outcome}" />
                     <TextBlock
                         Grid.Column="1"
                         VerticalAlignment="Center"
+                        FontWeight="{x:Bind local:TroubleshootPage.Weight(IsFailed)}"
                         Text="{x:Bind Name}" />
                     <TextBlock
                         Grid.Column="2"
@@ -59,179 +60,179 @@
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,16" RowSpacing="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <common:PageHeader Title="Troubleshoot" />
-
-        <InfoBar
-            Grid.Row="1"
-            Title="{x:Bind ViewModel.ProblemTitle, Mode=OneWay}"
-            AutomationProperties.AutomationId="EngineProblem"
-            IsClosable="False"
-            IsOpen="{x:Bind ViewModel.HasProblem, Mode=OneWay}"
-            Message="{x:Bind ViewModel.ProblemMessage, Mode=OneWay}"
-            Severity="Error">
-            <InfoBar.Content>
-                <TextBlock
-                    Margin="0,0,0,12"
-                    FontFamily="Cascadia Mono,Consolas"
-                    FontSize="12"
-                    IsTextSelectionEnabled="True"
-                    Text="{x:Bind ViewModel.ProblemCode, Mode=OneWay}"
-                    Visibility="{x:Bind ViewModel.HasProblemCode, Mode=OneWay}" />
-            </InfoBar.Content>
-        </InfoBar>
-
-        <Grid Grid.Row="2" ColumnSpacing="16">
+    <ScrollViewer>
+        <Grid Padding="24">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="300" />
+                <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
             </Grid.ColumnDefinitions>
 
-            <Border VerticalAlignment="Top" Style="{StaticResource CardStyle}">
-                <StackPanel>
-                    <Grid Padding="16,10,12,10" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal"
-                            Spacing="6">
-                            <TextBlock FontWeight="SemiBold" Text="System checks" />
-                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind local:TroubleshootPage.Summary(ViewModel.ChecksSummary), Mode=OneWay}" />
-                        </StackPanel>
-                        <Button
-                            Grid.Column="1"
-                            AutomationProperties.AutomationId="RunChecksButton"
-                            Click="OnRunAgain">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                                <TextBlock Text="Run again" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-                    <ItemsRepeater
-                        AutomationProperties.AutomationId="SystemChecks"
-                        ItemTemplate="{StaticResource CheckTemplate}"
-                        ItemsSource="{x:Bind ViewModel.Checks}" />
-                </StackPanel>
-            </Border>
+            <StackPanel>
+                <common:PageHeader Title="Troubleshoot" />
 
-            <ScrollViewer Grid.Column="1">
-                <StackPanel Spacing="10">
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="8">
-                            <TextBlock FontWeight="SemiBold" Text="Diagnostics bundle" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="A zip of logs and check results to send to whoever helps you."
-                                TextWrapping="Wrap" />
-                            <Button Content="Create bundle" IsEnabled="False" />
-                        </StackPanel>
-                    </Border>
+                <InfoBar
+                    Title="{x:Bind ViewModel.ProblemTitle, Mode=OneWay}"
+                    Margin="0,16,0,0"
+                    AutomationProperties.AutomationId="EngineProblem"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.HasProblem, Mode=OneWay}"
+                    Message="{x:Bind ViewModel.ProblemMessage, Mode=OneWay}"
+                    Severity="Error"
+                    Visibility="{x:Bind ViewModel.HasProblem, Mode=OneWay}">
+                    <InfoBar.Content>
+                        <TextBlock
+                            Margin="0,0,0,12"
+                            FontFamily="Cascadia Mono,Consolas"
+                            FontSize="12"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind ViewModel.ProblemCode, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.HasProblemCode, Mode=OneWay}" />
+                    </InfoBar.Content>
+                </InfoBar>
 
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="8">
-                            <Grid>
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontWeight="SemiBold"
-                                    Text="Component logs" />
-                                <ComboBox
-                                    HorizontalAlignment="Right"
-                                    AutomationProperties.Name="Component"
-                                    SelectedIndex="0">
-                                    <ComboBoxItem Content="Client" />
-                                    <ComboBoxItem Content="Daemon" IsEnabled="False" />
-                                </ComboBox>
-                            </Grid>
-                            <ScrollViewer
-                                x:Name="LogScroller"
-                                MaxHeight="220"
-                                Padding="10,8"
-                                AutomationProperties.AutomationId="ComponentLog"
-                                Background="{ThemeResource TroubleshootLogBackgroundBrush}"
-                                CornerRadius="4">
-                                <Grid>
-                                    <TextBlock
-                                        FontSize="12"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Text="The client hasn't written to its log yet."
-                                        TextWrapping="Wrap"
-                                        Visibility="{x:Bind local:TroubleshootPage.Not(ViewModel.HasLog), Mode=OneWay}" />
-                                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.LogLines}">
-                                        <ItemsRepeater.ItemTemplate>
-                                            <DataTemplate x:DataType="local:ComponentLogLine">
-                                                <!--  One wrapping block, so a long line continues under its time.  -->
-                                                <TextBlock
-                                                    IsTextSelectionEnabled="True"
-                                                    Opacity="{x:Bind local:TroubleshootPage.LineOpacity(Level)}"
-                                                    Style="{StaticResource ComponentLogTextStyle}"
-                                                    TextWrapping="Wrap">
-                                                    <Run Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="{x:Bind Stamp}" /><Run Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind OtherLevel}" /><Run Foreground="{ThemeResource SystemFillColorCautionBrush}" Text="{x:Bind WarningLevel}" /><Run Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{x:Bind ErrorLevel}" /><Run Text="{x:Bind Text}" />
-                                                </TextBlock>
-                                            </DataTemplate>
-                                        </ItemsRepeater.ItemTemplate>
-                                    </ItemsRepeater>
-                                </Grid>
-                            </ScrollViewer>
-                        </StackPanel>
-                    </Border>
+                <Grid Margin="0,16,0,0" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="400" />
+                    </Grid.ColumnDefinitions>
 
-                    <Border Padding="16" Style="{StaticResource CardStyle}">
+                    <Border VerticalAlignment="Top" Style="{StaticResource CaptionedCardStyle}">
                         <StackPanel Spacing="12">
-                            <TextBlock FontWeight="SemiBold" Text="Reset" />
-                            <Grid ColumnSpacing="8">
+                            <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Reset Kubernetes" />
-                                    <TextBlock
-                                        FontSize="12"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Text="Recreates the cluster. Images stay."
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="SYSTEM CHECKS" />
+                                <common:PillRow Grid.Column="1" Pills="{x:Bind ViewModel.CheckPills, Mode=OneWay}" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Style="{StaticResource TimeTextStyle}"
+                                    Text="{x:Bind ViewModel.ChecksSummary, Mode=OneWay}" />
                                 <Button
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Content="Reset"
-                                    IsEnabled="False" />
+                                    Grid.Column="3"
+                                    AutomationProperties.AutomationId="RunChecksButton"
+                                    Click="OnRunAgain">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource IconStyle}" />
+                                        <TextBlock Text="Run again" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
-                            <Grid ColumnSpacing="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Factory reset" />
-                                    <TextBlock
-                                        FontSize="12"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Text="Deletes all containers, images, volumes and settings."
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
-                                <Button
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Content="Factory reset…"
-                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                    IsEnabled="False" />
-                            </Grid>
+                            <ItemsRepeater
+                                AutomationProperties.AutomationId="SystemChecks"
+                                ItemTemplate="{StaticResource CheckTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Checks}" />
                         </StackPanel>
                     </Border>
-                </StackPanel>
-            </ScrollViewer>
+
+                    <StackPanel Grid.Column="1" Spacing="16">
+                        <Border Style="{StaticResource CaptionedCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="DIAGNOSTICS BUNDLE" />
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="A zip of logs and check results to send to whoever helps you."
+                                    TextWrapping="Wrap" />
+                                <Button Content="Create bundle" IsEnabled="False" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CaptionedCardStyle}">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="COMPONENT LOGS" />
+                                    <ComboBox
+                                        HorizontalAlignment="Right"
+                                        AutomationProperties.Name="Component"
+                                        SelectedIndex="0">
+                                        <ComboBoxItem Content="Client" />
+                                        <ComboBoxItem Content="Daemon" IsEnabled="False" />
+                                    </ComboBox>
+                                </Grid>
+                                <ScrollViewer
+                                    x:Name="LogScroller"
+                                    MaxHeight="220"
+                                    Padding="10,8"
+                                    AutomationProperties.AutomationId="ComponentLog"
+                                    Background="{ThemeResource TroubleshootLogBackgroundBrush}"
+                                    CornerRadius="4">
+                                    <Grid>
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="The client hasn't written to its log yet."
+                                            TextWrapping="Wrap"
+                                            Visibility="{x:Bind local:TroubleshootPage.Not(ViewModel.HasLog), Mode=OneWay}" />
+                                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.LogLines}">
+                                            <ItemsRepeater.ItemTemplate>
+                                                <DataTemplate x:DataType="local:ComponentLogLine">
+                                                    <!--  One wrapping block, so a long line continues under its time.  -->
+                                                    <TextBlock
+                                                        IsTextSelectionEnabled="True"
+                                                        Opacity="{x:Bind local:TroubleshootPage.LineOpacity(Level)}"
+                                                        Style="{StaticResource ComponentLogTextStyle}"
+                                                        TextWrapping="Wrap">
+                                                        <Run Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="{x:Bind Stamp}" /><Run Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind OtherLevel}" /><Run Foreground="{ThemeResource SystemFillColorCautionBrush}" Text="{x:Bind WarningLevel}" /><Run Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{x:Bind ErrorLevel}" /><Run Text="{x:Bind Text}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ItemsRepeater.ItemTemplate>
+                                        </ItemsRepeater>
+                                    </Grid>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CaptionedCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="RESET" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Reset Kubernetes" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="Recreates the cluster. Images stay."
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Content="Reset"
+                                        IsEnabled="False" />
+                                </Grid>
+                                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Factory reset" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="Deletes all containers, images, volumes and settings."
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Content="Factory reset…"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        IsEnabled="False" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </Page>

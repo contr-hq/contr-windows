@@ -18,7 +18,7 @@ public interface ISearchSource
 /// <summary>One suggestion under the title bar's search box, and where choosing it goes.</summary>
 /// <param name="Title">The item's name.</param>
 /// <param name="Detail">What it is, such as <c>Container · nginx:1.29</c>.</param>
-/// <param name="Glyph">A Segoe Fluent Icons glyph for the kind of item.</param>
+/// <param name="Glyph">A Contr Icons glyph for the kind of item, such as <c>ContrIcons.Containers</c>.</param>
 /// <param name="PageKey">The page that shows the item.</param>
 /// <param name="Arguments">The arguments that page needs to show this item.</param>
 public sealed record SearchHit(

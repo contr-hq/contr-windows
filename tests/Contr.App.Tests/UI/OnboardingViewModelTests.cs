@@ -13,7 +13,9 @@ public sealed class OnboardingViewModelTests
         var checks = OnboardingViewModel.CheckThisPc(26100, virtualization: true, 112_000_000_000, "C:");
 
         Assert.All(checks, check => Assert.Equal(StatusKind.Good, check.Kind));
-        Assert.Equal("112 GB free on C:", checks.Single(check => check.Name == "Free disk space").Detail);
+        var disk = checks.Single(check => check.Name == "Free disk space");
+        Assert.Equal("112 GB free on C:", disk.Detail);
+        Assert.Equal("At least 10 GB for images", disk.Requirement);
     }
 
     [Fact]
