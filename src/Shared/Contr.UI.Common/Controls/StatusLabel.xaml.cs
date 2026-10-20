@@ -49,7 +49,7 @@ public sealed partial class StatusLabel : UserControl
         set => SetValue(DetailProperty, value);
     }
 
-    /// <summary>Shows the icon named <paramref name="shown"/>; x:Bind function arguments cannot name enum members.</summary>
+    /// <summary>Shows the icon named <paramref name="shown"/>; x:Bind arguments cannot name enum members.</summary>
     public static Visibility When(StatusKind kind, string shown)
     {
         return kind.ToString() == shown ? Visibility.Visible : Visibility.Collapsed;

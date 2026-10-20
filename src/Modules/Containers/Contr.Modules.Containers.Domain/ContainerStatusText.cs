@@ -61,8 +61,9 @@ public static partial class ContainerStatusText
     private static string Shorten(string duration)
     {
         var parts = duration.Split(' ');
+        var culture = CultureInfo.InvariantCulture;
 
-        if (parts.Length != 2 || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var count))
+        if (parts.Length != 2 || !int.TryParse(parts[0], NumberStyles.None, culture, out var count))
         {
             return string.Empty;
         }

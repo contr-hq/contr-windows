@@ -19,7 +19,7 @@ public interface IModule
     /// <summary>The navigation entries this module contributes to the shell.</summary>
     IReadOnlyList<NavigationItem> GetNavigationItems();
 
-    /// <summary>Pages reached from the module's own pages rather than the navigation pane, such as a detail page.</summary>
+    /// <summary>Pages reached from the module's pages rather than the navigation pane, such as a detail page.</summary>
     IReadOnlyList<Type> GetPages()
     {
         return [];
