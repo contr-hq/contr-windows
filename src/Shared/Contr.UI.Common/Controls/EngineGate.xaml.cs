@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.UI.Common.Controls;
 
-/// <summary>What an engine-backed page shows while the engine is not running: its state and a way to start it.</summary>
+/// <summary>What a page over engine objects shows while the engine is not running, with a way to start it.</summary>
 public sealed partial class EngineGate : UserControl
 {
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(

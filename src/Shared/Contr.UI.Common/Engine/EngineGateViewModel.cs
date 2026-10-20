@@ -23,7 +23,7 @@ public enum EngineGateState
     Disconnected,
 }
 
-/// <summary>Follows the engine state for a page that lists engine objects and offers to start a stopped engine.</summary>
+/// <summary>Follows the engine state for a page over engine objects and offers to start a stopped engine.</summary>
 public sealed partial class EngineGateViewModel : ObservableObject
 {
     private readonly IDaemonConnection _daemon;

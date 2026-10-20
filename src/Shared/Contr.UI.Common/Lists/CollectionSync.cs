@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 
 namespace Contr.UI.Common.Lists;
 
-/// <summary>Brings a bound collection to new content with moves and in-place replacements, so views keep items.</summary>
+/// <summary>Brings a bound collection to new content by moves and in-place replacements; views keep items.</summary>
 public static class CollectionSync
 {
     /// <summary>
