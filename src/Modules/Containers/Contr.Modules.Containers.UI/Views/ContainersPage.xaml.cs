@@ -2,6 +2,7 @@ using System;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Containers;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,16 +20,22 @@ public sealed partial class ContainersPage : Page, IHasViewModel
 
     private readonly INavigationService _navigation;
     private readonly IClipboardService _clipboard;
+    private readonly IContainerRunner _runner;
 
     public ContainersPage(
-        ContainersViewModel viewModel, INavigationService navigation, IClipboardService clipboard)
+        ContainersViewModel viewModel,
+        INavigationService navigation,
+        IClipboardService clipboard,
+        IContainerRunner runner)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(runner);
         ViewModel = viewModel;
         _navigation = navigation;
         _clipboard = clipboard;
+        _runner = runner;
 
         InitializeComponent();
 
@@ -171,6 +178,11 @@ public sealed partial class ContainersPage : Page, IHasViewModel
         {
             await ViewModel.RemoveAsync(row);
         }
+    }
+
+    private async void OnRunContainer(object sender, RoutedEventArgs e)
+    {
+        await _runner.RunAsync(string.Empty);
     }
 
     private async void OnPause(object sender, RoutedEventArgs e)

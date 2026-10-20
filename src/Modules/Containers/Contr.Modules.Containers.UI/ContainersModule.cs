@@ -32,6 +32,8 @@ public sealed class ContainersModule : IModule
         services.AddContainersApplication();
         services.TryAddSingleton<IContainersGateway, ContainersGateway>();
         services.TryAddSingleton<IRunningContainers, RunningContainers>();
+        services.TryAddSingleton<IContainerRunner, ContainerRunner>();
+        services.AddTransient<RunContainerViewModel>();
         services.AddSingleton<ISearchSource, ContainerSearch>();
         services.AddTransient<ContainersViewModel>();
         services.AddTransient<ContainersPage>();

@@ -1,6 +1,7 @@
 using System;
 using Contr.Modules.Images.UI.ViewModels;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Containers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -9,10 +10,14 @@ namespace Contr.Modules.Images.UI.Views;
 /// <summary>The local images, with pulling, removal and pruning.</summary>
 public sealed partial class ImagesPage : Page, IHasViewModel
 {
-    public ImagesPage(ImagesViewModel viewModel)
+    private readonly IContainerRunner _runner;
+
+    public ImagesPage(ImagesViewModel viewModel, IContainerRunner runner)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(runner);
         ViewModel = viewModel;
+        _runner = runner;
 
         InitializeComponent();
 
@@ -84,6 +89,14 @@ public sealed partial class ImagesPage : Page, IHasViewModel
         };
 
         await dialog.ShowAsync();
+    }
+
+    private async void OnRun(object sender, RoutedEventArgs e)
+    {
+        if (RowOf(sender) is { } row)
+        {
+            await _runner.RunAsync(row.DisplayName);
+        }
     }
 
     private void OnCancelPull(object sender, RoutedEventArgs e)
