@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Containers.Application.Containers;
+using Contr.Modules.Containers.Application.Containers.Commands.PruneContainers;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
@@ -138,7 +139,7 @@ public sealed class ContainersViewModelTests
     }
 
     [Fact]
-    public async Task PruneStopped_DeletesEveryStoppedContainerOnceConfirmed()
+    public async Task PruneStopped_AsksTheEngineOnceConfirmed()
     {
         Stream(Snapshot(
             Dto("web"),
@@ -146,17 +147,15 @@ public sealed class ContainersViewModelTests
             Dto("new", state: ContainerState.Created, status: "Created")));
         _dialogs.ShowConfirmAsync(default!, default!, default!, default!).ReturnsForAnyArgs(true);
         _sender
-            .Send(Arg.Any<RemoveContainerCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success());
+            .Send(Arg.Any<PruneContainersCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new ContainersPruned(2, 2_000_000)));
         var viewModel = CreateViewModel();
         viewModel.Activate();
 
         await viewModel.PruneStoppedAsync();
 
-        await _sender.Received(2).Send(Arg.Any<RemoveContainerCommand>(), Arg.Any<CancellationToken>());
-        await _sender.DidNotReceive().Send(
-            Arg.Is<RemoveContainerCommand>(command => command != null && command.Id.Value == "web-id"),
-            Arg.Any<CancellationToken>());
+        await _sender.Received(1).Send(Arg.Any<PruneContainersCommand>(), Arg.Any<CancellationToken>());
+        _notifications.Received(1).Show("Deleted 2 containers and freed 2 MB.", InfoBarSeverity.Success);
     }
 
     private static ListChange<ContainerDto> Snapshot(params ContainerDto[] containers)

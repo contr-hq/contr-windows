@@ -256,6 +256,26 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         await ViewModel.RestartAsync();
     }
 
+    private async void OnPause(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PauseAsync();
+    }
+
+    private async void OnUnpause(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.UnpauseAsync();
+    }
+
+    private async void OnKill(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.KillAsync();
+    }
+
+    private async void OnRename(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RenameAsync();
+    }
+
     private async void OnRemove(object sender, RoutedEventArgs e)
     {
         await ViewModel.RemoveAsync();

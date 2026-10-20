@@ -10,15 +10,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Containers.Application.Containers;
+using Contr.Modules.Containers.Application.Containers.Commands.KillContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PauseContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PruneContainers;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.RenameContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RestartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.UnpauseContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
 using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
+using Contr.UI.Common.Formatting;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
@@ -160,6 +166,39 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         return RunAsync(new RestartContainerCommand(row.ContainerId, row.State), $"Could not restart {row.Name}");
     }
 
+    public Task PauseAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new PauseContainerCommand(row.ContainerId, row.State), $"Could not pause {row.Name}");
+    }
+
+    public Task UnpauseAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new UnpauseContainerCommand(row.ContainerId, row.State), $"Could not resume {row.Name}");
+    }
+
+    public Task KillAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new KillContainerCommand(row.ContainerId, row.State), $"Could not kill {row.Name}");
+    }
+
+    /// <summary>Asks for the new name; the dialog stays open while the engine refuses it.</summary>
+    public Task RenameAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return _dialogs.ShowPromptAsync("Rename container", "Name", row.Name, "Rename", async name => {
+            var result = await _sender.Send(new RenameContainerCommand(row.ContainerId, name));
+
+            return result.IsSuccess ? null : result.Error.Message;
+        });
+    }
+
     /// <summary>Asks first; a running container is killed before it is deleted.</summary>
     public async Task RemoveAsync(ContainerRow row)
     {
@@ -232,10 +271,18 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
             return;
         }
 
-        foreach (var row in stopped)
+        var result = await _sender.Send(new PruneContainersCommand());
+
+        if (result.IsFailure)
         {
-            await RunAsync(new RemoveContainerCommand(row.ContainerId, row.State), $"Could not delete {row.Name}");
+            _notifications.Show(result.Error.Message, InfoBarSeverity.Error, "Could not prune the containers");
+
+            return;
         }
+
+        var deleted = result.Value.Deleted == 1 ? "1 container" : $"{result.Value.Deleted} containers";
+        _notifications.Show(
+            $"Deleted {deleted} and freed {HumanFormat.Bytes(result.Value.ReclaimedBytes)}.", InfoBarSeverity.Success);
     }
 
     public void ViewExitedLogs()

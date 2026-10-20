@@ -173,6 +173,38 @@ public sealed partial class ContainersPage : Page, IHasViewModel
         }
     }
 
+    private async void OnPause(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.PauseAsync(row);
+        }
+    }
+
+    private async void OnUnpause(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.UnpauseAsync(row);
+        }
+    }
+
+    private async void OnKill(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.KillAsync(row);
+        }
+    }
+
+    private async void OnRename(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.RenameAsync(row);
+        }
+    }
+
     private void OnLogs(object sender, RoutedEventArgs e)
     {
         if (TagOf<ContainerRow>(sender) is { } row)

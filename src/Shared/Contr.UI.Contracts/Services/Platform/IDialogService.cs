@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace Contr.UI.Contracts.Services.Platform;
@@ -20,4 +21,12 @@ public interface IDialogService : IUiContractService, ISingletonDependency
     /// </returns>
     Task<string?> ShowPromptAsync(
         string title, string label, string initialValue = "", string primaryText = "OK");
+
+    /// <summary>
+    /// Asks for one line of text and has <paramref name="apply"/> apply it before closing. Apply returns why it
+    /// failed, or <see langword="null"/>; a failure shows at the top of the dialog, which stays open.
+    /// </summary>
+    /// <returns>Whether the text was applied.</returns>
+    Task<bool> ShowPromptAsync(
+        string title, string label, string initialValue, string primaryText, Func<string, Task<string?>> apply);
 }
