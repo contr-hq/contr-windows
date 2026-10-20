@@ -24,7 +24,12 @@ public interface IContainersGateway
     /// <param name="force">Kills a running container first.</param>
     Task<Result> RemoveAsync(ContainerId id, bool force, CancellationToken cancellationToken);
 
-    /// <summary>The log's last <paramref name="tailLines"/> lines, then new output until the container stops.</summary>
+    /// <summary>The part of the log <paramref name="range"/> selects, then new output until the container stops.</summary>
     IAsyncEnumerable<ContainerLogEvent> StreamLogsAsync(
-        ContainerId id, int tailLines, CancellationToken cancellationToken);
+        ContainerId id, LogRange range, CancellationToken cancellationToken);
+
+    /// <summary>Usage samples, about one per second, until the container stops.</summary>
+    IAsyncEnumerable<ContainerStatsEvent> StreamStatsAsync(ContainerId id, CancellationToken cancellationToken);
+
+    Task<Result<ContainerDetailsDto>> InspectAsync(ContainerId id, CancellationToken cancellationToken);
 }

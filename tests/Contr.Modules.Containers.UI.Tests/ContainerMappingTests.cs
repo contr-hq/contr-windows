@@ -24,6 +24,7 @@ public sealed class ContainerMappingTests
         };
         container.Names.Add("shop-web-1");
         container.Labels.Add("com.docker.compose.project", "shop");
+        container.Labels.Add("com.docker.compose.project.config_files", @"C:\src\shop\compose.yaml");
         container.Ports.Add(new ContainersV1.PortMapping {
             ContainerPort = 80,
             HostPort = 8080,
@@ -35,6 +36,7 @@ public sealed class ContainerMappingTests
 
         Assert.Equal("shop-web-1", dto.Name);
         Assert.Equal("shop", dto.ComposeProject);
+        Assert.Equal(@"C:\src\shop\compose.yaml", dto.ComposeFiles);
         Assert.Equal(ContainerState.Running, dto.State);
         Assert.Equal(new PortDto(80, 8080, "0.0.0.0", "tcp"), Assert.Single(dto.Ports));
     }
@@ -78,5 +80,54 @@ public sealed class ContainerMappingTests
     private static ContainersV1.StreamLogsResponse Chunk(ContainersV1.LogStream stream, params byte[] bytes)
     {
         return new ContainersV1.StreamLogsResponse { Stream = stream, Data = ByteString.CopyFrom(bytes) };
+    }
+
+    [Fact]
+    public void ToStats_KeepsTheEngineSample()
+    {
+        var stats = new ContainersV1.ContainerStats {
+            ReadAt = Timestamp.FromDateTimeOffset(DateTimeOffset.UnixEpoch),
+            CpuPercent = 3.2,
+            MemoryUsageBytes = 142_000_000,
+            MemoryLimitBytes = 8_000_000_000,
+            NetworkRxBytes = 10,
+            Pids = 4,
+        };
+
+        var dto = ContainerMapping.ToStats(stats);
+
+        Assert.Equal(3.2, dto.CpuPercent);
+        Assert.Equal(142_000_000, dto.MemoryUsageBytes);
+        Assert.Equal(8_000_000_000, dto.MemoryLimitBytes);
+        Assert.Equal(4, dto.Pids);
+    }
+
+    [Fact]
+    public void ToDetails_ReadsTheInspection()
+    {
+        var response = new ContainersV1.InspectContainerResponse {
+            Container = new ContainersV1.Container { Id = "c0ffee0100000000", Image = "node:22" },
+            Details = new ContainersV1.ContainerDetails {
+                ExitCode = 1,
+                RestartCount = 2,
+                Health = ContainersV1.HealthStatus.Unhealthy,
+                WorkingDir = "/app",
+            },
+            RawJson = "{}",
+        };
+        response.Details.Mounts.Add(new ContainersV1.Mount {
+            Kind = ContainersV1.MountKind.Volume,
+            Name = "data",
+            Destination = "/data",
+        });
+
+        var details = ContainerMapping.ToDetails(new ContainerId("c0ffee0100000000"), response);
+
+        Assert.Equal("node:22", details.Container.Image);
+        Assert.Equal(1, details.ExitCode);
+        Assert.Equal(2, details.RestartCount);
+        Assert.Equal(ContainerHealth.Unhealthy, details.Health);
+        Assert.Null(details.StartedAt);
+        Assert.Equal(new MountDto("volume", "data", string.Empty, "/data", false), Assert.Single(details.Mounts));
     }
 }
