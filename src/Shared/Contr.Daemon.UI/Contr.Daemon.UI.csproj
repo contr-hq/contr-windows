@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Contr.Daemon.UI</RootNamespace>
+    <AssemblyName>Contr.Daemon.UI</AssemblyName>
+    <UseWinUI>true</UseWinUI>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <Platforms>x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="System.Reactive" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\gen\Contr.Sdk\Contr.Sdk.csproj" />
+    <ProjectReference Include="..\Contr.Application.Abstractions\Contr.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\Contr.UI.Contracts\Contr.UI.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
