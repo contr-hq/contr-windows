@@ -7,24 +7,90 @@
         <Setter Property="MinWidth" Value="180" />
     </Style>
 
-    <Style x:Key="ToolbarButtonStyle" TargetType="Button">
-        <Setter Property="Height" Value="36" />
-        <Setter Property="Padding" Value="10,0" />
-        <Setter Property="Background" Value="Transparent" />
+    <!--
+        A button with no fill or border until the pointer is on it. Its own template, because the
+        default one paints ControlFillColorDisabled behind a disabled button, which draws a grey box
+        in every toolbar and row that offers an action it cannot take yet.
+    -->
+    <Style x:Key="SubtleButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+        <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+        <Setter Property="FontSize" Value="{ThemeResource ControlContentThemeFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="UseSystemFocusVisuals" Value="{StaticResource UseSystemFocusVisuals}" />
+        <Setter Property="FocusVisualMargin" Value="-3" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <ContentPresenter
+                        x:Name="ContentPresenter"
+                        Padding="{TemplateBinding Padding}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Background="{TemplateBinding Background}"
+                        BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        ContentTransitions="{TemplateBinding ContentTransitions}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Foreground="{TemplateBinding Foreground}">
+                        <ContentPresenter.BackgroundTransition>
+                            <BrushTransition Duration="0:0:0.083" />
+                        </ContentPresenter.BackgroundTransition>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentPresenter.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentPresenter.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                        <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorDisabledBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </ContentPresenter>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style
+        x:Key="ToolbarButtonStyle"
+        BasedOn="{StaticResource SubtleButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <Style
         x:Key="AccentToolbarButtonStyle"
         BasedOn="{StaticResource AccentButtonStyle}"
         TargetType="Button">
-        <Setter Property="Height" Value="36" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -35,7 +101,7 @@
     <!--
         The hairline between groups of commands in a PageHeader. A style rather than a copied
         Border, because the two numbers in it — the 1px width and the 8px inset that keeps it clear
-        of the group's rounded corners — are the whole thing, and they were already drifting.
+        of the group's rounded corners — are the whole thing.
     -->
     <Style x:Key="CommandBarDividerStyle" TargetType="Border">
         <Setter Property="Width" Value="1" />
@@ -43,11 +109,32 @@
         <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
     </Style>
 
+    <!--  The bordered group that holds a set of toolbar buttons, in a page header or above a selection.  -->
+    <Style x:Key="CommandGroupStyle" TargetType="Border">
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
     <Style
         x:Key="DangerToolbarButtonStyle"
         BasedOn="{StaticResource ToolbarButtonStyle}"
         TargetType="Button">
         <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+    </Style>
+
+    <!--  The icon buttons at the end of a row and on a group's header.  -->
+    <Style
+        x:Key="RowActionButtonStyle"
+        BasedOn="{StaticResource SubtleButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
 </ResourceDictionary>

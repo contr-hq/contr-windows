@@ -8,6 +8,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="ms-appx:///CommunityToolkit.WinUI.Controls.Segmented/Segmented/Segmented.xaml" />
 
                 <!--
                     Merged here because Application.Resources is the one scope pages in every module
@@ -18,7 +19,9 @@
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Texts.xaml" />
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/BasicInputs.xaml" />
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Menus.xaml" />
+                <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Cards.xaml" />
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Lists.xaml" />
+                <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/SelectorBar.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

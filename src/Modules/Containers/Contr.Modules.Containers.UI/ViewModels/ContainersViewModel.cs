@@ -17,6 +17,7 @@ using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
 using Contr.SharedKernel;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
@@ -54,9 +55,9 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
     [ObservableProperty]
     public partial bool ShowStopped { get; set; }
 
-    /// <summary>Such as <c>5 running · 2 stopped · 3 compose projects</c>.</summary>
+    /// <summary>Counted over every container, never the filtered set.</summary>
     [ObservableProperty]
-    public partial string Subtitle { get; set; }
+    public partial IReadOnlyList<StatCard> StatCards { get; set; }
 
     /// <summary>Whether the filter and the stopped toggle let any container through.</summary>
     [ObservableProperty]
@@ -109,9 +110,9 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         _clipboard = clipboard;
         _usage = usage;
         Engine = new EngineGateViewModel(daemon);
+        StatCards = [];
         FilterText = string.Empty;
         ShowStopped = true;
-        Subtitle = string.Empty;
         ExitNotice = string.Empty;
         Rows.CollectionChanged += OnRowsChanged;
     }
@@ -280,29 +281,30 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         Regroup();
     }
 
-    private static string Describe(IReadOnlyCollection<ContainerRow> rows)
+    private static List<StatCard> Summarize(List<ContainerRow> rows)
     {
         var running = rows.Count(row => row.IsRunning);
-        var stopped = rows.Count(row => row.IsStopped);
+        var failed = rows.Count(row => row.HasFailed);
+        var stopped = rows.Count(row => row.IsStopped && !row.HasFailed);
         var projects = rows
             .Where(row => row.HasProject)
             .Select(row => row.Project)
             .Distinct(StringComparer.Ordinal)
             .Count();
+        var standalone = rows.Count(row => !row.HasProject);
 
-        var parts = new List<string> { $"{Count(running)} running" };
-
-        if (stopped > 0)
-        {
-            parts.Add($"{Count(stopped)} stopped");
-        }
-
-        if (projects > 0)
-        {
-            parts.Add(projects == 1 ? "1 compose project" : $"{Count(projects)} compose projects");
-        }
-
-        return string.Join(" · ", parts);
+        return [
+            new StatCard("RUNNING", Count(running), $"of {Count(rows.Count)} containers", "\uE768", StatKind.Positive),
+            new StatCard("STOPPED", Count(stopped), "exited cleanly or not started", "\uE71A", StatKind.Muted),
+            new StatCard(
+                "FAILED",
+                Count(failed),
+                failed == 0 ? "none exited with an error" : "exited with an error",
+                "\uE783",
+                failed == 0 ? StatKind.Muted : StatKind.Critical),
+            new StatCard(
+                "COMPOSE PROJECTS", Count(projects), $"{Count(standalone)} standalone", "\uE8FD", StatKind.Accent),
+        ];
     }
 
     private static string Count(int count)
@@ -391,7 +393,13 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
             .ToList();
         _usage.Follow(running);
 
-        Subtitle = all.Count == 0 ? string.Empty : Describe(all);
+        var cards = Summarize(all);
+
+        if (!cards.SequenceEqual(StatCards))
+        {
+            StatCards = cards;
+        }
+
         HasMatches = visible.Count > 0;
         CanPrune = all.Any(row => row.IsStopped);
     }

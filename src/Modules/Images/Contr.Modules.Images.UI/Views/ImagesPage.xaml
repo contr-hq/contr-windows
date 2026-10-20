@@ -66,13 +66,8 @@
                         FontWeight="SemiBold"
                         Style="{StaticResource CellTextStyle}"
                         Text="{x:Bind Repository}" />
-                    <Border
-                        Padding="6,1"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                        CornerRadius="4"
-                        Visibility="{x:Bind IsLocalBuild}">
-                        <TextBlock FontSize="12" Text="Local build" />
+                    <Border Style="{StaticResource PillStyle}" Visibility="{x:Bind IsLocalBuild}">
+                        <TextBlock Style="{StaticResource PillTextStyle}" Text="Local build" />
                     </Border>
                     <TextBlock
                         Style="{StaticResource SecondaryCellTextStyle}"
@@ -153,7 +148,7 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,0" RowSpacing="16">
+    <Grid Padding="36,24,36,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -161,44 +156,58 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Images" Subtitle="{x:Bind views:ImagesPage.Shown(ViewModel.Subtitle, ViewModel.Engine.IsOpen), Mode=OneWay}" />
+        <common:PageHeader Title="Images">
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="2"
+                Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
+                <Button
+                    AutomationProperties.AutomationId="PullImageButton"
+                    Click="OnPull"
+                    Style="{StaticResource AccentToolbarButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Glyph="&#xE896;" />
+                        <TextBlock Text="Pull image" />
+                    </StackPanel>
+                </Button>
+                <Border Style="{StaticResource CommandBarDividerStyle}" />
+                <Button
+                    AutomationProperties.AutomationId="RemoveUnusedImagesButton"
+                    Click="OnRemoveUnused"
+                    IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}"
+                    Style="{StaticResource ToolbarButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Glyph="&#xE74D;" />
+                        <TextBlock Text="{x:Bind ViewModel.RemoveUnusedText, Mode=OneWay}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </common:PageHeader>
 
-        <StackPanel
+        <!--  Counted over every image, tagged or not.  -->
+        <common:StatStrip
             Grid.Row="1"
-            Orientation="Horizontal"
-            Spacing="8"
-            Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
-            <Button
-                AutomationProperties.AutomationId="PullImageButton"
-                Click="OnPull"
-                Style="{StaticResource AccentButtonStyle}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontSize="14" Glyph="&#xE896;" />
-                    <TextBlock Text="Pull image" />
-                </StackPanel>
-            </Button>
-            <Button
-                AutomationProperties.AutomationId="RemoveUnusedImagesButton"
-                Click="OnRemoveUnused"
-                IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                    <TextBlock Text="{x:Bind ViewModel.RemoveUnusedText, Mode=OneWay}" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
+            Margin="0,16,0,0"
+            AutomationProperties.AutomationId="ImageStats"
+            Cards="{x:Bind ViewModel.StatCards, Mode=OneWay}"
+            Visibility="{x:Bind views:ImagesPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
 
-        <StackPanel Grid.Row="2" Spacing="12">
+        <!--  Margins rather than row spacing, so a closed bar or a finished pull leaves no gap behind.  -->
+        <StackPanel Grid.Row="2">
             <InfoBar
+                Title="Couldn't list images"
+                Margin="0,16,0,0"
                 IsClosable="False"
                 IsOpen="{x:Bind views:ImagesPage.ShowsError(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-                Severity="Error" />
+                Severity="Error"
+                Visibility="{x:Bind views:ImagesPage.ErrorVisibility(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
 
             <Border
+                Margin="0,16,0,0"
                 Padding="16,12"
                 AutomationProperties.AutomationId="PullProgress"
-                Style="{StaticResource ListCardStyle}"
+                Style="{StaticResource CardStyle}"
                 Visibility="{x:Bind ViewModel.IsPulling, Mode=OneWay}">
                 <StackPanel Spacing="10">
                     <Grid ColumnSpacing="12">
@@ -237,7 +246,7 @@
             </Border>
         </StackPanel>
 
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="3" Margin="0,16,0,0">
             <common:EngineGate
                 Margin="0,0,0,48"
                 ViewModel="{x:Bind ViewModel.Engine}"
@@ -262,7 +271,7 @@
 
             <Border
                 VerticalAlignment="Top"
-                Style="{StaticResource ListCardStyle}"
+                Style="{StaticResource CardStyle}"
                 Visibility="{x:Bind views:ImagesPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -280,33 +289,33 @@
                             <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
                             <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Repository" />
+                        <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Repository" />
                         <TextBlock
                             Grid.Column="1"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Tag" />
                         <TextBlock
                             Grid.Column="2"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Image ID" />
                         <TextBlock
                             Grid.Column="3"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Created" />
                         <TextBlock
                             Grid.Column="4"
                             HorizontalAlignment="Right"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Size" />
                         <TextBlock
                             Grid.Column="5"
                             Margin="12,0,0,0"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Used by" />
                         <TextBlock
                             Grid.Column="6"
                             HorizontalAlignment="Right"
-                            Style="{StaticResource ColumnHeaderTextStyle}"
+                            Style="{StaticResource ColumnHeadStyle}"
                             Text="Actions" />
                     </Grid>
 

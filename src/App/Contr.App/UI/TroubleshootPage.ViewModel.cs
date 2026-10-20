@@ -46,7 +46,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public partial string ChecksSummary { get; set; }
 
     [ObservableProperty]
-    public partial string LogText { get; set; }
+    public partial bool HasLog { get; set; }
 
     public TroubleshootViewModel(IDaemonConnection daemon)
     {
@@ -57,10 +57,12 @@ public sealed partial class TroubleshootViewModel : ViewModel
         ProblemMessage = string.Empty;
         ProblemCode = string.Empty;
         ChecksSummary = string.Empty;
-        LogText = string.Empty;
     }
 
     public ObservableCollection<CheckRow> Checks { get; } = [];
+
+    /// <summary>The newest lines of the client's log, oldest first.</summary>
+    public ObservableCollection<ComponentLogLine> LogLines { get; } = [];
 
     public bool HasProblemCode => ProblemCode.Length > 0;
 
@@ -170,7 +172,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
     }
 
     /// <summary>The last lines of the newest client log; empty when there is none.</summary>
-    private static string ReadLog()
+    private static string[] ReadLog()
     {
         try
         {
@@ -181,27 +183,26 @@ public sealed partial class TroubleshootViewModel : ViewModel
 
             if (newest is null)
             {
-                return string.Empty;
+                return [];
             }
 
             using var stream = new FileStream(newest.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = new StreamReader(stream);
-            var lines = reader
+
+            return reader
                 .ReadToEnd()
+                .TrimEnd()
                 .Split('\n')
-                .TakeLast(_logLines);
-
-            var text = string.Join('\n', lines);
-
-            return text.TrimEnd();
+                .TakeLast(_logLines)
+                .ToArray();
         }
         catch (IOException)
         {
-            return string.Empty;
+            return [];
         }
         catch (UnauthorizedAccessException)
         {
-            return string.Empty;
+            return [];
         }
     }
 
@@ -225,7 +226,14 @@ public sealed partial class TroubleshootViewModel : ViewModel
             : "The engine couldn't start";
         ProblemMessage = status.Problem;
         ProblemCode = status.Engine == EngineState.Failed ? status.ProblemCode : string.Empty;
-        LogText = ReadLog();
+        LogLines.Clear();
+
+        foreach (var line in ReadLog())
+        {
+            LogLines.Add(ComponentLogLine.Parse(line));
+        }
+
+        HasLog = LogLines.Count > 0;
     }
 
     private static string Plural(int count, string noun)

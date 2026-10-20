@@ -15,6 +15,7 @@ using Contr.Modules.Networks.Application.Networks.Commands.PruneNetworks;
 using Contr.Modules.Networks.Application.Networks.Commands.RemoveNetwork;
 using Contr.Modules.Networks.Application.Networks.Queries.InspectNetwork;
 using Contr.Modules.Networks.Application.Networks.Queries.WatchNetworks;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
@@ -38,9 +39,9 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial NetworkRow? Selected { get; set; }
 
-    /// <summary>Such as <c>5 networks · 3 built in</c>.</summary>
+    /// <summary>Counted over every network.</summary>
     [ObservableProperty]
-    public partial string Subtitle { get; set; }
+    public partial IReadOnlyList<StatCard> StatCards { get; set; }
 
     [ObservableProperty]
     public partial string EndpointsNote { get; set; }
@@ -61,7 +62,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         _dialogs = dialogs;
         _notifications = notifications;
         Engine = new EngineGateViewModel(daemon);
-        Subtitle = string.Empty;
+        StatCards = [];
         EndpointsNote = string.Empty;
         Rows.CollectionChanged += OnRowsChanged;
     }
@@ -173,6 +174,20 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         base.Dispose(disposing);
     }
 
+    private static List<StatCard> Summarize(List<NetworkRow> rows)
+    {
+        var builtIn = rows.Count(row => row.IsBuiltIn);
+        var compose = rows.Count(row => !row.IsBuiltIn && row.HasProject);
+        var custom = rows.Count - builtIn - compose;
+
+        return [
+            new StatCard("NETWORKS", Count(rows.Count), "on this engine", "\uE968", StatKind.Accent),
+            new StatCard("BUILT IN", Count(builtIn), "the engine keeps these", "\uE72E", StatKind.Muted),
+            new StatCard("COMPOSE", Count(compose), "removed with their project", "\uE8FD", StatKind.Accent),
+            new StatCard("CUSTOM", Count(custom), "created outside Compose", "\uE710", StatKind.Accent),
+        ];
+    }
+
     private static string Count(int count)
     {
         return count.ToString(CultureInfo.CurrentCulture);
@@ -195,9 +210,12 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         CollectionSync.Sync(Items, items, row => row.Id);
         Selected = items.FirstOrDefault(row => row.IsSelected);
 
-        var builtIn = items.Count(row => row.IsBuiltIn);
-        var networks = items.Count == 1 ? "1 network" : $"{Count(items.Count)} networks";
-        Subtitle = items.Count == 0 ? string.Empty : $"{networks} · {Count(builtIn)} built in";
+        var cards = Summarize(items);
+
+        if (!cards.SequenceEqual(StatCards))
+        {
+            StatCards = cards;
+        }
 
         if (Selected is { } row && (row.Id != previous || Endpoints.Count == 0))
         {

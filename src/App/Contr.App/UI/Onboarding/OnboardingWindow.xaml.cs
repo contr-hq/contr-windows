@@ -28,6 +28,8 @@ public sealed partial class OnboardingWindow : WindowEx
 
     public static string WslCommand => OnboardingViewModel.InstallWslCommand;
 
+    public static string TryCommand => OnboardingViewModel.TryCommand;
+
     public OnboardingViewModel ViewModel { get; }
 
     public static Visibility WhenState(OnboardingStepState state, string shown)
@@ -90,6 +92,11 @@ public sealed partial class OnboardingWindow : WindowEx
     private void OnCopyWslCommand(object sender, RoutedEventArgs e)
     {
         ViewModel.CopyWslCommand();
+    }
+
+    private void OnCopyTryCommand(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CopyTryCommand();
     }
 
     private void OnFinished(object? sender, EventArgs e)

@@ -82,7 +82,7 @@ public sealed class VolumesViewModelTests
             .Order();
 
         Assert.Equal(["Not used", "db"], usedBy);
-        Assert.Equal("2 volumes · 1 not used by any container", viewModel.Subtitle);
+        Assert.Equal(["2", "1", "1", "0"], viewModel.StatCards.Select(card => card.Value));
         Assert.NotNull(viewModel.Selected);
     }
 

@@ -39,10 +39,7 @@
                     <ToggleSwitch AutomationProperties.Name="Run Kubernetes" />
                 </controls:SettingsCard>
 
-                <TextBlock
-                    Margin="0,20,0,4"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}"
-                    Text="Cluster" />
+                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Cluster" />
                 <controls:SettingsCard
                     Description="The Kubernetes version the cluster runs."
                     Header="Version"
@@ -68,10 +65,7 @@
                     <Button Content="Open folder" />
                 </controls:SettingsCard>
 
-                <TextBlock
-                    Margin="0,20,0,4"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}"
-                    Text="Maintenance" />
+                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Maintenance" />
                 <controls:SettingsCard
                     Description="Copies images from your engine into the cluster, so pods can use them without a registry."
                     Header="Use local images in the cluster"
@@ -82,7 +76,7 @@
                     Description="Deletes all workloads and cluster data. Your images stay."
                     Header="Reset cluster"
                     IsEnabled="False">
-                    <Button Content="Reset…" />
+                    <Button Content="Reset…" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
                 </controls:SettingsCard>
             </StackPanel>
         </ScrollViewer>

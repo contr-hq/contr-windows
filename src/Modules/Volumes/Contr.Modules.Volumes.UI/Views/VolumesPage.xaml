@@ -89,31 +89,34 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,16" RowSpacing="16">
+    <Grid Padding="36,24,36,16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Volumes" Subtitle="{x:Bind views:VolumesPage.Shown(ViewModel.Subtitle, ViewModel.Engine.IsOpen), Mode=OneWay}">
+        <common:PageHeader Title="Volumes">
             <StackPanel
                 Orientation="Horizontal"
-                Spacing="8"
+                Spacing="2"
                 Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
                 <Button
                     AutomationProperties.AutomationId="CreateVolumeButton"
                     Click="OnCreate"
-                    Style="{StaticResource AccentButtonStyle}">
+                    Style="{StaticResource AccentToolbarButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE710;" />
                         <TextBlock Text="Create volume" />
                     </StackPanel>
                 </Button>
+                <Border Style="{StaticResource CommandBarDividerStyle}" />
                 <Button
                     AutomationProperties.AutomationId="RemoveUnusedVolumesButton"
                     Click="OnRemoveUnused"
-                    IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}">
+                    IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}"
+                    Style="{StaticResource ToolbarButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE74D;" />
                         <TextBlock Text="Remove unused" />
@@ -122,14 +125,25 @@
             </StackPanel>
         </common:PageHeader>
 
-        <InfoBar
+        <!--  Counted over every volume.  -->
+        <common:StatStrip
             Grid.Row="1"
+            Margin="0,16,0,0"
+            AutomationProperties.AutomationId="VolumeStats"
+            Cards="{x:Bind ViewModel.StatCards, Mode=OneWay}"
+            Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
+
+        <InfoBar
+            Title="Couldn't list volumes"
+            Grid.Row="2"
+            Margin="0,16,0,0"
             IsClosable="False"
             IsOpen="{x:Bind views:VolumesPage.ShowsBoth(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
             Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-            Severity="Error" />
+            Severity="Error"
+            Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3" Margin="0,16,0,0">
             <common:EngineGate
                 Margin="0,0,0,48"
                 ViewModel="{x:Bind ViewModel.Engine}"
@@ -158,7 +172,7 @@
                     <ColumnDefinition Width="300" />
                 </Grid.ColumnDefinitions>
 
-                <Border VerticalAlignment="Top" Style="{StaticResource ListCardStyle}">
+                <Border VerticalAlignment="Top" Style="{StaticResource CardStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -170,14 +184,14 @@
                                 <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
                                 <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Name" />
+                            <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
                             <TextBlock
                                 Grid.Column="1"
-                                Style="{StaticResource ColumnHeaderTextStyle}"
+                                Style="{StaticResource ColumnHeadStyle}"
                                 Text="Used by" />
                             <TextBlock
                                 Grid.Column="2"
-                                Style="{StaticResource ColumnHeaderTextStyle}"
+                                Style="{StaticResource ColumnHeadStyle}"
                                 Text="Created" />
                         </Grid>
                         <ScrollViewer Grid.Row="1">
@@ -194,7 +208,7 @@
                     Padding="16"
                     VerticalAlignment="Top"
                     AutomationProperties.AutomationId="VolumeDetails"
-                    Style="{StaticResource ListCardStyle}"
+                    Style="{StaticResource CardStyle}"
                     Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
                     <StackPanel Spacing="12">
                         <StackPanel>
