@@ -120,6 +120,19 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
             cancellationToken);
     }
 
+    public Task<Result> StartEngineAsync(IProgress<EngineProgress> progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        return DrainAsync(
+            (client, token) => client.Engine.Start(new StartRequest(), cancellationToken: token),
+            cancellationToken,
+            response => response.EventCase == StartResponse.EventOneofCase.Progress
+                ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
+                : null,
+            progress);
+    }
+
     public Task<Result> StopEngineAsync(CancellationToken cancellationToken)
     {
         return DrainAsync(
@@ -408,19 +421,31 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     /// <summary>Reads an engine operation's progress stream to its end; the state arrives through WatchState.</summary>
     private async Task<Result> DrainAsync<TResponse>(
         Func<ContrClient, CancellationToken, AsyncServerStreamingCall<TResponse>> open,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<TResponse, EngineProgress?>? step = null,
+        IProgress<EngineProgress>? progress = null)
     {
         return await this
             .RunAsync(
                 async (client, token) => {
                     using var call = open(client, token);
-                    await foreach (var progress in call.ResponseStream.ReadAllAsync(token).ConfigureAwait(false))
+                    await foreach (var response in call.ResponseStream.ReadAllAsync(token).ConfigureAwait(false))
                     {
-                        LogEngineProgress($"{progress}");
+                        LogEngineProgress($"{response}");
+
+                        if (step?.Invoke(response) is { } reported)
+                        {
+                            progress?.Report(reported);
+                        }
                     }
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static double? Fraction(Contr.Sdk.Common.V1.Progress progress)
+    {
+        return progress.HasFraction ? progress.Fraction : null;
     }
 
     private async Task StartStoppedEngineAsync(CancellationToken cancellationToken)

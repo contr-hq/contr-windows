@@ -13,9 +13,12 @@ closed. Until the core's WSL backend lands, run it against `contrd --backend fak
 Also: Compose projects from the containers' Compose labels, Troubleshoot (the engine's failure, the checks the client
 can make, its own log), the tray flyout with the running containers, and the Kubernetes page's layout.
 
-Next: onboarding, the remaining settings, and a Velopack installer that bundles a pinned core release. Screens and
-actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and down) show
-their layout with the actions disabled.
+The first run opens a setup (this PC's checks, the engine's setup with the daemon's progress, the command-line tools
+and start at sign-in), and Settings has the design's tabs.
+
+Next: WSL distributions once the daemon offers them, and a Velopack installer that bundles a pinned core release.
+Screens and actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and
+down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.

@@ -69,7 +69,8 @@ instance, which brings its window back. The host then runs the startup orchestra
 | 20 | Shell | main window, navigation pane, status bar |
 | 30 | Theme | |
 | 35 | Tray | WinUIEx `TrayIcon`: a click opens the flyout, a double click the window |
-| 40 | Activation | |
+| 40 | Activation | skipped when Windows started Contr at sign-in (`--background`): only the tray shows |
+| 45 | Onboarding | the first-run setup, until it records `SetupDone`; never on a `--background` launch |
 
 Closing the main window hides it; only **Quit Contr** in the tray ends the process. The daemon keeps
 running either way.

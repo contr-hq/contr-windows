@@ -1,9 +1,10 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Contr.App.Services.Platform;
 
 namespace Contr.App.Hosting.Orchestration;
 
-/// <summary>Activates the main window and dismisses the splash. Runs last.</summary>
+/// <summary>Activates the main window unless Contr started in the notification area; dismisses the splash.</summary>
 public sealed class ActivationOrchestrator : IStartupOrchestrator
 {
     private readonly StartupContext _context;
@@ -21,7 +22,11 @@ public sealed class ActivationOrchestrator : IStartupOrchestrator
 
     public Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _context.MainWindow?.Activate();
+        if (!SignInStartup.IsBackgroundLaunch())
+        {
+            _context.MainWindow?.Activate();
+        }
+
         _context.Splash?.Close();
         _context.Splash = null;
 
