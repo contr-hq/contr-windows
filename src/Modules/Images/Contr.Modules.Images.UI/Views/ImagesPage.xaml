@@ -107,8 +107,9 @@
                     Spacing="2">
                     <Button
                         AutomationProperties.Name="Run"
-                        IsEnabled="False"
+                        Click="OnRun"
                         Style="{StaticResource RowActionButtonStyle}"
+                        Tag="{x:Bind}"
                         ToolTipService.ToolTip="Run">
                         <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource IconStyle}" />
                     </Button>
