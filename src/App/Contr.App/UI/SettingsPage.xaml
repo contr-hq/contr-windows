@@ -4,82 +4,331 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:common="using:Contr.UI.Common.Controls"
+    xmlns:contracts="using:Contr.UI.Contracts.Services.Daemon"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winui="using:CommunityToolkit.WinUI"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,0" RowSpacing="12">
+    <Page.Resources>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,20,0,4" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <DataTemplate x:Key="ToolTemplate" x:DataType="contracts:CliTool">
+            <StackPanel Width="140">
+                <TextBlock FontSize="12" Text="{x:Bind Name}" />
+                <TextBlock
+                    FontFamily="Cascadia Mono,Consolas"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Text="{x:Bind local:SettingsPage.ToolVersion(InstalledVersion, BundledVersion)}" />
+            </StackPanel>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="36,24,36,0" RowSpacing="12">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <common:PageHeader Title="Settings" />
 
-        <ScrollViewer
+        <SelectorBar
+            x:Name="Tabs"
             Grid.Row="1"
+            SelectionChanged="OnTabSelectionChanged">
+            <SelectorBarItem x:Name="GeneralTab" Text="General" />
+            <SelectorBarItem x:Name="ResourcesTab" Text="Resources" />
+            <SelectorBarItem x:Name="WslTab" Text="WSL integration" />
+            <SelectorBarItem x:Name="ProxiesTab" Text="Proxies and certificates" />
+            <SelectorBarItem x:Name="EngineTab" Text="Engine" />
+            <SelectorBarItem x:Name="KubernetesTab" Text="Kubernetes" />
+            <SelectorBarItem x:Name="UpdatesTab" Text="Updates" />
+        </SelectorBar>
+
+        <ScrollViewer
+            Grid.Row="2"
             HorizontalScrollBarVisibility="Disabled"
             HorizontalScrollMode="Disabled">
-            <StackPanel Padding="0,0,0,24" Spacing="4">
-                <TextBlock
-                    Margin="0,8,0,4"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}"
-                    Text="Appearance" />
-                <controls:SettingsCard
-                    Description="Choose the colors that appear in the app."
-                    Header="Theme"
-                    HeaderIcon="{winui:FontIcon Glyph=&#xE790;}">
-                    <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
-                        <ComboBoxItem Content="System default" />
-                        <ComboBoxItem Content="Light" />
-                        <ComboBoxItem Content="Dark" />
-                    </ComboBox>
-                </controls:SettingsCard>
-                <controls:SettingsCard
-                    Description="Follow the Windows accent, or use Contr's own."
-                    Header="Accent color"
-                    HeaderIcon="{winui:FontIcon Glyph=&#xE771;}"
-                    Visibility="{x:Bind ViewModel.HasAccentChoice}">
-                    <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}">
-                        <ComboBoxItem Content="Windows" />
-                        <ComboBoxItem Content="Contr" />
-                    </ComboBox>
-                </controls:SettingsCard>
-
-                <TextBlock
-                    Margin="0,20,0,4"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}"
-                    Text="Daemon" />
-                <controls:SettingsCard
-                    Description="{x:Bind ViewModel.DaemonDescription}"
-                    Header="Contr daemon"
-                    HeaderIcon="{winui:FontIcon Glyph=&#xE950;}">
+            <Grid Padding="0,0,0,24">
+                <!--  General  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 0), Mode=OneWay}">
                     <TextBlock
-                        MaxWidth="420"
-                        FontFamily="Cascadia Mono,Consolas"
                         FontSize="12"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        IsTextSelectionEnabled="True"
-                        Text="{x:Bind ViewModel.DaemonEndpoint}"
-                        TextTrimming="CharacterEllipsis" />
-                </controls:SettingsCard>
+                        Text="Changes on this page apply right away." />
 
-                <TextBlock
-                    Margin="0,20,0,4"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}"
-                    Text="Diagnostics" />
-                <controls:SettingsCard
-                    Description="Errors are written to a log file on this machine. Nothing is sent anywhere."
-                    Header="Log files"
-                    HeaderIcon="{winui:FontIcon Glyph=&#xEBE8;}">
-                    <Button
-                        AutomationProperties.Name="Open the log folder"
-                        Command="{x:Bind ViewModel.OpenLogFolderCommand}"
-                        Content="Open log folder" />
-                </controls:SettingsCard>
-            </StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Startup and closing" />
+                    <controls:SettingsCard Description="Opens in the notification area, not as a window." Header="Start Contr when I sign in to Windows">
+                        <ToggleSwitch AutomationProperties.AutomationId="StartAtSignInToggle" IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it." Header="Start the engine with Contr">
+                        <ToggleSwitch AutomationProperties.AutomationId="StartsEngineToggle" IsOn="{x:Bind ViewModel.StartsEngine, Mode=TwoWay}" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard Header="When I close the window">
+                        <RadioButtons SelectedIndex="0">
+                            <RadioButton Content="Keep running in the notification area" />
+                            <RadioButton Content="Quit Contr and stop the engine" IsEnabled="False" />
+                        </RadioButtons>
+                    </controls:SettingsCard>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Command-line tools" />
+                    <controls:SettingsExpander
+                        Description="{x:Bind ViewModel.ToolsDetail, Mode=OneWay}"
+                        Header="{x:Bind ViewModel.ToolsTitle, Mode=OneWay}"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE756;}"
+                        IsExpanded="True">
+                        <Button
+                            AutomationProperties.AutomationId="InstallToolsButton"
+                            Command="{x:Bind ViewModel.InstallToolsCommand}"
+                            Content="{x:Bind ViewModel.InstallToolsText, Mode=OneWay}"
+                            IsEnabled="{x:Bind ViewModel.CanInstallTools, Mode=OneWay}" />
+                        <controls:SettingsExpander.Items>
+                            <controls:SettingsCard ContentAlignment="Left">
+                                <ItemsControl ItemTemplate="{StaticResource ToolTemplate}" ItemsSource="{x:Bind ViewModel.Tools}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="12" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </controls:SettingsCard>
+                            <controls:SettingsCard
+                                ContentAlignment="Left"
+                                Visibility="{x:Bind ViewModel.HasToolsNote, Mode=OneWay}">
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="{x:Bind ViewModel.ToolsNote, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="How tools connect" />
+                    <controls:SettingsCard Description="The Docker context Contr made for this engine. Make it current with docker context use." Header="Docker context">
+                        <TextBlock
+                            FontFamily="Cascadia Mono,Consolas"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind local:SettingsPage.OrDash(ViewModel.ContextName)}" />
+                    </controls:SettingsCard>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Appearance" />
+                    <controls:SettingsCard
+                        Description="Choose the colors that appear in the app."
+                        Header="Theme"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE790;}">
+                        <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                            <ComboBoxItem Content="System default" />
+                            <ComboBoxItem Content="Light" />
+                            <ComboBoxItem Content="Dark" />
+                        </ComboBox>
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Follow the Windows accent, or use Contr's own."
+                        Header="Accent color"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE771;}"
+                        Visibility="{x:Bind ViewModel.HasAccentChoice}">
+                        <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}">
+                            <ComboBoxItem Content="Windows" />
+                            <ComboBoxItem Content="Contr" />
+                        </ComboBox>
+                    </controls:SettingsCard>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Daemon and diagnostics" />
+                    <controls:SettingsCard
+                        Description="{x:Bind ViewModel.DaemonDescription}"
+                        Header="Contr daemon"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE950;}">
+                        <TextBlock
+                            MaxWidth="420"
+                            FontFamily="Cascadia Mono,Consolas"
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind ViewModel.DaemonEndpoint}"
+                            TextTrimming="CharacterEllipsis" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Errors are written to a log file on this machine. Nothing is sent anywhere."
+                        Header="Log files"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xEBE8;}">
+                        <Button
+                            AutomationProperties.Name="Open the log folder"
+                            Command="{x:Bind ViewModel.OpenLogFolderCommand}"
+                            Content="Open log folder" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard Description="Checks this PC, sets up the engine and the tools again." Header="Setup">
+                        <Button
+                            AutomationProperties.AutomationId="RunSetupButton"
+                            Click="OnRunSetup"
+                            Content="Run setup again" />
+                    </controls:SettingsCard>
+
+                    <TextBlock
+                        Margin="0,16,0,0"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ViewModel.VersionText}" />
+                </StackPanel>
+
+                <!--  Resources  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 1), Mode=OneWay}">
+                    <InfoBar
+                        Title="Resource limits are not available yet"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.LacksResourceLimits}"
+                        Message="This version of the Contr daemon cannot change the WSL virtual machine's limits."
+                        Severity="Informational" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="WSL 2 virtual machine" />
+                    <controls:SettingsCard
+                        Description="Maximum memory for the WSL VM. Containers share it."
+                        Header="Memory"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE964;}"
+                        IsEnabled="False">
+                        <Slider Width="200" AutomationProperties.Name="Memory" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="{x:Bind local:SettingsPage.ProcessorsText()}"
+                        Header="Processors"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE9D9;}"
+                        IsEnabled="False">
+                        <ComboBox MinWidth="150" PlaceholderText="—" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Mirrored works best with VPNs. NAT keeps containers on a private subnet."
+                        Header="Networking mode"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE968;}"
+                        IsEnabled="False">
+                        <ComboBox MinWidth="150" PlaceholderText="—" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Where the engine keeps images, containers and volumes."
+                        Header="Data disk location"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xEDA2;}"
+                        IsEnabled="False">
+                        <Button Content="Move…" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Shrinks the virtual disk when images and volumes are removed."
+                        Header="Give unused disk space back to Windows"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE72C;}"
+                        IsEnabled="False">
+                        <ToggleSwitch />
+                    </controls:SettingsCard>
+                </StackPanel>
+
+                <!--  WSL integration  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 2), Mode=OneWay}">
+                    <TextBlock
+                        Margin="0,8,0,8"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Make the docker command work inside your own distros. Contr shares one engine with all of them."
+                        TextWrapping="Wrap" />
+                    <InfoBar
+                        Title="WSL integration is not available yet"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.LacksWslIntegration}"
+                        Message="This version of the Contr daemon does not integrate your WSL distributions."
+                        Severity="Informational" />
+                    <controls:SettingsCard
+                        Description="docker inside these distros talks to Contr."
+                        Header="Your distros"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE756;}"
+                        IsEnabled="False" />
+                </StackPanel>
+
+                <!--  Proxies and certificates  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
+                    <InfoBar
+                        Title="Proxy and certificate settings are not available yet"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This version of the Contr daemon cannot change the engine's proxy or certificates."
+                        Severity="Informational" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Proxy" />
+                    <controls:SettingsCard
+                        Description="Used for image pulls and builds."
+                        Header="How the engine finds your proxy"
+                        IsEnabled="False">
+                        <ComboBox MinWidth="150" PlaceholderText="—" />
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        Description="Sets HTTP_PROXY, HTTPS_PROXY and NO_PROXY in new containers and builds."
+                        Header="Pass these settings to containers"
+                        IsEnabled="False">
+                        <ToggleSwitch />
+                    </controls:SettingsCard>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Certificates" />
+                    <controls:SettingsCard
+                        Description="Copies your organization's root certificates into the engine, so pulls work when your network inspects HTTPS traffic."
+                        Header="Trust certificates from Windows"
+                        IsEnabled="False">
+                        <ToggleSwitch />
+                    </controls:SettingsCard>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Registry" />
+                    <controls:SettingsCard
+                        Description="Pulls from Docker Hub go through this mirror first."
+                        Header="Registry mirror"
+                        IsEnabled="False">
+                        <TextBox MinWidth="240" PlaceholderText="https://" />
+                    </controls:SettingsCard>
+                </StackPanel>
+
+                <!--  Engine  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}">
+                    <InfoBar
+                        Title="Engine configuration is not available yet"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This version of the Contr daemon cannot edit the engine's daemon.json."
+                        Severity="Informational" />
+                    <controls:SettingsCard
+                        Description="The engine's own configuration file."
+                        Header="daemon.json"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xE943;}"
+                        IsEnabled="False">
+                        <Button Content="Reset to defaults" />
+                    </controls:SettingsCard>
+                </StackPanel>
+
+                <!--  Kubernetes  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
+                    <controls:SettingsCard
+                        Description="The cluster's settings are on the Kubernetes page."
+                        Header="Kubernetes"
+                        HeaderIcon="{winui:FontIcon Glyph=&#xEA38;}">
+                        <Button Click="OnOpenKubernetes" Content="Open Kubernetes" />
+                    </controls:SettingsCard>
+                </StackPanel>
+
+                <!--  Updates  -->
+                <StackPanel Spacing="4" Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}">
+                    <InfoBar
+                        Title="Updates are not available yet"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This version of Contr does not check for updates."
+                        Severity="Informational" />
+                    <controls:SettingsCard
+                        Description="Your images, volumes and settings stay through an update."
+                        Header="Check for updates"
+                        IsEnabled="False">
+                        <Button Content="Check now" />
+                    </controls:SettingsCard>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Installed versions" />
+                    <controls:SettingsCard Header="Contr">
+                        <TextBlock Text="{x:Bind ViewModel.VersionText}" />
+                    </controls:SettingsCard>
+                </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

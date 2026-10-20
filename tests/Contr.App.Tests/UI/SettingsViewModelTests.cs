@@ -1,3 +1,4 @@
+using Contr.App.Services.Platform;
 using Contr.App.UI;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
@@ -12,6 +13,14 @@ public sealed class SettingsViewModelTests
     private readonly IThemeService _theme = Substitute.For<IThemeService>();
     private readonly IAccentService _accent = Substitute.For<IAccentService>();
     private readonly IDaemonConnection _daemon = Substitute.For<IDaemonConnection>();
+    private readonly ISignInStartup _signIn = Substitute.For<ISignInStartup>();
+    private readonly ICliTools _cliTools = Substitute.For<ICliTools>();
+    private readonly INavigationService _navigation = Substitute.For<INavigationService>();
+
+    public SettingsViewModelTests()
+    {
+        _daemon.Status.Returns(DaemonStatus.Connecting);
+    }
 
     [Fact]
     public void Constructor_MapsCurrentThemeToIndex()
@@ -71,8 +80,42 @@ public sealed class SettingsViewModelTests
         Assert.Equal("Not connected.", CreateViewModel().DaemonDescription);
     }
 
+    [Fact]
+    public void StartAtSignIn_WritesOnlyAChange()
+    {
+        _signIn.IsEnabled.Returns(true);
+        var viewModel = CreateViewModel();
+
+        viewModel.StartAtSignIn = false;
+
+        _signIn.Received(1).IsEnabled = false;
+        _signIn.DidNotReceive().IsEnabled = true;
+    }
+
+    [Fact]
+    public void ShowTools_DescribesInstalledToolsAndAShadowingDocker()
+    {
+        var viewModel = CreateViewModel();
+        var tools = new CliToolsStatus(
+            [new CliTool("docker", "28.3.2", "28.3.2"), new CliTool("compose", "2.39.1", "2.39.1")],
+            @"C:\Users\me\AppData\Local\Contr\bin",
+            IsOnPath: true,
+            ShadowedBy: @"C:\Tools\docker.exe");
+
+        viewModel.ShowTools(tools, string.Empty);
+
+        Assert.Equal("Installed for your account", viewModel.ToolsTitle);
+        Assert.Equal(@"C:\Users\me\AppData\Local\Contr\bin · on your PATH", viewModel.ToolsDetail);
+        Assert.StartsWith(
+            @"Another docker comes first on your PATH: C:\Tools\docker.exe.",
+            viewModel.ToolsNote,
+            System.StringComparison.Ordinal);
+        Assert.Equal("Repair", viewModel.InstallToolsText);
+        Assert.Equal(2, viewModel.Tools.Count);
+    }
+
     private SettingsViewModel CreateViewModel()
     {
-        return new SettingsViewModel(_theme, _accent, _daemon);
+        return new SettingsViewModel(_theme, _accent, _daemon, _signIn, _cliTools, _navigation);
     }
 }
