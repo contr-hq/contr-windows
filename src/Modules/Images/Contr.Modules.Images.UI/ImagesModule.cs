@@ -28,6 +28,6 @@ public sealed class ImagesModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Images", "", typeof(ImagesPage))];
+        return [new NavigationItem("Images", "\uE81E", typeof(ImagesPage))];
     }
 }
