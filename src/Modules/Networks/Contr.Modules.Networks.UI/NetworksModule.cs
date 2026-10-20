@@ -6,6 +6,7 @@ using Contr.Modules.Networks.UI.Infrastructure;
 using Contr.Modules.Networks.UI.ViewModels;
 using Contr.Modules.Networks.UI.Views;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -22,6 +23,7 @@ public sealed class NetworksModule : IModule
 
         services.AddNetworksApplication();
         services.TryAddSingleton<INetworksGateway, NetworksGateway>();
+        services.AddSingleton<ISearchSource, NetworkSearch>();
         services.AddTransient<NetworksViewModel>();
         services.AddTransient<NetworksPage>();
     }

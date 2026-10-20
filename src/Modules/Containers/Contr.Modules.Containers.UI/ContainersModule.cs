@@ -11,6 +11,7 @@ using Contr.Modules.Containers.UI.Views;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Containers;
+using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -30,6 +31,7 @@ public sealed class ContainersModule : IModule
         services.AddContainersApplication();
         services.TryAddSingleton<IContainersGateway, ContainersGateway>();
         services.TryAddSingleton<IRunningContainers, RunningContainers>();
+        services.AddSingleton<ISearchSource, ContainerSearch>();
         services.AddTransient<ContainersViewModel>();
         services.AddTransient<ContainersPage>();
         services.AddTransient<ContainerDetailViewModel>();

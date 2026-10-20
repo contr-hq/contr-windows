@@ -39,6 +39,9 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
     private bool _isRefreshing;
     private bool _refreshAgain;
 
+    /// <summary>The name a search asked for, until that volume is listed.</summary>
+    private string? _requested;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial VolumeItem? Selected { get; set; }
@@ -198,7 +201,7 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
                 _usage = result.IsSuccess
                     ? result.Value.ToLookup(mount => mount.Volume, StringComparer.Ordinal)
                     : null;
-                Show(Selected?.Name);
+                Show(Wanted());
             }
             while (_refreshAgain);
         }
@@ -206,6 +209,12 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         {
             _isRefreshing = false;
         }
+    }
+
+    /// <summary>Selects the volume whose name is the first argument, once it is listed.</summary>
+    public override void OnNavigatedTo(params ReadOnlySpan<object> args)
+    {
+        _requested = args.Length > 0 ? args[0] as string : null;
     }
 
     protected override Task<IAsyncEnumerable<ListChange<VolumeDto>>> OpenAsync(CancellationToken cancellationToken)
@@ -231,8 +240,20 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
 
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Show(Selected?.Name);
+        Show(Wanted());
         _ = RefreshUsageAsync();
+    }
+
+    private string? Wanted()
+    {
+        var wanted = _requested ?? Selected?.Name;
+
+        if (_requested is { } requested && Rows.Any(row => row.Name == requested))
+        {
+            _requested = null;
+        }
+
+        return wanted;
     }
 
     /// <summary>Rebuilds the items with <paramref name="selectedName"/> selected, or the first volume.</summary>

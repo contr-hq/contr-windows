@@ -91,6 +91,7 @@ internal static class AppHost
         services.AddTransient<TroubleshootPage>();
 
         services.AddTransient<ShellViewModel>();
+        services.AddTransient<GlobalSearch>();
         services.AddTransient<SplashViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<KubernetesViewModel>();

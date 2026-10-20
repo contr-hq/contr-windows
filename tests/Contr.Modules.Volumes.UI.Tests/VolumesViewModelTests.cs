@@ -87,6 +87,25 @@ public sealed class VolumesViewModelTests
     }
 
     [Fact]
+    public void Activate_SelectsTheVolumeASearchAskedFor()
+    {
+        IAsyncEnumerable<ListChange<VolumeDto>> volumes = TestStreams.Of<ListChange<VolumeDto>>(
+            new ListChange<VolumeDto>.Snapshot([Dto("cache", string.Empty), Dto("shop_pgdata", "shop")]));
+        _sender
+            .Send(Arg.Any<WatchVolumesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(volumes));
+        _sender
+            .Send(Arg.Any<GetVolumeUsageQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success<IReadOnlyList<VolumeMountDto>>([]));
+        var viewModel = CreateViewModel();
+
+        viewModel.OnNavigatedTo("cache");
+        viewModel.Activate();
+
+        Assert.Equal("cache", viewModel.Selected?.Name);
+    }
+
+    [Fact]
     public void Compare_PutsComposeProjectsFirst()
     {
         Assert.True(VolumeRow.Compare(Row("shop_pgdata", "shop"), Row("cache", string.Empty)) < 0);

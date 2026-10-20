@@ -35,6 +35,9 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     private readonly INotificationService _notifications;
     private int _endpointsRequest;
 
+    /// <summary>The id a search asked for, until that network is listed.</summary>
+    private string? _requested;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial NetworkRow? Selected { get; set; }
@@ -158,6 +161,12 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         _notifications.Show($"Deleted {deleted}.", InfoBarSeverity.Success);
     }
 
+    /// <summary>Selects the network whose id is the first argument, once it is listed.</summary>
+    public override void OnNavigatedTo(params ReadOnlySpan<object> args)
+    {
+        _requested = args.Length > 0 ? args[0] as string : null;
+    }
+
     protected override Task<IAsyncEnumerable<ListChange<NetworkDto>>> OpenAsync(CancellationToken cancellationToken)
     {
         return _sender.Send(new WatchNetworksQuery(), cancellationToken);
@@ -195,10 +204,22 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
 
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Show(Selected?.Id);
+        Show(Wanted());
     }
 
     /// <summary>Rebuilds the rows with <paramref name="selectedId"/> selected, or the first network.</summary>
+    private string? Wanted()
+    {
+        var wanted = _requested ?? Selected?.Id;
+
+        if (_requested is { } requested && Rows.Any(row => row.Id == requested))
+        {
+            _requested = null;
+        }
+
+        return wanted;
+    }
+
     private void Show(string? selectedId)
     {
         var previous = Selected?.Id;
