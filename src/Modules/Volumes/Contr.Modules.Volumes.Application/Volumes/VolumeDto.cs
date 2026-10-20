@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Contr.Modules.Volumes.Domain;
 
 namespace Contr.Modules.Volumes.Application.Volumes;
@@ -12,4 +13,5 @@ public sealed record VolumeDto(
     string Driver,
     string Mountpoint,
     DateTimeOffset? CreatedAt,
-    string ComposeProject);
+    string ComposeProject,
+    IReadOnlyDictionary<string, string> Labels);

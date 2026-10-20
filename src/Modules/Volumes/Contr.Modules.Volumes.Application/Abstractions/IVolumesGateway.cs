@@ -20,4 +20,10 @@ public interface IVolumesGateway
 
     /// <summary>Deletes a volume; the engine refuses while a container uses it.</summary>
     Task<Result> RemoveAsync(VolumeName name, CancellationToken cancellationToken);
+
+    /// <summary>Every volume mount of every container; a container that disappears meanwhile is left out.</summary>
+    Task<Result<IReadOnlyList<VolumeMountDto>>> GetUsageAsync(CancellationToken cancellationToken);
+
+    /// <param name="all">Deletes named volumes too; otherwise only anonymous ones.</param>
+    Task<Result<VolumePruneResult>> PruneAsync(bool all, CancellationToken cancellationToken);
 }

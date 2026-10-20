@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Volumes.Application.Volumes;
@@ -33,6 +35,7 @@ internal static class VolumeMapping
             volume.Driver,
             volume.Mountpoint,
             volume.CreatedAt?.ToDateTimeOffset(),
-            project);
+            project,
+            new Dictionary<string, string>(volume.Labels, StringComparer.Ordinal));
     }
 }
