@@ -16,7 +16,8 @@ src/Shared/Contr.Application.Abstractions
                                    mediator contracts, DaemonErrors, ListChange<T>
 src/Shared/Contr.Mediator          the in-process mediator and its logging behavior
 src/Shared/Contr.UI.Contracts      IModule, NavigationItem, platform services, IDaemonConnection
-src/Shared/Contr.UI.Common         PageHeader, EngineGate, EmptyState, StatusLabel, Sparkline, styles, live lists
+src/Shared/Contr.UI.Common         PageHeader, StatStrip, EngineGate, EmptyState, StatusLabel, Sparkline, styles,
+                                   live lists
 src/Shared/Contr.Daemon.UI         the one daemon connection and the SDK call helpers
 src/Modules/<X>/Contr.Modules.<X>.{Domain,Application,UI}
                                    Containers, Images, Volumes, Networks
@@ -77,8 +78,29 @@ running either way.
 
 ## Pages
 
-Every page opens with `PageHeader`: a title or a breadcrumb trail, an optional subtitle, and the page's
-commands as its content on the right. Pages start loading from `Loaded`, never `OnNavigatedTo`: pages
+Every page follows kakehashi's page skeleton. It opens with `PageHeader`: a title or a breadcrumb trail, an
+optional subtitle, and the page's commands as its content, drawn as one bordered command group on the right:
+
+```xml
+<common:PageHeader Title="Volumes">
+    <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Style="{StaticResource AccentToolbarButtonStyle}" …/>
+        <Border Style="{StaticResource CommandBarDividerStyle}" />
+        <Button Style="{StaticResource ToolbarButtonStyle}" …/>
+    </StackPanel>
+</common:PageHeader>
+```
+
+The accent button is the page's one primary action, `DangerToolbarButtonStyle` marks a destructive one, and
+the group hides while its content is collapsed. A set of commands elsewhere on a page, such as a Compose
+project's, sits in a `CommandGroupStyle` border with the same buttons. A list page puts a `StatStrip` of
+`StatCard`s under the header, counted over every item rather than the filtered ones, then its list in a
+`CardStyle` card. `Cards.xaml` holds the card, column head, section label, mono and pill styles; `Menus.xaml`
+the toolbar and row buttons, which draw no fill until hovered, disabled ones included; `SelectorBar.xaml` the
+token pills that filter a view, such as Compose's services. Errors show in an `InfoBar` with a title that says
+what failed; the daemon's message is its body.
+
+Pages start loading from `Loaded`, never `OnNavigatedTo`: pages
 come from the container and the navigation service sets `Frame.Content` directly. A page that takes
 navigation parameters, such as a container's ID, implements `IHasViewModel`; the navigation service
 hands the parameters to `ViewModel.OnNavigatedTo` before the page loads. Pages reached from a module's
@@ -100,7 +122,9 @@ module's items; `Tools` items, such as Troubleshoot, sit below a separator. The 
 Troubleshoot pages are items like the modules'.
 
 A surface outside a module reaches the module's data through a contract in `Contr.UI.Contracts`, never the module:
-the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements.
+the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, and
+the title bar's search asks every `ISearchSource` a module registers. A hit names the page and the arguments that
+show it, such as the Volumes page and a volume's name.
 Compose projects are read from the labels Compose puts on containers, so the Compose page lives in the Containers
 module. The status bar spans the window
 under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the

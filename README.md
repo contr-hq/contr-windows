@@ -7,8 +7,8 @@ C# SDK the core repository generates, over a per-user named pipe.
 
 The design's shell, Containers (grouped by Compose project, with a page per container: logs, inspect, a terminal and
 stats), Images (pull with per-layer progress, prune), Volumes and Networks, all following the daemon's Watch streams.
-The status bar shows the engine state and starts or stops the engine; the tray keeps Contr reachable while its window is
-closed. Until the core's WSL backend lands, run it against `contrd --backend fake`.
+The title bar searches containers, images, volumes and networks; the status bar shows the engine state and starts or
+stops the engine; the tray keeps Contr reachable while its window is closed. Until the core's WSL backend lands, run it against `contrd --backend fake`.
 
 Also: Compose projects from the containers' Compose labels, Troubleshoot (the engine's failure, the checks the client
 can make, its own log), the tray flyout with the running containers, and the Kubernetes page's layout.
