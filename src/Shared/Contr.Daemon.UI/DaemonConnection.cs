@@ -159,6 +159,24 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
             cancellationToken);
     }
 
+    public Task<Result> ResetEngineAsync(
+        EngineResetScope scope, IProgress<EngineProgress> progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        var request = new ResetRequest {
+            Scope = scope == EngineResetScope.Factory ? ResetScope.Factory : ResetScope.Runtime,
+        };
+
+        return DrainAsync(
+            (client, token) => client.Engine.Reset(request, cancellationToken: token),
+            cancellationToken,
+            response => response.EventCase == ResetResponse.EventOneofCase.Progress
+                ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
+                : null,
+            progress);
+    }
+
     /// <remarks>
     /// Safe to call more than once: the container disposes this instance once per interface it is
     /// registered under.
@@ -205,6 +223,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                 Capability.ResourceLimits => DaemonCapability.ResourceLimits,
                 Capability.WslIntegration => DaemonCapability.WslIntegration,
                 Capability.HostPortForwarding => DaemonCapability.HostPortForwarding,
+                Capability.Reset => DaemonCapability.Reset,
                 _ => null,
             };
 

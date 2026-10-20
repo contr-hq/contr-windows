@@ -4,11 +4,16 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.UI.Common.Controls;
+using Contr.UI.Common.Formatting;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.App.UI;
 
@@ -31,8 +36,11 @@ public sealed partial class TroubleshootViewModel : ViewModel
     private const int _logLines = 80;
 
     private readonly IDaemonConnection _daemon;
+    private readonly IDialogService _dialogs;
+    private readonly INotificationService _notifications;
     private readonly DispatcherQueue? _dispatcher;
     private IDisposable? _subscription;
+    private IDisposable? _usage;
 
     [ObservableProperty]
     public partial bool HasProblem { get; set; }
@@ -59,16 +67,41 @@ public sealed partial class TroubleshootViewModel : ViewModel
     [ObservableProperty]
     public partial bool HasLog { get; set; }
 
-    public TroubleshootViewModel(IDaemonConnection daemon)
+    /// <summary>Whether the daemon resets the engine; it offers that only where it owns the engine.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanReset))]
+    public partial bool OffersReset { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanReset))]
+    public partial bool IsResetting { get; set; }
+
+    /// <summary>The reset's latest step, such as <c>Stopping the engine</c>.</summary>
+    [ObservableProperty]
+    public partial string ResetStatus { get; set; }
+
+    /// <summary>The space the engine's data takes, such as <c>18.6 GB</c>; empty until measured.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDiskText))]
+    public partial string DiskText { get; set; }
+
+    public TroubleshootViewModel(
+        IDaemonConnection daemon, IDialogService dialogs, INotificationService notifications)
     {
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(dialogs);
+        ArgumentNullException.ThrowIfNull(notifications);
         _daemon = daemon;
+        _dialogs = dialogs;
+        _notifications = notifications;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         ProblemTitle = string.Empty;
         ProblemMessage = string.Empty;
         ProblemCode = string.Empty;
         ChecksSummary = string.Empty;
         CheckPills = [];
+        ResetStatus = string.Empty;
+        DiskText = string.Empty;
     }
 
     public ObservableCollection<CheckRow> Checks { get; } = [];
@@ -77,6 +110,10 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public ObservableCollection<ComponentLogLine> LogLines { get; } = [];
 
     public bool HasProblemCode => ProblemCode.Length > 0;
+
+    public bool CanReset => OffersReset && !IsResetting;
+
+    public bool HasDiskText => DiskText.Length > 0;
 
     /// <summary>Follows the daemon and runs the checks; call it from the page's <c>Loaded</c>.</summary>
     public void Activate()
@@ -92,12 +129,68 @@ public sealed partial class TroubleshootViewModel : ViewModel
                 _dispatcher.TryEnqueue(() => Run(status));
             }
         });
+        _usage ??= _daemon.UsageChanges.Subscribe(usage => {
+            var disk = usage is { DiskUsedBytes: > 0 } ? HumanFormat.Bytes(usage.DiskUsedBytes) : null;
+
+            if (disk is not null)
+            {
+                _dispatcher?.TryEnqueue(() => DiskText = disk);
+            }
+        });
     }
 
     public void Deactivate()
     {
         _subscription?.Dispose();
         _subscription = null;
+        _usage?.Dispose();
+        _usage = null;
+    }
+
+    /// <summary>Asks first, then replaces the engine's runtime; images, containers and volumes stay.</summary>
+    public async Task ResetRuntimeAsync()
+    {
+        const string message = "Contr stops the engine and its containers and replaces the engine's runtime. "
+            + "Images, containers and volumes stay. Start the engine again when it's done.";
+
+        if (!await _dialogs.ShowConfirmAsync("Reset the engine", message, "Reset", "Cancel"))
+        {
+            return;
+        }
+
+        if (await ResetAsync(EngineResetScope.Runtime) is { } error)
+        {
+            _notifications.Show(error, InfoBarSeverity.Error, "The engine wasn't reset");
+        }
+        else
+        {
+            _notifications.Show("The engine was reset. Start it when you need it.", InfoBarSeverity.Success);
+        }
+    }
+
+    public void ShowFactoryResetDone()
+    {
+        _notifications.Show(
+            "Contr deleted the engine and its data. Starting the engine sets it up again.", InfoBarSeverity.Success);
+    }
+
+    /// <summary>Resets the engine, following its steps in <see cref="ResetStatus"/>.</summary>
+    /// <returns>Why the reset failed; absent once it is done.</returns>
+    public async Task<string?> ResetAsync(EngineResetScope scope)
+    {
+        IsResetting = true;
+        ResetStatus = "Stopping the engine";
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => ResetStatus = step.Message);
+            var result = await _daemon.ResetEngineAsync(scope, progress, CancellationToken.None);
+
+            return result.IsSuccess ? null : result.Error.Message;
+        }
+        finally
+        {
+            IsResetting = false;
+        }
     }
 
     public void RunAgain()
@@ -220,6 +313,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
 
     private void Run(DaemonStatus status)
     {
+        OffersReset = _daemon.Identity?.Capabilities.Contains(DaemonCapability.Reset) == true;
         var checks = Evaluate(status, _daemon.Identity, Environment.OSVersion.Version.Build);
         Checks.Clear();
         foreach (var check in checks)

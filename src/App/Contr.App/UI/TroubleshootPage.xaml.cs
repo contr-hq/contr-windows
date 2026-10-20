@@ -49,6 +49,22 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
         LogScroller.ChangeView(null, LogScroller.ScrollableHeight, null, disableAnimation: true);
     }
 
+    private async void OnResetEngine(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.ResetRuntimeAsync();
+    }
+
+    private async void OnFactoryReset(object sender, RoutedEventArgs e)
+    {
+        // A dialog's popup does not inherit the theme the window content requests.
+        var dialog = new FactoryResetDialog(ViewModel) { XamlRoot = XamlRoot, RequestedTheme = ActualTheme };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            ViewModel.ShowFactoryResetDone();
+        }
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.Activate();

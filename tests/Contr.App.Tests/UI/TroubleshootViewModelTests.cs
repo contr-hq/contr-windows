@@ -1,7 +1,13 @@
+using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Contr.App.UI;
+using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Contracts.Services.Daemon;
+using Contr.UI.Contracts.Services.Platform;
+using NSubstitute;
 using Xunit;
 
 namespace Contr.App.Tests.UI;
@@ -47,5 +53,24 @@ public sealed class TroubleshootViewModelTests
         Assert.Equal(StatusKind.Critical, checks.Single(check => check.Name == "Windows version").Kind);
         Assert.Equal("Cannot run contrd.exe", checks.Single(check => check.Name == "Contr daemon").Detail);
         Assert.Equal("Skipped", checks.Single(check => check.Name == "Engine").Outcome);
+    }
+
+    [Fact]
+    public async Task Reset_ReturnsWhyTheDaemonRefused()
+    {
+        var daemon = Substitute.For<IDaemonConnection>();
+        daemon.Status.Returns(DaemonStatus.Connecting);
+        daemon
+            .ResetEngineAsync(default, default!, default)
+            .ReturnsForAnyArgs(Result.Failure(new Error("Daemon.FeatureUnavailable", "Reset is not available.")));
+        var viewModel = new TroubleshootViewModel(
+            daemon, Substitute.For<IDialogService>(), Substitute.For<INotificationService>());
+
+        var error = await viewModel.ResetAsync(EngineResetScope.Factory);
+
+        Assert.Equal("Reset is not available.", error);
+        Assert.False(viewModel.IsResetting);
+        await daemon.Received(1).ResetEngineAsync(
+            EngineResetScope.Factory, Arg.Any<IProgress<EngineProgress>>(), Arg.Any<CancellationToken>());
     }
 }
