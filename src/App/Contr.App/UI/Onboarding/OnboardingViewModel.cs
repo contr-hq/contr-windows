@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.App.Services.Platform;
 using Contr.Interoperability;
+using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Common.Formatting;
 using Contr.UI.Contracts;
@@ -24,6 +25,9 @@ public sealed partial class OnboardingViewModel : ViewModel
     /// <summary>The setting that records a finished setup, so it shows once.</summary>
     public const string SetupDoneKey = "SetupDone";
 
+    /// <summary>The setting that makes the next setup start at the engine, once WSL needs only a restart.</summary>
+    public const string ResumeAtEngineKey = "SetupResumeAtEngine";
+
     /// <summary>The command Microsoft documents for installing WSL without a Linux distribution.</summary>
     public const string InstallWslCommand = "wsl --install --no-distribution";
 
@@ -33,7 +37,10 @@ public sealed partial class OnboardingViewModel : ViewModel
     private const string _wslMissing = "WSL_NOT_INSTALLED";
     private const long _lowDiskBytes = 10_000_000_000;
 
+    private static readonly CheckFix _installWsl = new(new Remediation(Remediation.InstallWslId, true));
+
     private readonly IDaemonConnection _daemon;
+    private readonly IDiagnostics _diagnostics;
     private readonly ICliTools _cliTools;
     private readonly IWslDistributions _wsl;
     private readonly ISignInStartup _signIn;
@@ -44,15 +51,37 @@ public sealed partial class OnboardingViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(StepCaption), nameof(StepNumber), nameof(StepTitle), nameof(StepLead))]
     [NotifyPropertyChangedFor(nameof(IsChecking), nameof(IsWsl), nameof(IsEngine))]
     [NotifyPropertyChangedFor(nameof(IsTools), nameof(IsReady), nameof(CanGoBack), nameof(NextText))]
+    [NotifyPropertyChangedFor(nameof(CanPostpone), nameof(NextNeedsApproval), nameof(CanGoNext))]
     public partial int StepIndex { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanGoNext))]
+    [NotifyPropertyChangedFor(nameof(CanGoNext), nameof(IsIdle), nameof(NextText))]
     public partial bool IsBusy { get; set; }
 
+    /// <summary>Whether the daemon found WSL missing, so setup offers to install it.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(NextText))]
     public partial bool IsWslMissing { get; set; }
+
+    /// <summary>Why installing WSL failed; empty unless it did.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWslError))]
+    public partial string WslError { get; set; }
+
+    /// <summary>The install's latest step, such as <c>Installing WSL; approve the administrator prompt</c>.</summary>
+    [ObservableProperty]
+    public partial string WslStatus { get; set; }
+
+    /// <summary>WSL is installed, and Windows must restart or the user sign out before the engine can use it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(NextText), nameof(CanPostpone), nameof(NextNeedsApproval))]
+    public partial bool IsWslRestartNeeded { get; set; }
+
+    /// <summary>Such as <c>Restart Windows to finish</c>; empty until WSL is installed.</summary>
+    [ObservableProperty]
+    public partial string WslDoneTitle { get; set; }
+
+    [ObservableProperty]
+    public partial string WslDoneMessage { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasEngineError))]
@@ -99,6 +128,7 @@ public sealed partial class OnboardingViewModel : ViewModel
 
     public OnboardingViewModel(
         IDaemonConnection daemon,
+        IDiagnostics diagnostics,
         ICliTools cliTools,
         IWslDistributions wsl,
         ISignInStartup signIn,
@@ -106,18 +136,24 @@ public sealed partial class OnboardingViewModel : ViewModel
         IClipboardService clipboard)
     {
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentNullException.ThrowIfNull(cliTools);
         ArgumentNullException.ThrowIfNull(wsl);
         ArgumentNullException.ThrowIfNull(signIn);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(clipboard);
         _daemon = daemon;
+        _diagnostics = diagnostics;
         _cliTools = cliTools;
         _wsl = wsl;
         _signIn = signIn;
         _settings = settings;
         _clipboard = clipboard;
         EngineError = string.Empty;
+        WslError = string.Empty;
+        WslStatus = string.Empty;
+        WslDoneTitle = string.Empty;
+        WslDoneMessage = string.Empty;
         ToolsText = string.Empty;
         ToolsNote = string.Empty;
         ContextText = string.Empty;
@@ -132,7 +168,7 @@ public sealed partial class OnboardingViewModel : ViewModel
         ];
     }
 
-    /// <summary>Raised when the user finishes; the window closes.</summary>
+    /// <summary>Raised when the user finishes or leaves setup for later; the window closes.</summary>
     public event EventHandler? Finished;
 
     public ObservableCollection<OnboardingStep> Steps { get; }
@@ -183,12 +219,22 @@ public sealed partial class OnboardingViewModel : ViewModel
 
     public bool IsReady => StepIndex == 4;
 
-    public bool CanGoBack => StepIndex is > 0 and < 4;
+    public bool CanGoBack => StepIndex is > 0 and < 4 && !IsWslRestartNeeded;
 
     public bool CanGoNext => !IsBusy && (StepIndex != 2 || IsEngineRunning);
 
+    public bool IsIdle => !IsBusy;
+
+    /// <summary>Installing WSL can wait; setup opens again the next time Contr starts.</summary>
+    public bool CanPostpone => IsWsl && !IsWslRestartNeeded;
+
+    /// <summary>The next step asks Windows for administrator approval, so its button carries the shield.</summary>
+    public bool NextNeedsApproval => IsWsl && !IsWslRestartNeeded;
+
     public string NextText => StepIndex switch {
-        1 when IsWslMissing => "Try again",
+        0 when IsBusy => "Checking…",
+        1 when IsWslRestartNeeded => "Close",
+        1 => _installWsl.Label,
         3 => "Finish setup",
         4 => "Open Contr",
         _ => "Next",
@@ -196,13 +242,30 @@ public sealed partial class OnboardingViewModel : ViewModel
 
     public bool HasEngineError => EngineError.Length > 0;
 
+    public bool HasWslError => WslError.Length > 0;
+
+    /// <summary>The title over <see cref="WslError"/>.</summary>
+    public static string WslErrorTitle => _installWsl.FailedTitle;
+
     public bool HasToolsNote => ToolsNote.Length > 0;
 
-    /// <summary>Shows the first step; call it once the window is up.</summary>
-    public void Start()
+    /// <summary>Shows the first step, or the engine's after a restart that installing WSL needed; call it once the
+    /// window is up.</summary>
+    public async Task StartAsync()
     {
-        Show(0);
         RunChecks();
+
+        if (_settings.Read<bool>(ResumeAtEngineKey))
+        {
+            _settings.Save(ResumeAtEngineKey, false);
+            Steps[1].Detail = "WSL installed";
+            Show(2);
+            await StartEngineAsync();
+
+            return;
+        }
+
+        Show(0);
     }
 
     public async Task NextAsync()
@@ -210,13 +273,13 @@ public sealed partial class OnboardingViewModel : ViewModel
         switch (StepIndex)
         {
             case 0:
-                Show(1);
-                Steps[1].Detail = IsWslMissing ? "Needed" : "Checked while the engine starts";
-                await NextAsync();
+                await CheckWslAsync();
+                break;
+            case 1 when IsWslRestartNeeded:
+                Finished?.Invoke(this, EventArgs.Empty);
                 break;
             case 1:
-                Show(2);
-                await StartEngineAsync();
+                await InstallWslAsync();
                 break;
             case 2:
                 Show(3);
@@ -234,12 +297,46 @@ public sealed partial class OnboardingViewModel : ViewModel
         }
     }
 
+    /// <summary>Goes a step back, past Install WSL where WSL is there.</summary>
     public void Back()
     {
         if (CanGoBack)
         {
-            Show(StepIndex - 1);
+            Show(StepIndex == 2 && !IsWslMissing ? 0 : StepIndex - 1);
         }
+    }
+
+    /// <summary>Leaves setup without finishing it; it opens again the next time Contr starts.</summary>
+    public void Postpone()
+    {
+        Finished?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Whether the daemon's checks offer to install WSL for a prerequisite they found missing.</summary>
+    public static bool NeedsWsl(IReadOnlyList<DiagnosticCheck> checks)
+    {
+        ArgumentNullException.ThrowIfNull(checks);
+
+        return checks.Any(check => check is { Id: DiagnosticCheck.PrerequisitesId, Status: DiagnosticStatus.Fail }
+            && check.Remediations.Any(fix => fix.ActionId == Remediation.InstallWslId));
+    }
+
+    /// <summary>What to send whoever can install WSL on this PC.</summary>
+    public static string ItInstructions(string machineName, int windowsBuild)
+    {
+        var build = windowsBuild.ToString(CultureInfo.InvariantCulture);
+
+        return $"""
+            Contr needs WSL 2 on {machineName}, and installing it needs administrator rights.
+
+            In a terminal opened as administrator, run the command below, then restart the PC if Windows asks.
+            It installs WSL without a Linux distribution.
+
+                {InstallWslCommand}
+
+            WSL 2 needs Windows 10 build 19041 or later; this PC runs build {build}.
+            Microsoft's guide: https://learn.microsoft.com/windows/wsl/install
+            """.ReplaceLineEndings();
     }
 
     public async Task RetryEngineAsync()
@@ -247,9 +344,9 @@ public sealed partial class OnboardingViewModel : ViewModel
         await StartEngineAsync();
     }
 
-    public void CopyWslCommand()
+    public void CopyItInstructions()
     {
-        _clipboard.SetText(InstallWslCommand);
+        _clipboard.SetText(ItInstructions(Environment.MachineName, Environment.OSVersion.Version.Build));
     }
 
     public void CopyTryCommand()
@@ -307,6 +404,77 @@ public sealed partial class OnboardingViewModel : ViewModel
         }
 
         Steps[0].Detail = string.Join(" · ", checks.Select(check => check.Detail));
+    }
+
+    /// <summary>Asks the daemon whether WSL is missing; Install WSL shows only where it is.</summary>
+    private async Task CheckWslAsync()
+    {
+        IsBusy = true;
+        try
+        {
+            var checks = await _diagnostics.RunChecksAsync(CancellationToken.None);
+
+            // A daemon older than API revision 8 makes no checks; starting the engine tells instead.
+            IsWslMissing = checks.IsSuccess && NeedsWsl(checks.Value);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (IsWslMissing)
+        {
+            Steps[1].Detail = "Needs administrator approval";
+            Show(1);
+
+            return;
+        }
+
+        Steps[1].Detail = "Nothing to install";
+        Show(2);
+        await StartEngineAsync();
+    }
+
+    private async Task InstallWslAsync()
+    {
+        IsBusy = true;
+        WslError = string.Empty;
+        WslStatus = _installWsl.Running;
+        Result<RemediationOutcome> result;
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => WslStatus = step.Message);
+            result = await _diagnostics.RunRemediationAsync(Remediation.InstallWslId, progress, CancellationToken.None);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        var notice = _installWsl.Notice(result);
+
+        if (result.IsFailure)
+        {
+            WslError = notice.Message;
+
+            return;
+        }
+
+        Steps[1].Detail = "WSL installed";
+
+        if (result.Value.RestartRequired || result.Value.SignOutRequired)
+        {
+            _settings.Save(ResumeAtEngineKey, true);
+            WslDoneTitle = notice.Title ?? string.Empty;
+            WslDoneMessage = $"{notice.Message} Open Contr afterwards, and setup continues at step 3.";
+            IsWslRestartNeeded = true;
+
+            return;
+        }
+
+        IsWslMissing = false;
+        Show(2);
+        await StartEngineAsync();
     }
 
     private async Task StartEngineAsync()

@@ -67,7 +67,7 @@ public sealed partial class OnboardingWindow : WindowEx
         return first && second;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         // The theme service themes the main window; this window takes the theme it shows.
         if (App.MainWindow.Content is FrameworkElement main)
@@ -76,7 +76,7 @@ public sealed partial class OnboardingWindow : WindowEx
             TitleBarHelper.UpdateTitleBarAppearance(this, main.ActualTheme);
         }
 
-        ViewModel.Start();
+        await ViewModel.StartAsync();
     }
 
     private async void OnNext(object sender, RoutedEventArgs e)
@@ -94,9 +94,14 @@ public sealed partial class OnboardingWindow : WindowEx
         await ViewModel.RetryEngineAsync();
     }
 
-    private void OnCopyWslCommand(object sender, RoutedEventArgs e)
+    private void OnNotNow(object sender, RoutedEventArgs e)
     {
-        ViewModel.CopyWslCommand();
+        ViewModel.Postpone();
+    }
+
+    private void OnCopyItInstructions(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CopyItInstructions();
     }
 
     private void OnCopyTryCommand(object sender, RoutedEventArgs e)

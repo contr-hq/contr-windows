@@ -36,6 +36,7 @@
                     ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="92" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -48,13 +49,41 @@
                         VerticalAlignment="Center"
                         FontWeight="{x:Bind local:TroubleshootPage.Weight(IsFailed)}"
                         Text="{x:Bind Name}" />
+                    <!--  The daemon's details are sentences; a long one wraps instead of losing its end.  -->
                     <TextBlock
                         Grid.Column="2"
-                        MaxWidth="320"
+                        HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        IsTextSelectionEnabled="True"
                         Text="{x:Bind Detail}"
-                        TextTrimming="CharacterEllipsis" />
+                        TextAlignment="Right"
+                        TextWrapping="Wrap" />
+                    <ItemsRepeater
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        ItemsSource="{x:Bind Fixes}">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Orientation="Horizontal" Spacing="4" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="local:CheckFix">
+                                <HyperlinkButton
+                                    Padding="8,4"
+                                    AutomationProperties.Name="{x:Bind Label}"
+                                    Click="OnFix"
+                                    Tag="{x:Bind}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon
+                                            Glyph="{x:Bind icons:ContrIcons.Shield}"
+                                            Style="{StaticResource IconStyle}"
+                                            Visibility="{x:Bind RequiresElevation}" />
+                                        <TextBlock Text="{x:Bind Label}" />
+                                    </StackPanel>
+                                </HyperlinkButton>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
                 </Grid>
             </DataTemplate>
         </ResourceDictionary>
@@ -76,16 +105,55 @@
                     IsClosable="False"
                     IsOpen="{x:Bind ViewModel.HasProblem, Mode=OneWay}"
                     Message="{x:Bind ViewModel.ProblemMessage, Mode=OneWay}"
-                    Severity="Error"
+                    Severity="{x:Bind ViewModel.ProblemSeverity, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.HasProblem, Mode=OneWay}">
+                    <InfoBar.ActionButton>
+                        <Button
+                            AutomationProperties.AutomationId="ProblemFixButton"
+                            AutomationProperties.Name="{x:Bind ViewModel.ProblemFixLabel, Mode=OneWay}"
+                            Click="OnFixProblem"
+                            IsEnabled="{x:Bind ViewModel.CanFix, Mode=OneWay}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Visibility="{x:Bind ViewModel.HasProblemFix, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon
+                                    Glyph="{x:Bind icons:ContrIcons.Shield}"
+                                    Style="{StaticResource IconStyle}"
+                                    Visibility="{x:Bind ViewModel.ProblemFixNeedsApproval, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind ViewModel.ProblemFixLabel, Mode=OneWay}" />
+                            </StackPanel>
+                        </Button>
+                    </InfoBar.ActionButton>
                     <InfoBar.Content>
-                        <TextBlock
-                            Margin="0,0,0,12"
-                            FontFamily="Cascadia Mono,Consolas"
-                            FontSize="12"
-                            IsTextSelectionEnabled="True"
-                            Text="{x:Bind ViewModel.ProblemCode, Mode=OneWay}"
-                            Visibility="{x:Bind ViewModel.HasProblemCode, Mode=OneWay}" />
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,12"
+                                FontFamily="Cascadia Mono,Consolas"
+                                FontSize="12"
+                                IsTextSelectionEnabled="True"
+                                Text="{x:Bind ViewModel.ProblemCode, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.HasProblemCode, Mode=OneWay}" />
+                            <StackPanel
+                                Margin="0,0,0,12"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Visibility="{x:Bind ViewModel.IsFixingProblem, Mode=OneWay}">
+                                <ProgressRing
+                                    Width="16"
+                                    Height="16"
+                                    IsActive="{x:Bind ViewModel.IsFixingProblem, Mode=OneWay}" />
+                                <TextBlock
+                                    AutomationProperties.AutomationId="ProblemFixStatus"
+                                    Text="{x:Bind ViewModel.FixStatus, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,12"
+                                AutomationProperties.AutomationId="ProblemFixError"
+                                Text="{x:Bind ViewModel.FixError, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{x:Bind ViewModel.HasFixError, Mode=OneWay}" />
+                        </StackPanel>
                     </InfoBar.Content>
                 </InfoBar>
 
@@ -113,17 +181,39 @@
                                 <Button
                                     Grid.Column="3"
                                     AutomationProperties.AutomationId="RunChecksButton"
-                                    Click="OnRunAgain">
+                                    Click="OnRunAgain"
+                                    IsEnabled="{x:Bind ViewModel.CanFix, Mode=OneWay}">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource IconStyle}" />
                                         <TextBlock Text="Run again" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
-                            <ItemsRepeater
-                                AutomationProperties.AutomationId="SystemChecks"
-                                ItemTemplate="{StaticResource CheckTemplate}"
-                                ItemsSource="{x:Bind ViewModel.Checks}" />
+                            <StackPanel
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Visibility="{x:Bind ViewModel.IsFixingCheck, Mode=OneWay}">
+                                <ProgressRing
+                                    Width="16"
+                                    Height="16"
+                                    IsActive="{x:Bind ViewModel.IsFixingCheck, Mode=OneWay}" />
+                                <TextBlock
+                                    AutomationProperties.AutomationId="FixStatus"
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="{x:Bind ViewModel.FixStatus, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <!--  A control, so one running fix disables every other fix button.  -->
+                            <ContentControl
+                                HorizontalContentAlignment="Stretch"
+                                IsEnabled="{x:Bind ViewModel.CanFix, Mode=OneWay}"
+                                IsTabStop="False">
+                                <ItemsRepeater
+                                    AutomationProperties.AutomationId="SystemChecks"
+                                    ItemTemplate="{StaticResource CheckTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Checks}" />
+                            </ContentControl>
                         </StackPanel>
                     </Border>
 

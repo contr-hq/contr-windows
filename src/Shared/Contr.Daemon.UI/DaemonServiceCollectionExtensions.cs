@@ -23,6 +23,7 @@ public static class DaemonServiceCollectionExtensions
         services.TryAddSingleton<IntegrationClient>();
         services.TryAddSingleton<ICliTools>(provider => provider.GetRequiredService<IntegrationClient>());
         services.TryAddSingleton<IWslDistributions>(provider => provider.GetRequiredService<IntegrationClient>());
+        services.TryAddSingleton<IDiagnostics, DiagnosticsClient>();
 
         return services;
     }
