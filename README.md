@@ -18,14 +18,16 @@ The first run opens a setup (this PC's checks, installing WSL where the daemon f
 with the daemon's progress, the command-line tools, which of your WSL distributions reach the engine, and start at
 sign-in), and Settings has the design's tabs, with a switch per WSL distribution where the daemon integrates them.
 Settings and the engine-stopped page change the daemon's settings (starting the engine with Contr, the standard Docker
-pipe), show the ones an administrator fixes as managed by the organization, and return them to their defaults.
+pipe), show the ones an administrator fixes as managed by the organization, and return them to their defaults. Where
+the engine takes them, the Proxies and certificates tab edits the engine's proxy, its trust in Windows' certificates and
+its registry mirror, and applies them together, restarting a running engine.
 
 Next: a Velopack installer that bundles a pinned core release.
 Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from
 their menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the
-engine's CPU, memory and disk. Screens and actions whose daemon API does not exist yet (the diagnostics bundle,
-Kubernetes, Compose up and down, resources, proxies, engine configuration, updates) show their layout with the actions
-disabled.
+engine's CPU, memory and disk. Screens and actions whose daemon API does not exist yet (the diagnostics bundle, passing
+the proxy to containers, Kubernetes, Compose up and down, resources, engine configuration, updates) show their layout
+with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
