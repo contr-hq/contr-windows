@@ -53,6 +53,9 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
 - `IntegrationClient` serves `ICliTools` and `IWslDistributions` over `ContrClient.Integration`, on the
   same connection. Setup and Settings show the WSL distributions only when the handshake lists
   `WslIntegration`.
+- `DiagnosticsClient` serves `IDiagnostics` over `ContrClient.Diagnostics`: the daemon's checks and the
+  fixes they offer, such as `install-wsl`. Troubleshoot falls back to the checks the client makes
+  itself where the daemon makes none (it is unreachable, or older than API revision 8).
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
