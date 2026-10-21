@@ -56,6 +56,10 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
 - `DiagnosticsClient` serves `IDiagnostics` over `ContrClient.Diagnostics`: the daemon's checks and the
   fixes they offer, such as `install-wsl`. Troubleshoot falls back to the checks the client makes
   itself where the daemon makes none (it is unreachable, or older than API revision 8).
+- `DaemonSettingsClient` serves `IDaemonSettings` over `ContrClient.Settings`, following
+  `WatchSettings` while connected, so Settings and every engine-stopped page show the same values and
+  locks. From API revision 11 the daemon starts the engine itself when `engine.start_with_daemon` is
+  on, and `DaemonConnection` stops starting it; for older daemons the client's own choice still applies.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
