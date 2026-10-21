@@ -36,6 +36,7 @@ public sealed record CliToolRow(string Name, string Description, string Version,
             "buildx" => ("docker buildx", "BuildKit builder plugin"),
             "credential-wincred" => (
                 "docker-credential-wincred", "Keeps registry sign-ins in Windows Credential Manager"),
+            "kubectl" => ("kubectl", "Kubernetes command-line client"),
             _ => (tool.Name, string.Empty),
         };
         var isDocker = tool.Name == "docker";
