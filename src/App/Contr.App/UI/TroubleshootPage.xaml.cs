@@ -1,19 +1,27 @@
 using System;
+using System.IO;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
 using Windows.UI.Text;
+using WinRT.Interop;
 
 namespace Contr.App.UI;
 
 /// <summary>Why the engine is down, the checks the client can make, and the client's log.</summary>
 public sealed partial class TroubleshootPage : Page, IHasViewModel
 {
-    public TroubleshootPage(TroubleshootViewModel viewModel)
+    private readonly IMainWindowProvider _mainWindow;
+
+    public TroubleshootPage(TroubleshootViewModel viewModel, IMainWindowProvider mainWindow)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(mainWindow);
         ViewModel = viewModel;
+        _mainWindow = mainWindow;
 
         InitializeComponent();
 
@@ -47,6 +55,44 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
     private void ScrollLogToEnd()
     {
         LogScroller.ChangeView(null, LogScroller.ScrollableHeight, null, disableAnimation: true);
+    }
+
+    /// <summary>Asks where to save the bundle, then writes it there; a bundle that failed leaves no file.</summary>
+    private async void OnCreateBundle(object sender, RoutedEventArgs e)
+    {
+        if (_mainWindow.MainWindow is not { } window)
+        {
+            return;
+        }
+
+        var picker = new FileSavePicker {
+            SuggestedStartLocation = PickerLocationId.Downloads,
+            SuggestedFileName = TroubleshootViewModel.BundleName(DateTimeOffset.Now),
+        };
+        picker.FileTypeChoices.Add("Zip archive", [".zip"]);
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+
+        if (await picker.PickSaveFileAsync() is not { } file)
+        {
+            return;
+        }
+
+        bool created;
+        using (var stream = await file.OpenStreamForWriteAsync())
+        {
+            stream.SetLength(0);
+            created = await ViewModel.CreateBundleAsync(stream, file.Path);
+        }
+
+        if (!created)
+        {
+            await file.DeleteAsync();
+        }
+    }
+
+    private async void OnResetKubernetes(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.ResetKubernetesAsync();
     }
 
     private async void OnResetEngine(object sender, RoutedEventArgs e)
