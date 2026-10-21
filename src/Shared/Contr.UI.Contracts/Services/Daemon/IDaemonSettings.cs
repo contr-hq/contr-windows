@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.SharedKernel;
@@ -13,6 +14,10 @@ public interface IDaemonSettings
     /// <summary>Code of a change to a setting an administrator fixes.</summary>
     const string SettingLockedCode = "Daemon.SettingLocked";
 
+    /// <summary>Code of a value the daemon refuses, such as a proxy that is not a URL; the message reads
+    /// <c>proxy.http: "x" is not a URL</c>, see <see cref="DaemonSettingPaths.Refused"/>.</summary>
+    const string InvalidValueCode = "Daemon.InvalidSetting";
+
     /// <summary>
     /// The current settings, then again after every change, wherever it came from; absent while no daemon is
     /// connected, or where the daemon keeps none (older than API revision 11).
@@ -20,11 +25,10 @@ public interface IDaemonSettings
     /// <remarks>Emits on a background thread; subscribers share one stream from the daemon.</remarks>
     IObservable<DaemonSettings?> Changes { get; }
 
-    /// <summary>Changes one setting.</summary>
+    /// <summary>Changes the settings <paramref name="edit"/> names, all or none of them.</summary>
     /// <returns>The settings afterwards; a failure with code <see cref="SettingLockedCode"/> where an administrator
-    /// fixes the setting.</returns>
-    Task<Result<DaemonSettingsChange>> SetAsync(
-        DaemonSetting setting, bool value, CancellationToken cancellationToken);
+    /// fixes one of them, or <see cref="InvalidValueCode"/> for a value the daemon refuses.</returns>
+    Task<Result<DaemonSettingsChange>> UpdateAsync(DaemonSettingsEdit edit, CancellationToken cancellationToken);
 
     /// <summary>Returns every setting the user changed to its default; settings an administrator fixes stay.</summary>
     Task<Result<DaemonSettingsChange>> ResetAsync(CancellationToken cancellationToken);
@@ -39,6 +43,48 @@ public enum DaemonSetting
     /// <summary>The engine also serves <c>\\.\pipe\docker_engine</c> while no other program does, from its next
     /// start.</summary>
     ServeDefaultPipe,
+
+    /// <summary>How the engine finds its proxy.</summary>
+    ProxyMode,
+
+    /// <summary>In manual mode, the proxy for <c>http://</c> destinations.</summary>
+    ProxyHttp,
+
+    /// <summary>In manual mode, the proxy for <c>https://</c> destinations.</summary>
+    ProxyHttps,
+
+    /// <summary>In manual mode, the destinations the engine reaches directly, as a <c>NO_PROXY</c> list.</summary>
+    ProxyExclude,
+
+    /// <summary>The engine also trusts the root certificates Windows trusts.</summary>
+    TrustSystemCertificates,
+
+    /// <summary>The Docker Hub mirrors the engine tries before Docker Hub.</summary>
+    RegistryMirrors,
+}
+
+/// <summary>How the engine finds its proxy.</summary>
+public enum ProxyMode
+{
+    /// <summary>Windows' proxy settings, including a configuration script or automatic detection.</summary>
+    System,
+
+    /// <summary>The servers the user names.</summary>
+    Manual,
+
+    /// <summary>Direct connections.</summary>
+    None,
+}
+
+/// <summary>How the engine reaches servers outside the machine; the servers apply only in manual mode.</summary>
+/// <param name="Mode">How the engine finds its proxy.</param>
+/// <param name="Http">See <see cref="DaemonSetting.ProxyHttp"/>; empty for none.</param>
+/// <param name="Https">See <see cref="DaemonSetting.ProxyHttps"/>; empty for none.</param>
+/// <param name="Exclude">See <see cref="DaemonSetting.ProxyExclude"/>; empty for none.</param>
+public sealed record ProxySettings(ProxyMode Mode, string Http, string Https, string Exclude)
+{
+    /// <summary>The daemon's defaults.</summary>
+    public static ProxySettings Default { get; } = new(ProxyMode.System, string.Empty, string.Empty, string.Empty);
 }
 
 /// <summary>The daemon's settings in effect.</summary>
@@ -48,20 +94,66 @@ public enum DaemonSetting
 public sealed record DaemonSettings(
     bool StartEngineWithDaemon, bool ServeDefaultPipe, IReadOnlySet<DaemonSetting> Locked)
 {
+    /// <summary>Applies where the daemon reports <see cref="DaemonCapability.EngineConfiguration"/>.</summary>
+    public ProxySettings Proxy { get; init; } = ProxySettings.Default;
+
+    /// <summary>See <see cref="DaemonSetting.TrustSystemCertificates"/>.</summary>
+    public bool TrustSystemCertificates { get; init; } = true;
+
+    /// <summary>See <see cref="DaemonSetting.RegistryMirrors"/>, in the order the engine tries them.</summary>
+    public IReadOnlyList<string> RegistryMirrors { get; init; } = [];
+
     /// <summary>Whether an administrator fixes <paramref name="setting"/>.</summary>
     public bool IsLocked(DaemonSetting setting)
     {
         return Locked.Contains(setting);
     }
+}
 
-    /// <summary>The value in effect for <paramref name="setting"/>.</summary>
-    public bool ValueOf(DaemonSetting setting)
+/// <summary>The settings to change; those left absent stay as they are.</summary>
+public sealed record DaemonSettingsEdit
+{
+    /// <summary>See <see cref="DaemonSetting.StartEngineWithDaemon"/>.</summary>
+    public bool? StartEngineWithDaemon { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.ServeDefaultPipe"/>.</summary>
+    public bool? ServeDefaultPipe { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.ProxyMode"/>.</summary>
+    public ProxyMode? ProxyMode { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.ProxyHttp"/>.</summary>
+    public string? ProxyHttp { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.ProxyHttps"/>.</summary>
+    public string? ProxyHttps { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.ProxyExclude"/>.</summary>
+    public string? ProxyExclude { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.TrustSystemCertificates"/>.</summary>
+    public bool? TrustSystemCertificates { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.RegistryMirrors"/>.</summary>
+    public IReadOnlyList<string>? RegistryMirrors { get; init; }
+
+    /// <summary>The settings this edit changes.</summary>
+    public IEnumerable<DaemonSetting> Settings()
     {
-        return setting switch {
-            DaemonSetting.StartEngineWithDaemon => StartEngineWithDaemon,
-            DaemonSetting.ServeDefaultPipe => ServeDefaultPipe,
-            _ => throw new ArgumentOutOfRangeException(nameof(setting), setting, null),
-        };
+        (bool Named, DaemonSetting Setting)[] fields = [
+            (StartEngineWithDaemon is not null, DaemonSetting.StartEngineWithDaemon),
+            (ServeDefaultPipe is not null, DaemonSetting.ServeDefaultPipe),
+            (ProxyMode is not null, DaemonSetting.ProxyMode),
+            (ProxyHttp is not null, DaemonSetting.ProxyHttp),
+            (ProxyHttps is not null, DaemonSetting.ProxyHttps),
+            (ProxyExclude is not null, DaemonSetting.ProxyExclude),
+            (TrustSystemCertificates is not null, DaemonSetting.TrustSystemCertificates),
+            (RegistryMirrors is not null, DaemonSetting.RegistryMirrors),
+        ];
+
+        return fields
+            .Where(field => field.Named)
+            .Select(field => field.Setting);
     }
 }
 
@@ -69,3 +161,47 @@ public sealed record DaemonSettings(
 /// <param name="Settings">The settings in effect afterwards.</param>
 /// <param name="RestartRequired">Changed settings the running engine applies only at its next start.</param>
 public sealed record DaemonSettingsChange(DaemonSettings Settings, IReadOnlySet<DaemonSetting> RestartRequired);
+
+/// <summary>The daemon's names for its settings, which its messages and an administrator's policy use.</summary>
+public static class DaemonSettingPaths
+{
+    private static readonly (DaemonSetting Setting, string Path)[] _paths = [
+        (DaemonSetting.StartEngineWithDaemon, "engine.start_with_daemon"),
+        (DaemonSetting.ServeDefaultPipe, "engine.serve_default_pipe"),
+        (DaemonSetting.ProxyMode, "proxy.mode"),
+        (DaemonSetting.ProxyHttp, "proxy.http"),
+        (DaemonSetting.ProxyHttps, "proxy.https"),
+        (DaemonSetting.ProxyExclude, "proxy.exclude"),
+        (DaemonSetting.TrustSystemCertificates, "certificates.trust_system"),
+        (DaemonSetting.RegistryMirrors, "registry.mirrors"),
+    ];
+
+    /// <summary>Such as <c>proxy.http</c>.</summary>
+    public static string Of(DaemonSetting setting)
+    {
+        return _paths.First(entry => entry.Setting == setting).Path;
+    }
+
+    /// <summary>The setting at <paramref name="path"/>; absent for a path this client does not know.</summary>
+    public static DaemonSetting? At(string path)
+    {
+        return _paths.FirstOrDefault(entry => entry.Path == path) is { Path: not null } entry ? entry.Setting : null;
+    }
+
+    /// <summary>The setting a refusal names first, and why the daemon refused it.</summary>
+    /// <param name="message">Such as <c>proxy.http: "x" is not a URL</c>.</param>
+    /// <returns>The setting and the reason; absent where the message names no setting this client knows.</returns>
+    public static (DaemonSetting Setting, string Reason)? Refused(string message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var colon = message.IndexOf(": ", StringComparison.Ordinal);
+
+        if (colon <= 0 || At(message[..colon]) is not { } setting)
+        {
+            return null;
+        }
+
+        return (setting, message[(colon + 2)..]);
+    }
+}

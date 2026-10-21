@@ -227,6 +227,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                 Capability.WslIntegration => DaemonCapability.WslIntegration,
                 Capability.HostPortForwarding => DaemonCapability.HostPortForwarding,
                 Capability.Reset => DaemonCapability.Reset,
+                Capability.EngineConfiguration => DaemonCapability.EngineConfiguration,
                 _ => null,
             };
 

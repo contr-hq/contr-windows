@@ -29,7 +29,7 @@ public sealed class EngineAutostartViewModelTests
         viewModel.IsOn = false;
 
         _daemon.Received(1).StartsEngineOnConnect = false;
-        _settings.DidNotReceiveWithAnyArgs().SetAsync(default, default, default);
+        _settings.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
     }
 
     [Fact]
@@ -50,7 +50,9 @@ public sealed class EngineAutostartViewModelTests
     public async Task ARefusal_TurnsTheSwitchBackAndSaysWhy()
     {
         _settings
-            .SetAsync(DaemonSetting.StartEngineWithDaemon, true, Arg.Any<CancellationToken>())
+            .UpdateAsync(
+                Arg.Is<DaemonSettingsEdit>(edit => edit != null && edit.StartEngineWithDaemon == true),
+                Arg.Any<CancellationToken>())
             .Returns(Result.Failure<DaemonSettingsChange>(
                 new Error(IDaemonSettings.SettingLockedCode, "engine.start_with_daemon is locked")));
         var viewModel = Create();
@@ -68,7 +70,9 @@ public sealed class EngineAutostartViewModelTests
     public async Task AChange_ShowsWhatTheDaemonKept()
     {
         _settings
-            .SetAsync(DaemonSetting.StartEngineWithDaemon, true, Arg.Any<CancellationToken>())
+            .UpdateAsync(
+                Arg.Is<DaemonSettingsEdit>(edit => edit != null && edit.StartEngineWithDaemon == true),
+                Arg.Any<CancellationToken>())
             .Returns(Result.Success(new DaemonSettingsChange(
                 Settings(startWithDaemon: true), new HashSet<DaemonSetting>())));
         var viewModel = Create();

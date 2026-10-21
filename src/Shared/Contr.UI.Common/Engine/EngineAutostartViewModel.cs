@@ -81,7 +81,8 @@ public sealed partial class EngineAutostartViewModel : ObservableObject
     /// <summary>Asks the daemon for <paramref name="value"/>; a refusal turns the switch back and says why.</summary>
     public async Task ApplyAsync(bool value)
     {
-        var result = await _settings.SetAsync(DaemonSetting.StartEngineWithDaemon, value, CancellationToken.None);
+        var result = await _settings.UpdateAsync(
+            new DaemonSettingsEdit { StartEngineWithDaemon = value }, CancellationToken.None);
 
         if (result.IsSuccess)
         {
