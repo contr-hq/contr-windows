@@ -12,8 +12,10 @@ using Contr.UI.Contracts.Services.Daemon;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
+using DaemonJsonRejection = Contr.Sdk.Settings.V1.DaemonJsonRejection;
 using ProxyMode = Contr.UI.Contracts.Services.Daemon.ProxyMode;
 using ProxySettings = Contr.UI.Contracts.Services.Daemon.ProxySettings;
+using UnknownDaemonKey = Contr.UI.Contracts.Services.Daemon.UnknownDaemonKey;
 using WireMode = Contr.Sdk.Settings.V1.ProxyMode;
 using WireProxy = Contr.Sdk.Settings.V1.ProxySettings;
 using WireSettings = Contr.Sdk.Settings.V1.Settings;
@@ -66,6 +68,55 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
             : Result.Success(ToChange(result.Value.State, result.Value.RestartRequired));
     }
 
+    public async Task<DaemonJsonUpdate> UpdateDaemonJsonAsync(string text, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        var request = ToRequest(new DaemonSettingsEdit { DaemonJson = text });
+        IReadOnlyList<UnknownDaemonKey> unknown = [];
+        var result = await _daemon
+            .CallAsync(
+                async (client, token) => {
+                    try
+                    {
+                        return await client.Settings
+                            .UpdateSettingsAsync(request, cancellationToken: token)
+                            .ResponseAsync
+                            .ConfigureAwait(false);
+                    }
+                    catch (RpcException exception)
+                    {
+                        unknown = UnknownKeys(exception);
+                        throw;
+                    }
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return new DaemonJsonUpdate(result.IsFailure
+            ? Result.Failure<DaemonSettingsChange>(Refusal(result.Error))
+            : Result.Success(ToChange(result.Value.State, result.Value.RestartRequired))) {
+            UnknownKeys = unknown,
+        };
+    }
+
+    /// <summary>The keys a refused <c>daemon.json</c> named that the engine does not know; empty without them.
+    /// </summary>
+    public static IReadOnlyList<UnknownDaemonKey> UnknownKeys(RpcException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var rejection = exception
+            .GetRpcStatus()?
+            .Details
+            .FirstOrDefault(detail => detail.Is(DaemonJsonRejection.Descriptor))?
+            .Unpack<DaemonJsonRejection>();
+
+        return rejection is null
+            ? []
+            : [.. rejection.UnknownKeys.Select(key => new UnknownDaemonKey(key.Key, key.Suggestion))];
+    }
+
     public async Task<Result<DaemonSettingsChange>> ResetAsync(CancellationToken cancellationToken)
     {
         var result = await _daemon
@@ -96,6 +147,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
                 : new ProxySettings(ToMode(proxy.Mode), proxy.Http, proxy.Https, proxy.Exclude),
             TrustSystemCertificates = state.Settings?.Certificates?.TrustSystem ?? true,
             RegistryMirrors = state.Settings?.Registry is { } registry ? [.. registry.Mirrors] : [],
+            DaemonJson = engine.DaemonJson.Length > 0 ? engine.DaemonJson : "{}",
         };
     }
 
@@ -113,6 +165,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
             Engine = new EngineSettings {
                 StartWithDaemon = edit.StartEngineWithDaemon ?? false,
                 ServeDefaultPipe = edit.ServeDefaultPipe ?? false,
+                DaemonJson = edit.DaemonJson ?? string.Empty,
             },
             Proxy = new WireProxy {
                 Mode = edit.ProxyMode is { } mode ? ToWire(mode) : WireMode.Unspecified,
