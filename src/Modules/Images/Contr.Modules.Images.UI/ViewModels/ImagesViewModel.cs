@@ -86,7 +86,8 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         IDialogService dialogs,
         INotificationService notifications,
         IClipboardService clipboard,
-        IDaemonConnection daemon)
+        IDaemonConnection daemon,
+        IDaemonSettings settings)
         : base(
             new LiveCollection<ImageDto, ImageRow>(ImageRow.From, row => row.Id, ImageRow.Compare),
             _retryDelay)
@@ -99,7 +100,7 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         _dialogs = dialogs;
         _notifications = notifications;
         _clipboard = clipboard;
-        Engine = new EngineGateViewModel(daemon);
+        Engine = new EngineGateViewModel(daemon, settings, notifications);
         PullReference = string.Empty;
         PullPlatform = string.Empty;
         PullStatus = string.Empty;

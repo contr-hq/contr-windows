@@ -191,6 +191,7 @@ public sealed class ContainersViewModelTests
 
     private ContainersViewModel CreateViewModel()
     {
-        return new ContainersViewModel(_sender, _dialogs, _notifications, _navigation, _clipboard, _daemon);
+        return new ContainersViewModel(
+            _sender, _dialogs, _notifications, _navigation, _clipboard, _daemon, Substitute.For<IDaemonSettings>());
     }
 }

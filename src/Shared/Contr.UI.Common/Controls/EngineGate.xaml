@@ -38,13 +38,23 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Text="Containers with a restart policy start too."
                 Visibility="{x:Bind ViewModel.IsStopped, Mode=OneWay}" />
-            <CheckBox
+            <StackPanel
                 Margin="0,8,0,0"
                 HorizontalAlignment="Center"
-                AutomationProperties.AutomationId="StartEngineOnConnect"
-                Content="Start the engine whenever Contr starts"
-                IsChecked="{x:Bind ViewModel.StartsEngineOnConnect, Mode=TwoWay}"
-                Visibility="{x:Bind ViewModel.IsStopped, Mode=OneWay}" />
+                Orientation="Horizontal"
+                Spacing="8"
+                Visibility="{x:Bind ViewModel.IsStopped, Mode=OneWay}">
+                <CheckBox
+                    AutomationProperties.AutomationId="StartEngineOnConnect"
+                    Content="Start the engine whenever Contr starts"
+                    IsChecked="{x:Bind ViewModel.Autostart.IsOn, Mode=TwoWay}"
+                    IsEnabled="{x:Bind ViewModel.Autostart.CanChange, Mode=OneWay}" />
+                <controls:PillView
+                    VerticalAlignment="Center"
+                    Kind="Locked"
+                    Text="Managed by your organization"
+                    Visibility="{x:Bind ViewModel.Autostart.IsLocked, Mode=OneWay}" />
+            </StackPanel>
         </StackPanel>
     </controls:EmptyState>
 </UserControl>

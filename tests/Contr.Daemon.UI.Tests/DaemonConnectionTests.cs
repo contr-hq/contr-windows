@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
+using WireEngineState = Contr.Sdk.Engine.V1.EngineState;
 
 namespace Contr.Daemon.UI.Tests;
 
@@ -49,6 +50,18 @@ public sealed class DaemonConnectionTests
         connection.StartsEngineOnConnect = true;
 
         _settings.Received(1).Save("StartEngineOnConnect", true);
+    }
+
+    [Theory]
+    [InlineData(true, 10u, WireEngineState.Stopped, true)]
+    [InlineData(true, 10u, WireEngineState.Uninitialized, true)]
+    [InlineData(true, 10u, WireEngineState.Running, false)]
+    [InlineData(false, 10u, WireEngineState.Stopped, false)]
+    [InlineData(true, 11u, WireEngineState.Stopped, false)]
+    public void StartsStoppedEngine_LeavesItToADaemonWithSettings(
+        bool preference, uint apiRevision, WireEngineState state, bool expected)
+    {
+        Assert.Equal(expected, DaemonConnection.StartsStoppedEngine(preference, apiRevision, state));
     }
 
     [Fact]

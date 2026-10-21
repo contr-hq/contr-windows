@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Contr.UI.Common.Icons;
 using Contr.UI.Contracts.Services.Daemon;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Dispatching;
 
 namespace Contr.UI.Common.Engine;
@@ -47,10 +48,12 @@ public sealed partial class EngineGateViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(StartEngineCommand))]
     public partial bool IsStarting { get; set; }
 
-    public EngineGateViewModel(IDaemonConnection daemon)
+    public EngineGateViewModel(
+        IDaemonConnection daemon, IDaemonSettings settings, INotificationService notifications)
     {
         ArgumentNullException.ThrowIfNull(daemon);
         _daemon = daemon;
+        Autostart = new EngineAutostartViewModel(daemon, settings, notifications);
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         Title = string.Empty;
         Message = string.Empty;
@@ -76,23 +79,14 @@ public sealed partial class EngineGateViewModel : ObservableObject
         _ => ContrIcons.Stop,
     };
 
-    /// <summary>Whether the client starts the engine whenever it connects; the choice persists.</summary>
-    public bool StartsEngineOnConnect
-    {
-        get => _daemon.StartsEngineOnConnect;
-        set {
-            if (_daemon.StartsEngineOnConnect != value)
-            {
-                _daemon.StartsEngineOnConnect = value;
-                OnPropertyChanged();
-            }
-        }
-    }
+    /// <summary>Whether the engine starts with Contr, offered while it is stopped.</summary>
+    public EngineAutostartViewModel Autostart { get; }
 
     /// <summary>Follows the engine; call it when the page loads.</summary>
     public void Start()
     {
         _subscription ??= _daemon.StatusChanges.Subscribe(OnStatus);
+        Autostart.Start();
     }
 
     /// <summary>Stops following the engine; call it when the page unloads.</summary>
@@ -100,6 +94,7 @@ public sealed partial class EngineGateViewModel : ObservableObject
     {
         _subscription?.Dispose();
         _subscription = null;
+        Autostart.Stop();
     }
 
     /// <summary>Shows a status; call it on the UI thread.</summary>

@@ -115,6 +115,7 @@ public sealed class ImagesViewModelTests
 
     private ImagesViewModel CreateViewModel()
     {
-        return new ImagesViewModel(_sender, _dialogs, _notifications, _clipboard, _daemon);
+        return new ImagesViewModel(
+            _sender, _dialogs, _notifications, _clipboard, _daemon, Substitute.For<IDaemonSettings>());
     }
 }

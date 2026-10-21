@@ -35,6 +35,9 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
     private const string _clientName = "contr-windows";
     private const string _startEngineKey = "StartEngineOnConnect";
 
+    /// <summary>From this API revision the daemon starts the engine itself, as its settings say.</summary>
+    private const uint _settingsRevision = 11;
+
     private static readonly TimeSpan _attemptTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan _pollInterval = TimeSpan.FromMilliseconds(250);
@@ -374,8 +377,7 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                     _ = DescribeLaterAsync(client, cancellationToken);
                 }
 
-                if (first && _startEngine
-                    && update.State is WireEngineState.Stopped or WireEngineState.Uninitialized)
+                if (first && StartsStoppedEngine(_startEngine, Identity?.ApiRevision ?? 0, update.State))
                 {
                     _ = StartStoppedEngineAsync(cancellationToken);
                 }
@@ -503,6 +505,14 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
                 observer.OnNext(null);
             }
         });
+    }
+
+    /// <summary>Whether a new connection starts the engine it finds in <paramref name="state"/>.</summary>
+    public static bool StartsStoppedEngine(bool preference, uint apiRevision, WireEngineState state)
+    {
+        return preference
+            && apiRevision < _settingsRevision
+            && state is WireEngineState.Stopped or WireEngineState.Uninitialized;
     }
 
     private static EngineUsage ToUsage(WireEngineUsage usage)

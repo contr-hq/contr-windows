@@ -56,7 +56,8 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         ISender sender,
         IDialogService dialogs,
         INotificationService notifications,
-        IDaemonConnection daemon)
+        IDaemonConnection daemon,
+        IDaemonSettings settings)
         : base(
             new LiveCollection<NetworkDto, NetworkRow>(NetworkRow.From, row => row.Id, NetworkRow.Compare),
             _retryDelay)
@@ -67,7 +68,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         _sender = sender;
         _dialogs = dialogs;
         _notifications = notifications;
-        Engine = new EngineGateViewModel(daemon);
+        Engine = new EngineGateViewModel(daemon, settings, notifications);
         SummaryPills = [];
         EndpointsNote = string.Empty;
         Rows.CollectionChanged += OnRowsChanged;
