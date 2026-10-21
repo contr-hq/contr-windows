@@ -10,9 +10,9 @@ stats), Images (pull with per-layer progress, prune), Volumes and Networks, all 
 The title bar searches containers, images, volumes and networks; the status bar shows the engine state and starts or
 stops the engine; the tray keeps Contr reachable while its window is closed. Until the core's WSL backend lands, run it against `contrd --backend fake`.
 
-Also: Compose projects from the containers' Compose labels, Troubleshoot (the engine's failure, the daemon's checks
-and the fixes they offer, the client's log), the tray flyout with the running containers, and the Kubernetes page's
-layout.
+Also: Compose projects from the daemon (up, pull, restart, stop and down with Compose's output, a restart per service,
+the merged logs, and adding a project by its compose.yaml), Troubleshoot (the engine's failure, the daemon's checks and
+the fixes they offer, the client's log), the tray flyout with the running containers, and the Kubernetes page's layout.
 
 The first run opens a setup (this PC's checks, installing WSL where the daemon finds it missing, the engine's setup
 with the daemon's progress, the command-line tools, which of your WSL distributions reach the engine, and start at
@@ -27,11 +27,10 @@ engine. The Engine tab edits the engine's `daemon.json`, names the line of a key
 it to the key the engine suggests.
 
 Next: a Velopack installer that bundles a pinned core release.
-Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from
-their menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the
-engine's CPU, memory and disk. Screens and actions whose daemon API does not exist yet (the diagnostics bundle, passing
-the proxy to containers, Kubernetes, Compose up and down, resources, engine configuration, updates) show their layout
-with the actions disabled.
+Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from their
+menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the engine's
+CPU, memory and disk. Screens and actions whose daemon API does not exist yet (the diagnostics bundle, Kubernetes,
+resources, updates) show their layout with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.

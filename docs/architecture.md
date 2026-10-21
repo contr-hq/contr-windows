@@ -157,8 +157,10 @@ the tray flyout lists running containers through `IRunningContainers`, which the
 image's Run button opens the Containers module's Run dialog through `IContainerRunner`, and the title bar's search
 asks every `ISearchSource` a module registers. A hit names the page and the arguments that
 show it, such as the Volumes page and a volume's name.
-Compose projects are read from the labels Compose puts on containers, so the Compose page lives in the Containers
-module. The status bar spans the window
+The Compose page follows the daemon's ComposeService (API revision 15, `CAPABILITY_COMPOSE`): the projects with
+their services, whose containers are the Containers module's own DTOs, so the page lives in that module. Its commands
+stream Compose's output under the project's buttons, and its logs come from one stream per project. The status bar
+spans the window
 under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the
 backend, the engine version and the Docker context.
 
