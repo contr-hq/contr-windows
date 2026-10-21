@@ -101,11 +101,6 @@ public sealed partial class ShellPage : Page
         _subscription.Add(_daemon.UsageChanges.Subscribe(
             usage => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyUsage(usage))));
 
-        if (NavView.SettingsItem is NavigationViewItem settings)
-        {
-            settings.Icon = Icon(ContrIcons.Settings);
-        }
-
         NavView.SelectedItem = NavView.MenuItems
             .OfType<NavigationViewItem>()
             .FirstOrDefault();
@@ -169,13 +164,6 @@ public sealed partial class ShellPage : Page
                     ? filled
                     : item.IconGlyph;
             }
-        }
-
-        if (NavView.SettingsItem is NavigationViewItem { Icon: FontIcon settings })
-        {
-            settings.Glyph = ReferenceEquals(NavView.SettingsItem, selected)
-                ? ContrIcons.SettingsFilled
-                : ContrIcons.Settings;
         }
     }
 
