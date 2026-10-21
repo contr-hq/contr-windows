@@ -53,9 +53,11 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
 - `IntegrationClient` serves `ICliTools` and `IWslDistributions` over `ContrClient.Integration`, on the
   same connection. Setup and Settings show the WSL distributions only when the handshake lists
   `WslIntegration`.
-- `DiagnosticsClient` serves `IDiagnostics` over `ContrClient.Diagnostics`: the daemon's checks and the
-  fixes they offer, such as `install-wsl`. Troubleshoot falls back to the checks the client makes
-  itself where the daemon makes none (it is unreachable, or older than API revision 8).
+- `DiagnosticsClient` serves `IDiagnostics` over `ContrClient.Diagnostics`: the daemon's checks, the
+  fixes they offer, such as `install-wsl`, and from API revision 18 the diagnostics bundle, written to the file the
+  user picks as its chunks arrive. A fix whose prompt the user dismissed ends CANCELLED from revision 17.
+  Troubleshoot falls back to the checks the client makes itself where the daemon makes none (it is unreachable, or
+  older than API revision 8).
 - `DaemonSettingsClient` serves `IDaemonSettings` over `ContrClient.Settings`, following
   `WatchSettings` while connected, so Settings and every engine-stopped page show the same values and
   locks. From API revision 11 the daemon starts the engine itself when `engine.start_with_daemon` is

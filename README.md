@@ -31,8 +31,9 @@ it to the key the engine suggests.
 Next: a Velopack installer that bundles a pinned core release.
 Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from their
 menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the engine's
-CPU, memory and disk. Screens and actions whose daemon API does not exist yet (the diagnostics bundle, resources,
-updates) show their layout with the actions disabled.
+CPU, memory and disk. Troubleshoot saves the daemon's diagnostics bundle, a redacted zip for support, and resets the
+Kubernetes cluster. Screens and actions whose daemon API does not exist yet (resources, updates) show their layout with
+the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
