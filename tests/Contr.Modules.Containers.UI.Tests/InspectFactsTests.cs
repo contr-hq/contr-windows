@@ -47,6 +47,32 @@ public sealed class InspectFactsTests
     }
 
     [Fact]
+    public void From_MarksIdentifiersAndMissingValues()
+    {
+        var facts = InspectFacts.From(Details(_inspection), DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(FactKind.Code, Kind(facts.Configuration, "Image"));
+        Assert.Equal(FactKind.Text, Kind(facts.Configuration, "Restart policy"));
+        Assert.Equal(FactKind.Muted, Kind(facts.Limits, "Memory"));
+        Assert.Equal(FactKind.Muted, Kind(facts.State, "Health check"));
+    }
+
+    [Fact]
+    public void From_DatesTheStartAndLeavesOutARunningContainersFinish()
+    {
+        var started = DateTimeOffset.UnixEpoch.AddHours(1);
+        var details = Details(_inspection) with {
+            StartedAt = started,
+            FinishedAt = DateTimeOffset.UnixEpoch,
+        };
+
+        var facts = InspectFacts.From(details, started.AddHours(2));
+
+        Assert.Equal("2h ago", facts.State.Single(fact => fact.Label == "Started").Note);
+        Assert.DoesNotContain(facts.State, fact => fact.Label == "Finished");
+    }
+
+    [Fact]
     public void JsonTree_FindKeepsThePathToAMatchingKey()
     {
         var nodes = JsonTreeNode.Parse(_inspection);
@@ -71,6 +97,11 @@ public sealed class InspectFactsTests
     private static string Value(IReadOnlyList<InspectFact> facts, string label)
     {
         return facts.Single(fact => fact.Label == label).Value;
+    }
+
+    private static FactKind Kind(IReadOnlyList<InspectFact> facts, string label)
+    {
+        return facts.Single(fact => fact.Label == label).Kind;
     }
 
     private static ContainerDetailsDto Details(string rawJson)

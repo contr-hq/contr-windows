@@ -42,13 +42,16 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
     /// <summary>The name a search asked for, until that volume is listed.</summary>
     private string? _requested;
 
+    /// <summary>Whether the next list turns to the selection: a search asked for it.</summary>
+    private bool _reveal;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial VolumeItem? Selected { get; set; }
 
     /// <summary>Counted over every volume.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<StatCard> StatCards { get; set; }
+    public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
     [ObservableProperty]
     public partial bool HasUnused { get; set; }
@@ -72,13 +75,16 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         _notifications = notifications;
         _clipboard = clipboard;
         Engine = new EngineGateViewModel(daemon);
-        StatCards = [];
+        SummaryPills = [];
         Rows.CollectionChanged += OnRowsChanged;
     }
 
     public EngineGateViewModel Engine { get; }
 
     public ObservableCollection<VolumeItem> Items { get; } = [];
+
+    /// <summary>The items five to a page; the page turns to a volume a search selects.</summary>
+    public Paging<VolumeItem> Page { get; } = new("VOLUMES", item => item.Name);
 
     public bool HasSelection => Selected is not null;
 
@@ -251,6 +257,7 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         if (_requested is { } requested && Rows.Any(row => row.Name == requested))
         {
             _requested = null;
+            _reveal = true;
         }
 
         return wanted;
@@ -265,51 +272,35 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
             .ToList();
 
         CollectionSync.Sync(Items, items, item => item.Name);
+        Page.Show(items);
         Selected = items.FirstOrDefault(item => item.IsSelected);
+
+        if (_reveal && Selected is { } shown)
+        {
+            Page.Reveal(shown);
+            _reveal = false;
+        }
 
         var unused = items.Count(item => item.IsUnused);
         HasUnused = _usage is null || unused > 0;
-        var cards = Summarize(items, _usage is not null);
+        var pills = Summarize(items.Count, unused, _usage is not null);
 
-        if (!cards.SequenceEqual(StatCards))
+        if (!pills.SequenceEqual(SummaryPills))
         {
-            StatCards = cards;
+            SummaryPills = pills;
         }
     }
 
-    private static List<StatCard> Summarize(List<VolumeItem> items, bool isUsageKnown)
+    private static List<PillItem> Summarize(int count, int unused, bool isUsageKnown)
     {
-        var inUse = items.Count(item => item.InUse);
-        var unused = items.Count(item => item.IsUnused);
-        var projects = items.Count(item => item.Row.HasProject);
-        var anonymous = items.Count(item => item.Row.IsAnonymous);
+        List<PillItem> pills = [new(count == 1 ? "1 volume" : $"{Count(count)} volumes", PillKind.Plain)];
 
-        return [
-            new StatCard(
-                "VOLUMES",
-                Count(items.Count),
-                $"{Count(projects)} from Compose projects",
-                "\uEDA2",
-                StatKind.Accent),
-            new StatCard(
-                "IN USE",
-                isUsageKnown ? Count(inUse) : "—",
-                isUsageKnown ? "mounted by a container" : "not known",
-                "\uE8CE",
-                isUsageKnown && inUse > 0 ? StatKind.Positive : StatKind.Muted),
-            new StatCard(
-                "NOT USED",
-                isUsageKnown ? Count(unused) : "—",
-                isUsageKnown ? "no container mounts them" : "not known",
-                "\uE74D",
-                isUsageKnown && unused > 0 ? StatKind.Warning : StatKind.Muted),
-            new StatCard(
-                "ANONYMOUS",
-                Count(anonymous),
-                "created without a name",
-                "\uE9CE",
-                StatKind.Muted),
-        ];
+        if (isUsageKnown && unused > 0)
+        {
+            pills.Add(new($"{Count(unused)} not used by any container", PillKind.Hollow));
+        }
+
+        return pills;
     }
 
     private IReadOnlyList<VolumeMountDto>? Mounts(string name)

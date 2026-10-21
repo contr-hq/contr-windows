@@ -16,8 +16,8 @@ src/Shared/Contr.Application.Abstractions
                                    mediator contracts, DaemonErrors, ListChange<T>
 src/Shared/Contr.Mediator          the in-process mediator and its logging behavior
 src/Shared/Contr.UI.Contracts      IModule, NavigationItem, platform services, IDaemonConnection
-src/Shared/Contr.UI.Common         PageHeader, StatStrip, EngineGate, EmptyState, StatusLabel, Sparkline, styles,
-                                   live lists
+src/Shared/Contr.UI.Common         PageHeader, PillView, PillRow, Pager, EngineGate, EmptyState, Sparkline, styles,
+                                   the icon font's glyph table, live lists and paging
 src/Shared/Contr.Daemon.UI         the one daemon connection and the SDK call helpers
 src/Modules/<X>/Contr.Modules.<X>.{Domain,Application,UI}
                                    Containers, Images, Volumes, Networks
@@ -81,27 +81,46 @@ running either way.
 
 ## Pages
 
-Every page follows kakehashi's page skeleton. It opens with `PageHeader`: a title or a breadcrumb trail, an
-optional subtitle, and the page's commands as its content, drawn as one bordered command group on the right:
+Pages follow the design's principles: WinUI 3 decides how each control looks and behaves, kakehashi how a page
+is put together. A page is a `ScrollViewer` around a 24 px padded grid whose one column is no wider than
+`PageContentMaxWidth` (1240 px), and its blocks stand 16 px apart. It opens with `PageHeader`: a breadcrumb that
+starts at the product and ends SemiBold at the page, with the page's actions on the right. A page has no title of
+its own; a page under another names its trail, and `TrailClicked` reports a click on an ancestor.
 
 ```xml
 <common:PageHeader Title="Volumes">
-    <StackPanel Orientation="Horizontal" Spacing="2">
-        <Button Style="{StaticResource AccentToolbarButtonStyle}" …/>
-        <Border Style="{StaticResource CommandBarDividerStyle}" />
-        <Button Style="{StaticResource ToolbarButtonStyle}" …/>
+    <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Style="{StaticResource AccentButtonStyle}" …/>
+        <Button …/>
     </StackPanel>
 </common:PageHeader>
 ```
 
-The accent button is the page's one primary action, `DangerToolbarButtonStyle` marks a destructive one, and
-the group hides while its content is collapsed. A set of commands elsewhere on a page, such as a Compose
-project's, sits in a `CommandGroupStyle` border with the same buttons. A list page puts a `StatStrip` of
-`StatCard`s under the header, counted over every item rather than the filtered ones, then its list in a
-`CardStyle` card. `Cards.xaml` holds the card, column head, section label, mono and pill styles; `Menus.xaml`
-the toolbar and row buttons, which draw no fill until hovered, disabled ones included; `SelectorBar.xaml` the
-token pills that filter a view, such as Compose's services. Errors show in an `InfoBar` with a title that says
-what failed; the daemon's message is its body.
+One button on a page or in a dialog is accent, its primary action; `DestructiveButtonStyle` gives a destructive
+one red text, and confirmations make Cancel the default. Under the header come the page's messages, before any
+card: the shell's notifications in the header's own `InfoBar`, then the page's error `InfoBar`, whose title says
+what failed and whose body is the daemon's message. A list page then shows a `PillRow` of `PillItem`s counted
+over every item rather than the filtered ones, then its content in captioned cards: `CaptionedCardStyle`, an
+upper-case `CaptionLabelStyle` caption, then rows. A list inside a card pages at five rows with `Paging<T>`,
+whose caption reads such as `IMAGES · 1–5 OF 9`, and a `Pager` that shows only when there is a second page;
+the Containers list stays one grouped table. Two columns are a flexible one and a fixed 400 px one, such as a
+list and its details. Key–value rows use the 170 px `FieldLabelWidth`.
+
+Status is a `PillView`: a 7 px dot and 12 px text, its `PillKind` mapped from a `StatusKind` with
+`PillView.For`. Identifiers, such as image references, IDs, ports and paths, use `IdentifierTextStyle`; times
+read relative with `HumanFormat.Ago`, such as `14m ago`, then a date. `Cards.xaml` holds the card, caption,
+field, identifier, time and pill styles; `Lists.xaml` the card table's head and rows, with an inset variant for
+rows that select a details card; `Menus.xaml` the row and toolbar buttons and the view switch; `SelectorBar.xaml`
+the chips that filter a view, such as Compose's services. Settings and Kubernetes merge `Styles/SettingsGroups.xaml`,
+which turns each `SettingsCard` into a row of a captioned group.
+
+Icons come from the Contr Icons font, built from Fluent UI System Icons (MIT): `assets/icons/svg` holds one SVG
+per icon and `assets/icons/icons.json` pins each one's code point. `scripts/build-icon-font.py` writes
+`Assets/Fonts/ContrIcons.ttf` and the `ContrIcons` constants; a `FontIcon` with `IconStyle` draws a glyph:
+
+```xml
+<FontIcon Glyph="{x:Bind icons:ContrIcons.Containers}" Style="{StaticResource IconStyle}" />
+```
 
 Pages start loading from `Loaded`, never `OnNavigatedTo`: pages
 come from the container and the navigation service sets `Frame.Content` directly. A page that takes
@@ -112,8 +131,8 @@ own pages rather than the pane, such as the container page, come from `IModule.G
 A list page derives its view model from `LiveListViewModel<TItem, TRow>`, which follows the module's
 Watch stream between `Loaded` and `Unloaded` and watches again three seconds after a failure. Rows are
 immutable records; the stream replaces them in place. A page over engine objects shows `EngineGate`
-instead of its content while the engine is not running, `EmptyState` when nothing is listed, and
-`StatusLabel` for every state, so an icon always comes with a word.
+instead of its content while the engine is not running, and `EmptyState` when nothing is listed; a status
+always comes with a word, never a colour alone.
 
 `x:Bind` calls small `public static` helpers on the page for formatting and visibility instead of value
 converters, because a function is compile-checked against its arguments. Brushes come from
@@ -125,8 +144,9 @@ module's items; `Tools` items, such as Troubleshoot, sit below a separator. The 
 Troubleshoot pages are items like the modules'.
 
 A surface outside a module reaches the module's data through a contract in `Contr.UI.Contracts`, never the module:
-the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, and
-the title bar's search asks every `ISearchSource` a module registers. A hit names the page and the arguments that
+the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, an
+image's Run button opens the Containers module's Run dialog through `IContainerRunner`, and the title bar's search
+asks every `ISearchSource` a module registers. A hit names the page and the arguments that
 show it, such as the Volumes page and a volume's name.
 Compose projects are read from the labels Compose puts on containers, so the Compose page lives in the Containers
 module. The status bar spans the window

@@ -1,6 +1,6 @@
 using System;
-using Contr.UI.Common.Controls;
 using Contr.UI.Common.Helpers;
+using Contr.UI.Common.Icons;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Windows.UI.Text;
@@ -32,27 +32,32 @@ public sealed partial class OnboardingWindow : WindowEx
 
     public OnboardingViewModel ViewModel { get; }
 
-    public static Visibility WhenState(OnboardingStepState state, string shown)
+    /// <summary>The command and its prompt, as a terminal shows them.</summary>
+    public static string TryPrompt => $"PS> {OnboardingViewModel.TryCommand}";
+
+    /// <summary>A setup check's icon, by what it checks.</summary>
+    public static string CheckGlyph(string name)
     {
-        return state.ToString() == shown ? Visibility.Visible : Visibility.Collapsed;
+        return name switch {
+            "Windows version" => ContrIcons.Desktop,
+            "Virtualization" => ContrIcons.Processor,
+            "Free disk space" => ContrIcons.Disk,
+            _ => ContrIcons.Info,
+        };
     }
 
-    public static Visibility WhenNotDone(OnboardingStepState state)
+    /// <summary>The step in progress stands out from the finished ones.</summary>
+    public static FontWeight StepWeight(bool isDone)
     {
-        return state == OnboardingStepState.Done ? Visibility.Collapsed : Visibility.Visible;
+        return isDone ? FontWeights.Normal : FontWeights.SemiBold;
     }
 
-    public static FontWeight TitleWeight(OnboardingStepState state)
+    public static bool Not(bool value)
     {
-        return state == OnboardingStepState.Current ? FontWeights.SemiBold : FontWeights.Normal;
+        return !value;
     }
 
-    public static StatusKind StepKind(bool isDone)
-    {
-        return isDone ? StatusKind.Good : StatusKind.Busy;
-    }
-
-    public static Visibility Not(bool value)
+    public static Visibility WhenNot(bool value)
     {
         return value ? Visibility.Collapsed : Visibility.Visible;
     }

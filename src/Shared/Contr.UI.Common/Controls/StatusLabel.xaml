@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -13,29 +14,34 @@
             Height="14"
             VerticalAlignment="Center">
             <FontIcon
+                FontFamily="{StaticResource ContrIconsFontFamily}"
                 FontSize="14"
                 Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                Glyph="&#xE930;"
+                Glyph="{x:Bind icons:ContrIcons.Success}"
                 Visibility="{x:Bind controls:StatusLabel.When(Kind, 'Good'), Mode=OneWay}" />
             <FontIcon
+                FontFamily="{StaticResource ContrIconsFontFamily}"
                 FontSize="14"
                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                Glyph="&#xE7BA;"
+                Glyph="{x:Bind icons:ContrIcons.Warning}"
                 Visibility="{x:Bind controls:StatusLabel.When(Kind, 'Caution'), Mode=OneWay}" />
             <FontIcon
+                FontFamily="{StaticResource ContrIconsFontFamily}"
                 FontSize="14"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                Glyph="&#xEA39;"
+                Glyph="{x:Bind icons:ContrIcons.Error}"
                 Visibility="{x:Bind controls:StatusLabel.When(Kind, 'Critical'), Mode=OneWay}" />
             <FontIcon
-                FontSize="12"
+                FontFamily="{StaticResource ContrIconsFontFamily}"
+                FontSize="14"
                 Foreground="{ThemeResource SystemFillColorNeutralBrush}"
-                Glyph="&#xEA3A;"
+                Glyph="{x:Bind icons:ContrIcons.Pending}"
                 Visibility="{x:Bind controls:StatusLabel.When(Kind, 'Neutral'), Mode=OneWay}" />
             <FontIcon
-                FontSize="12"
+                FontFamily="{StaticResource ContrIconsFontFamily}"
+                FontSize="14"
                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                Glyph="&#xE769;"
+                Glyph="{x:Bind icons:ContrIcons.Pause}"
                 Visibility="{x:Bind controls:StatusLabel.When(Kind, 'Paused'), Mode=OneWay}" />
             <ProgressRing
                 Width="12"

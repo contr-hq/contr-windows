@@ -1,6 +1,7 @@
 using System;
 using Contr.Modules.Images.UI.ViewModels;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Containers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -9,10 +10,14 @@ namespace Contr.Modules.Images.UI.Views;
 /// <summary>The local images, with pulling, removal and pruning.</summary>
 public sealed partial class ImagesPage : Page, IHasViewModel
 {
-    public ImagesPage(ImagesViewModel viewModel)
+    private readonly IContainerRunner _runner;
+
+    public ImagesPage(ImagesViewModel viewModel, IContainerRunner runner)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(runner);
         ViewModel = viewModel;
+        _runner = runner;
 
         InitializeComponent();
 
@@ -29,9 +34,10 @@ public sealed partial class ImagesPage : Page, IHasViewModel
         return engineOpen ? text : string.Empty;
     }
 
+    /// <summary>Such as <c>· linux/arm64</c>; nothing for the engine's own platform.</summary>
     public static string PlatformSuffix(string platform)
     {
-        return $"· {platform}";
+        return platform.Length > 0 ? $"· {platform}" : string.Empty;
     }
 
     public static Visibility ShowsBoth(bool first, bool second)
@@ -54,6 +60,11 @@ public sealed partial class ImagesPage : Page, IHasViewModel
         return engineOpen && !isLoaded && !hasError;
     }
 
+    public static Visibility WaitVisibility(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return IsWaiting(engineOpen, isLoaded, hasError) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private static ImageRow? RowOf(object sender)
     {
         return (sender as FrameworkElement)?.Tag as ImageRow;
@@ -72,11 +83,19 @@ public sealed partial class ImagesPage : Page, IHasViewModel
     private async void OnPull(object sender, RoutedEventArgs e)
     {
         // A dialog's popup does not inherit the theme the window content requests.
-        var dialog = new PullImageDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme };
+        var dialog = new PullImageDialog(ViewModel.StartPullAsync) {
+            XamlRoot = XamlRoot,
+            RequestedTheme = ActualTheme,
+        };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        await dialog.ShowAsync();
+    }
+
+    private async void OnRun(object sender, RoutedEventArgs e)
+    {
+        if (RowOf(sender) is { } row)
         {
-            await ViewModel.PullAsync(dialog.Reference, dialog.Platform);
+            await _runner.RunAsync(row.DisplayName);
         }
     }
 

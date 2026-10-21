@@ -18,11 +18,22 @@ which of your WSL distributions reach the engine, and start at sign-in), and Set
 switch per WSL distribution where the daemon integrates them.
 
 Next: a Velopack installer that bundles a pinned core release.
-Screens and actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and
-down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
+Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from
+their menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the
+engine's CPU, memory and disk. Screens and actions whose daemon API does not exist yet (diagnostics, Kubernetes,
+Compose up and down, resources, proxies, engine configuration, updates) show their layout with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
+
+The icons are a font built from [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT),
+whose SVGs and licence are in `assets/icons`. After adding or changing an SVG there, list it in
+`assets/icons/icons.json` (new icons at the end, so the others keep their code points) and rebuild the font and its
+`ContrIcons` glyph table:
+
+```bash
+uv run --with fonttools==4.60.1 scripts/build-icon-font.py
+```
 
 ## Build and run
 

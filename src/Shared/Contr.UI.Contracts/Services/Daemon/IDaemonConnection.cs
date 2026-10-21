@@ -17,6 +17,13 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
     /// <summary>Whether connecting starts a stopped or unprovisioned engine; the choice persists.</summary>
     bool StartsEngineOnConnect { get; set; }
 
+    /// <summary>
+    /// The engine's resource usage about every two seconds while it runs; absent while it does not, or when the
+    /// daemon does not report it. The first sample can show no CPU or memory yet.
+    /// </summary>
+    /// <remarks>Emits on a background thread; subscribers share one stream from the daemon.</remarks>
+    IObservable<EngineUsage?> UsageChanges { get; }
+
     /// <summary>Emits the current status on subscription, then every change.</summary>
     /// <remarks>Emits on a background thread; UI subscribers marshal to their dispatcher.</remarks>
     IObservable<DaemonStatus> StatusChanges { get; }
@@ -41,4 +48,14 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
 
     /// <summary>Stops the engine, then starts it.</summary>
     Task<Result> RestartEngineAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stops the engine and restores it to a clean state, reporting each step; only where
+    /// <see cref="DaemonCapability.Reset"/> is offered.
+    /// </summary>
+    /// <param name="scope">Whether images, containers and volumes stay.</param>
+    /// <param name="progress">Receives the daemon's steps, on the thread that reads them.</param>
+    /// <param name="cancellationToken">Stops waiting; the daemon goes on with the reset.</param>
+    Task<Result> ResetEngineAsync(
+        EngineResetScope scope, IProgress<EngineProgress> progress, CancellationToken cancellationToken);
 }

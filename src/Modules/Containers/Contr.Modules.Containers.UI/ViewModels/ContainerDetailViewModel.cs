@@ -7,10 +7,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Containers.Application.Containers;
+using Contr.Modules.Containers.Application.Containers.Commands.KillContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PauseContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.RenameContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RestartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.UnpauseContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.InspectContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
@@ -45,7 +49,8 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(Trail), nameof(StatusKind), nameof(StatusLine), nameof(Image))]
     [NotifyPropertyChangedFor(nameof(CanStart), nameof(CanStop), nameof(CanRestart), nameof(CanRemove))]
     [NotifyPropertyChangedFor(nameof(ShortId), nameof(FirstPort), nameof(HasPort), nameof(Ports))]
-    [NotifyPropertyChangedFor(nameof(IsRunning))]
+    [NotifyPropertyChangedFor(nameof(IsRunning), nameof(PillKind), nameof(StatusText), nameof(Elapsed))]
+    [NotifyPropertyChangedFor(nameof(CanPause), nameof(CanUnpause), nameof(CanKill), nameof(CanRename))]
     public partial ContainerRow? Row { get; set; }
 
     [ObservableProperty]
@@ -116,6 +121,13 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
     public string Image => Row?.Image ?? string.Empty;
 
+    public PillKind PillKind => Row?.PillKind ?? PillKind.Hollow;
+
+    public string StatusText => Row?.StatusText ?? string.Empty;
+
+    /// <summary>Such as <c>up 2h</c>.</summary>
+    public string Elapsed => Row?.Elapsed ?? string.Empty;
+
     public bool CanStart => !IsGone && Row?.CanStart == true;
 
     public bool CanStop => !IsGone && Row?.CanStop == true;
@@ -123,6 +135,14 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     public bool CanRestart => !IsGone && Row?.CanRestart == true;
 
     public bool CanRemove => !IsGone && Row?.CanRemove == true;
+
+    public bool CanPause => !IsGone && Row?.CanPause == true;
+
+    public bool CanUnpause => !IsGone && Row?.CanUnpause == true;
+
+    public bool CanKill => !IsGone && Row?.CanKill == true;
+
+    public bool CanRename => !IsGone && Row is not null;
 
     public bool HasError => !string.IsNullOrEmpty(Error);
 
@@ -219,6 +239,42 @@ public sealed partial class ContainerDetailViewModel : ViewModel
             : Task.CompletedTask;
     }
 
+    public Task PauseAsync()
+    {
+        return Row is { } row
+            ? RunAsync(new PauseContainerCommand(row.ContainerId, row.State), $"Could not pause {row.Name}")
+            : Task.CompletedTask;
+    }
+
+    public Task UnpauseAsync()
+    {
+        return Row is { } row
+            ? RunAsync(new UnpauseContainerCommand(row.ContainerId, row.State), $"Could not resume {row.Name}")
+            : Task.CompletedTask;
+    }
+
+    public Task KillAsync()
+    {
+        return Row is { } row
+            ? RunAsync(new KillContainerCommand(row.ContainerId, row.State), $"Could not kill {row.Name}")
+            : Task.CompletedTask;
+    }
+
+    /// <summary>Asks for the new name; the dialog stays open while the engine refuses it.</summary>
+    public Task RenameAsync()
+    {
+        if (Row is not { } row)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _dialogs.ShowPromptAsync("Rename container", "Name", row.Name, "Rename", async name => {
+            var result = await _sender.Send(new RenameContainerCommand(row.ContainerId, name));
+
+            return result.IsSuccess ? null : result.Error.Message;
+        });
+    }
+
     /// <summary>Asks first, then returns to the list once the container is gone.</summary>
     public async Task RemoveAsync()
     {
@@ -277,7 +333,8 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
     private static string RunningLine(ContainerRow row)
     {
-        var running = row.Elapsed.Length > 0 ? $"Running for {row.Elapsed}" : "Running";
+        var elapsed = ContainerStatusText.Elapsed(row.Status);
+        var running = elapsed.Length > 0 ? $"Running for {elapsed}" : "Running";
 
         return ContainerStatusText.Health(row.Status) switch {
             ContainerHealth.Healthy => $"{running} · healthy",

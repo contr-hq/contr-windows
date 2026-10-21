@@ -1,0 +1,237 @@
+{
+  "family": "Contr Icons",
+  "icons": [
+    {
+      "name": "Containers",
+      "codepoint": "E100"
+    },
+    {
+      "name": "ContainersFilled",
+      "codepoint": "E101"
+    },
+    {
+      "name": "Images",
+      "codepoint": "E102"
+    },
+    {
+      "name": "Volumes",
+      "codepoint": "E103"
+    },
+    {
+      "name": "Networks",
+      "codepoint": "E104"
+    },
+    {
+      "name": "Compose",
+      "codepoint": "E105"
+    },
+    {
+      "name": "Kubernetes",
+      "codepoint": "E106"
+    },
+    {
+      "name": "Troubleshoot",
+      "codepoint": "E107"
+    },
+    {
+      "name": "Settings",
+      "codepoint": "E108"
+    },
+    {
+      "name": "SettingsFilled",
+      "codepoint": "E109"
+    },
+    {
+      "name": "Navigation",
+      "codepoint": "E10A"
+    },
+    {
+      "name": "Back",
+      "codepoint": "E10B"
+    },
+    {
+      "name": "Search",
+      "codepoint": "E10C"
+    },
+    {
+      "name": "Filter",
+      "codepoint": "E10D"
+    },
+    {
+      "name": "ChevronRightSmall",
+      "codepoint": "E10E"
+    },
+    {
+      "name": "ChevronLeftSmall",
+      "codepoint": "E10F"
+    },
+    {
+      "name": "ChevronRight",
+      "codepoint": "E110"
+    },
+    {
+      "name": "ChevronDown",
+      "codepoint": "E111"
+    },
+    {
+      "name": "More",
+      "codepoint": "E112"
+    },
+    {
+      "name": "Play",
+      "codepoint": "E113"
+    },
+    {
+      "name": "Stop",
+      "codepoint": "E114"
+    },
+    {
+      "name": "Pause",
+      "codepoint": "E115"
+    },
+    {
+      "name": "Restart",
+      "codepoint": "E116"
+    },
+    {
+      "name": "Delete",
+      "codepoint": "E117"
+    },
+    {
+      "name": "Copy",
+      "codepoint": "E118"
+    },
+    {
+      "name": "Open",
+      "codepoint": "E119"
+    },
+    {
+      "name": "Rename",
+      "codepoint": "E11A"
+    },
+    {
+      "name": "Add",
+      "codepoint": "E11B"
+    },
+    {
+      "name": "Download",
+      "codepoint": "E11C"
+    },
+    {
+      "name": "Checkmark",
+      "codepoint": "E11D"
+    },
+    {
+      "name": "Dismiss",
+      "codepoint": "E11E"
+    },
+    {
+      "name": "Logs",
+      "codepoint": "E11F"
+    },
+    {
+      "name": "Inspect",
+      "codepoint": "E120"
+    },
+    {
+      "name": "Terminal",
+      "codepoint": "E121"
+    },
+    {
+      "name": "Stats",
+      "codepoint": "E122"
+    },
+    {
+      "name": "Info",
+      "codepoint": "E123"
+    },
+    {
+      "name": "InfoFilled",
+      "codepoint": "E124"
+    },
+    {
+      "name": "Success",
+      "codepoint": "E125"
+    },
+    {
+      "name": "SuccessFilled",
+      "codepoint": "E126"
+    },
+    {
+      "name": "Warning",
+      "codepoint": "E127"
+    },
+    {
+      "name": "WarningFilled",
+      "codepoint": "E128"
+    },
+    {
+      "name": "Error",
+      "codepoint": "E129"
+    },
+    {
+      "name": "ErrorFilled",
+      "codepoint": "E12A"
+    },
+    {
+      "name": "Pending",
+      "codepoint": "E12B"
+    },
+    {
+      "name": "Lock",
+      "codepoint": "E12C"
+    },
+    {
+      "name": "Desktop",
+      "codepoint": "E12D"
+    },
+    {
+      "name": "Processor",
+      "codepoint": "E12E"
+    },
+    {
+      "name": "Disk",
+      "codepoint": "E12F"
+    },
+    {
+      "name": "Organization",
+      "codepoint": "E130"
+    },
+    {
+      "name": "NotificationArea",
+      "codepoint": "E131"
+    },
+    {
+      "name": "Shield",
+      "codepoint": "E132"
+    },
+    {
+      "name": "Context",
+      "codepoint": "E133"
+    },
+    {
+      "name": "Pipe",
+      "codepoint": "E134"
+    },
+    {
+      "name": "Distros",
+      "codepoint": "E135"
+    },
+    {
+      "name": "Power",
+      "codepoint": "E136"
+    },
+    {
+      "name": "Certificate",
+      "codepoint": "E137"
+    },
+    {
+      "name": "Sync",
+      "codepoint": "E138"
+    },
+    {
+      "name": "Memory",
+      "codepoint": "E139"
+    }
+  ]
+}

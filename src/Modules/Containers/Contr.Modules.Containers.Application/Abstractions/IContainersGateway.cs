@@ -24,6 +24,21 @@ public interface IContainersGateway
     /// <param name="force">Kills a running container first.</param>
     Task<Result> RemoveAsync(ContainerId id, bool force, CancellationToken cancellationToken);
 
+    /// <summary>Creates a container from a local image and starts it; one that cannot start is removed.</summary>
+    Task<Result<CreatedContainer>> CreateAsync(ContainerSpec spec, CancellationToken cancellationToken);
+
+    /// <summary>Deletes every stopped container.</summary>
+    Task<Result<ContainersPruned>> PruneAsync(CancellationToken cancellationToken);
+
+    Task<Result> PauseAsync(ContainerId id, CancellationToken cancellationToken);
+
+    Task<Result> UnpauseAsync(ContainerId id, CancellationToken cancellationToken);
+
+    /// <summary>Sends SIGKILL to the container's main process.</summary>
+    Task<Result> KillAsync(ContainerId id, CancellationToken cancellationToken);
+
+    Task<Result> RenameAsync(ContainerId id, ContainerName name, CancellationToken cancellationToken);
+
     /// <summary>The log <paramref name="range"/> selects, then new output until the container stops.</summary>
     IAsyncEnumerable<ContainerLogEvent> StreamLogsAsync(
         ContainerId id, LogRange range, CancellationToken cancellationToken);

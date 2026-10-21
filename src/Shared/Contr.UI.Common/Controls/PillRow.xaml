@@ -1,0 +1,21 @@
+<UserControl
+    x:Class="Contr.UI.Common.Controls.PillRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Contr.UI.Common.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!--  The page's summary under its breadcrumb: what used to be a subtitle line, as pills.  -->
+    <ItemsRepeater AutomationProperties.Name="Summary" ItemsSource="{x:Bind Pills, Mode=OneWay}">
+        <ItemsRepeater.Layout>
+            <StackLayout Orientation="Horizontal" Spacing="8" />
+        </ItemsRepeater.Layout>
+        <ItemsRepeater.ItemTemplate>
+            <DataTemplate x:DataType="controls:PillItem">
+                <controls:PillView Kind="{x:Bind Kind}" Text="{x:Bind Text}" />
+            </DataTemplate>
+        </ItemsRepeater.ItemTemplate>
+    </ItemsRepeater>
+</UserControl>

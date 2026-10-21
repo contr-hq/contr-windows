@@ -19,6 +19,22 @@ public static class ContainerLifecycle
             or ContainerState.Created or ContainerState.Exited;
     }
 
+    public static bool CanPause(this ContainerState state)
+    {
+        return state is ContainerState.Running;
+    }
+
+    public static bool CanUnpause(this ContainerState state)
+    {
+        return state is ContainerState.Paused;
+    }
+
+    /// <summary>Whether there is a main process to send a signal to.</summary>
+    public static bool CanKill(this ContainerState state)
+    {
+        return state is ContainerState.Running or ContainerState.Paused or ContainerState.Restarting;
+    }
+
     public static bool CanRemove(this ContainerState state)
     {
         return state is not ContainerState.Removing;

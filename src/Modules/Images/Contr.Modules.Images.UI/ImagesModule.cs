@@ -5,6 +5,7 @@ using Contr.Modules.Images.Application.Abstractions;
 using Contr.Modules.Images.UI.Infrastructure;
 using Contr.Modules.Images.UI.ViewModels;
 using Contr.Modules.Images.UI.Views;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,6 @@ public sealed class ImagesModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Images", "\uE8B9", typeof(ImagesPage)) { Order = 20 }];
+        return [new NavigationItem("Images", ContrIcons.Images, typeof(ImagesPage)) { Order = 20 }];
     }
 }

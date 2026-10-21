@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
 
 namespace Contr.App.UI;
@@ -23,7 +24,8 @@ public static class HostNavigation
 
     /// <summary>The pane items of the shell's own pages, placed among the modules' items by order.</summary>
     public static IReadOnlyList<NavigationItem> Items { get; } = [
-        new NavigationItem("Kubernetes", "\uEA38", typeof(KubernetesPage)) { Order = 60 },
-        new NavigationItem("Troubleshoot", "\uE90F", typeof(TroubleshootPage), NavigationItemPlacement.Tools),
+        new NavigationItem("Kubernetes", ContrIcons.Kubernetes, typeof(KubernetesPage)) { Order = 60 },
+        new NavigationItem(
+            "Troubleshoot", ContrIcons.Troubleshoot, typeof(TroubleshootPage), NavigationItemPlacement.Tools),
     ];
 }

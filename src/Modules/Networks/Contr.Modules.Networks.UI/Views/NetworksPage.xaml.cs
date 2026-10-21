@@ -50,6 +50,21 @@ public sealed partial class NetworksPage : Page, IHasViewModel
         return engineOpen && !isLoaded && !hasError;
     }
 
+    public static Visibility WaitVisibility(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return IsWaiting(engineOpen, isLoaded, hasError) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static Visibility WhenText(string? text)
+    {
+        return string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public static string OrDash(string? text)
+    {
+        return string.IsNullOrEmpty(text) ? "—" : text;
+    }
+
     /// <summary>The engine keeps its own networks; Compose removes the networks it created.</summary>
     public static bool CanDelete(bool canRemove, bool hasProject)
     {

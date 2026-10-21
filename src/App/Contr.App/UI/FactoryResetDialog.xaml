@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="Contr.App.UI.FactoryResetDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:Contr.App.UI"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Delete everything Contr manages?"
+    CloseButtonText="Cancel"
+    DefaultButton="Close"
+    IsPrimaryButtonEnabled="{x:Bind local:FactoryResetDialog.CanDelete(Understood.IsChecked, ViewModel.IsResetting), Mode=OneWay}"
+    PrimaryButtonClick="OnPrimaryButtonClick"
+    PrimaryButtonStyle="{StaticResource DestructiveButtonStyle}"
+    PrimaryButtonText="Delete everything"
+    Style="{StaticResource DefaultContentDialogStyle}"
+    mc:Ignorable="d">
+
+    <!--  The safe button is the default; the dialog stays open, its error on top, until the reset is done.  -->
+    <StackPanel Width="472" Spacing="16">
+        <InfoBar
+            x:Name="ResetError"
+            Title="The engine wasn't reset"
+            IsClosable="False"
+            Severity="Error"
+            Visibility="Collapsed" />
+
+        <TextBlock Text="Factory reset removes the engine and all of its data from this PC. This can't be undone." TextWrapping="Wrap" />
+
+        <Border
+            Padding="20"
+            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            CornerRadius="8">
+            <StackPanel Spacing="12">
+                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="DELETED FROM THIS PC" />
+                <Grid ColumnSpacing="16" RowSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Containers" />
+                    <TextBlock
+                        Grid.Column="1"
+                        FontWeight="SemiBold"
+                        Text="All of them, running ones too"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Grid.Row="1"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="Images" />
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        FontWeight="SemiBold"
+                        Text="All of them, and the build cache"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="Volumes and their data" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Text="All of them"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Grid.Row="3"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="On disk now"
+                        Visibility="{x:Bind ViewModel.HasDiskText, Mode=OneWay}" />
+                    <TextBlock
+                        Grid.Row="3"
+                        Grid.Column="1"
+                        FontWeight="SemiBold"
+                        Text="{x:Bind ViewModel.DiskText, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.HasDiskText, Mode=OneWay}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <TextBlock
+            FontSize="12"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="Your own WSL distros and your Windows files aren't touched. Starting the engine afterwards sets it up again."
+            TextWrapping="Wrap" />
+
+        <CheckBox
+            x:Name="Understood"
+            AutomationProperties.AutomationId="FactoryResetUnderstood"
+            Content="I understand my volumes and their data will be deleted" />
+
+        <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IsResetting, Mode=OneWay}">
+            <ProgressBar IsIndeterminate="True" />
+            <TextBlock
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="{x:Bind ViewModel.ResetStatus, Mode=OneWay}" />
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

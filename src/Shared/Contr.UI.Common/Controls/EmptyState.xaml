@@ -5,48 +5,55 @@
     xmlns:controls="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    VerticalAlignment="Top"
     mc:Ignorable="d">
 
-    <StackPanel
-        MaxWidth="560"
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Spacing="12">
-        <Border
-            Width="72"
-            Height="72"
-            Margin="0,0,0,8"
-            HorizontalAlignment="Center"
-            Background="{ThemeResource ControlFillColorDefaultBrush}"
-            CornerRadius="36">
-            <Grid>
-                <FontIcon
-                    FontSize="30"
-                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                    Glyph="{x:Bind Glyph, Mode=OneWay}"
-                    Visibility="{x:Bind IsAccent, Mode=OneWay}" />
-                <FontIcon
-                    FontSize="30"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                    Glyph="{x:Bind Glyph, Mode=OneWay}"
-                    Visibility="{x:Bind controls:EmptyState.Not(IsAccent), Mode=OneWay}" />
-            </Grid>
+    <!--  The state sits in a card of its own, with any footer, such as a command to try, as a card under it.  -->
+    <StackPanel Spacing="16">
+        <Border Padding="40" Style="{StaticResource CardStyle}">
+            <StackPanel
+                MaxWidth="560"
+                HorizontalAlignment="Center"
+                Spacing="12">
+                <Border
+                    Width="92"
+                    Height="92"
+                    Margin="0,0,0,8"
+                    HorizontalAlignment="Center"
+                    Background="{ThemeResource ControlFillColorDefaultBrush}"
+                    CornerRadius="46">
+                    <Grid>
+                        <FontIcon
+                            FontFamily="{StaticResource ContrIconsFontFamily}"
+                            FontSize="40"
+                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                            Glyph="{x:Bind Glyph, Mode=OneWay}"
+                            Visibility="{x:Bind IsAccent, Mode=OneWay}" />
+                        <FontIcon
+                            FontFamily="{StaticResource ContrIconsFontFamily}"
+                            FontSize="32"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Glyph="{x:Bind Glyph, Mode=OneWay}"
+                            Visibility="{x:Bind controls:EmptyState.Not(IsAccent), Mode=OneWay}" />
+                    </Grid>
+                </Border>
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="{x:Bind Title, Mode=OneWay}"
+                    TextAlignment="Center" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{x:Bind Message, Mode=OneWay}"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+                <ContentPresenter
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Center"
+                    Content="{x:Bind Actions, Mode=OneWay}" />
+            </StackPanel>
         </Border>
-        <TextBlock
-            HorizontalAlignment="Center"
-            Style="{StaticResource SubtitleTextBlockStyle}"
-            Text="{x:Bind Title, Mode=OneWay}"
-            TextAlignment="Center" />
-        <TextBlock
-            HorizontalAlignment="Center"
-            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            Text="{x:Bind Message, Mode=OneWay}"
-            TextAlignment="Center"
-            TextWrapping="Wrap" />
-        <ContentPresenter
-            Margin="0,8,0,0"
-            HorizontalAlignment="Center"
-            Content="{x:Bind Actions, Mode=OneWay}" />
         <ContentPresenter HorizontalAlignment="Stretch" Content="{x:Bind Footer, Mode=OneWay}" />
     </StackPanel>
 </UserControl>

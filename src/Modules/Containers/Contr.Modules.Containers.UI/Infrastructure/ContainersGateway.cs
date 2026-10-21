@@ -90,6 +90,94 @@ public sealed class ContainersGateway : IContainersGateway
             cancellationToken);
     }
 
+    public async Task<Result<CreatedContainer>> CreateAsync(ContainerSpec spec, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+
+        var request = ContainerMapping.ToCreateRequest(spec);
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Containers
+                    .CreateContainerAsync(request, cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Result.Success(new CreatedContainer(new ContainerId(result.Value.Id), [.. result.Value.Warnings]))
+            : Result.Failure<CreatedContainer>(result.Error);
+    }
+
+    public async Task<Result<ContainersPruned>> PruneAsync(CancellationToken cancellationToken)
+    {
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Containers
+                    .PruneContainersAsync(new ContainersV1.PruneContainersRequest(), cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Result.Success(new ContainersPruned(
+                result.Value.DeletedIds.Count,
+                ContainerMapping.ToLong(result.Value.ReclaimedBytes)))
+            : Result.Failure<ContainersPruned>(result.Error);
+    }
+
+    public Task<Result> PauseAsync(ContainerId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new ContainersV1.PauseContainerRequest { Id = id.Value };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Containers
+                .PauseContainerAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
+    public Task<Result> UnpauseAsync(ContainerId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new ContainersV1.UnpauseContainerRequest { Id = id.Value };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Containers
+                .UnpauseContainerAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
+    public Task<Result> KillAsync(ContainerId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new ContainersV1.KillContainerRequest { Id = id.Value };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Containers
+                .KillContainerAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
+    public Task<Result> RenameAsync(ContainerId id, ContainerName name, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(name);
+
+        var request = new ContainersV1.RenameContainerRequest { Id = id.Value, Name = name.Value };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Containers
+                .RenameContainerAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
     public IAsyncEnumerable<ContainerLogEvent> StreamLogsAsync(
         ContainerId id, LogRange range, CancellationToken cancellationToken)
     {

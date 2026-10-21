@@ -1,57 +1,61 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
 
 namespace Contr.UI.Common.Controls;
 
+/// <summary>One crumb of a <see cref="PageHeader"/>'s trail that leads back to an ancestor page.</summary>
+/// <param name="Index">Its position in <see cref="PageHeader.Trail"/>.</param>
+public sealed record Crumb(int Index, string Text);
+
 /// <summary>
-/// The top of every page: the title or a breadcrumb trail, an optional subtitle line, and the page's commands
-/// (the control's XAML content) in one bordered command group. Usage: docs/architecture.md, "Pages".
+/// The top row of every page: a breadcrumb that starts at the product and ends at the page, then the page's
+/// actions (the control's XAML content) on the right. Usage: docs/architecture.md, "Pages".
 /// </summary>
 /// <remarks>
-/// Commands use <c>AccentToolbarButtonStyle</c> for the page's one primary action, <c>ToolbarButtonStyle</c> for the
-/// rest, <c>DangerToolbarButtonStyle</c> for a destructive one and <c>CommandBarDividerStyle</c> between sets.
+/// The product and the ancestors are tertiary and the page itself SemiBold, all at body size; a page has no
+/// title of its own. Actions are ordinary buttons, at most one of them accent.
 /// </remarks>
 [ContentProperty(Name = nameof(Commands))]
 public sealed partial class PageHeader : UserControl
 {
+    /// <summary>The trail's first crumb; every page names the product the same way.</summary>
+    public static readonly DependencyProperty RootProperty = DependencyProperty.Register(
+        nameof(Root), typeof(string), typeof(PageHeader), new PropertyMetadata("Contr"));
+
+    /// <summary>The page's own name when it has no ancestors.</summary>
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
         nameof(Title), typeof(string), typeof(PageHeader), new PropertyMetadata(string.Empty));
 
-    /// <summary>Text or content under the title, such as a status line; null or empty hides it.</summary>
-    public static readonly DependencyProperty SubtitleProperty = DependencyProperty.Register(
-        nameof(Subtitle), typeof(object), typeof(PageHeader), new PropertyMetadata(null));
-
-    /// <summary>The crumbs shown instead of the title, the current page last; empty shows the title.</summary>
+    /// <summary>The crumbs after the product, the current page last; empty shows <see cref="Title"/>.</summary>
     public static readonly DependencyProperty TrailProperty = DependencyProperty.Register(
         nameof(Trail), typeof(IReadOnlyList<string>), typeof(PageHeader), new PropertyMetadata(null));
 
-    /// <summary>The page's actions; the group is hidden while they are null or collapsed.</summary>
+    /// <summary>The page's actions.</summary>
     public static readonly DependencyProperty CommandsProperty = DependencyProperty.Register(
-        nameof(Commands), typeof(object), typeof(PageHeader), new PropertyMetadata(null, OnCommandsChanged));
-
-    private long _visibilityToken;
+        nameof(Commands), typeof(object), typeof(PageHeader), new PropertyMetadata(null));
 
     public PageHeader()
     {
         InitializeComponent();
     }
 
-    /// <summary>Raised with the index of a clicked crumb; the last crumb, the current page, never raises it.</summary>
+    /// <summary>Raised with the <see cref="Trail"/> index of a clicked ancestor.</summary>
     public event EventHandler<int>? TrailClicked;
+
+    public string Root
+    {
+        get => (string)GetValue(RootProperty);
+        set => SetValue(RootProperty, value);
+    }
 
     public string Title
     {
         get => (string)GetValue(TitleProperty);
         set => SetValue(TitleProperty, value);
-    }
-
-    public object? Subtitle
-    {
-        get => GetValue(SubtitleProperty);
-        set => SetValue(SubtitleProperty, value);
     }
 
     public IReadOnlyList<string>? Trail
@@ -66,51 +70,29 @@ public sealed partial class PageHeader : UserControl
         set => SetValue(CommandsProperty, value);
     }
 
-    public static Visibility WhenPresent(object? value)
+    /// <summary>Where the shell shows notifications while this page is open.</summary>
+    public InfoBar Notice => NoticeBar;
+
+    /// <summary>Every crumb of <paramref name="trail"/> but the last, which is the current page.</summary>
+    public static IReadOnlyList<Crumb> Ancestors(IReadOnlyList<string>? trail)
     {
-        return value is null or "" ? Visibility.Collapsed : Visibility.Visible;
+        return trail is { Count: > 1 }
+            ? [.. trail
+                .Take(trail.Count - 1)
+                .Select((text, index) => new Crumb(index, text))]
+            : [];
     }
 
-    public static Visibility WhenAny(IReadOnlyList<string>? trail)
+    public static string Current(string title, IReadOnlyList<string>? trail)
     {
-        return trail is { Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+        return trail is { Count: > 0 } ? trail[^1] : title;
     }
 
-    public static Visibility WhenEmpty(IReadOnlyList<string>? trail)
+    private void OnCrumbClick(object sender, RoutedEventArgs e)
     {
-        return trail is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    private static void OnCommandsChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
-    {
-        var header = (PageHeader)sender;
-
-        if (e.OldValue is UIElement old)
+        if (sender is FrameworkElement { Tag: int index })
         {
-            old.UnregisterPropertyChangedCallback(VisibilityProperty, header._visibilityToken);
-        }
-
-        if (e.NewValue is UIElement commands)
-        {
-            header._visibilityToken = commands.RegisterPropertyChangedCallback(
-                VisibilityProperty, (_, _) => header.ShowCommandGroup());
-        }
-
-        header.ShowCommandGroup();
-    }
-
-    private void ShowCommandGroup()
-    {
-        CommandGroup.Visibility = Commands is UIElement { Visibility: Visibility.Visible } or string { Length: > 0 }
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
-
-    private void OnTrailItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
-    {
-        if (Trail is { } trail && args.Index < trail.Count - 1)
-        {
-            TrailClicked?.Invoke(this, args.Index);
+            TrailClicked?.Invoke(this, index);
         }
     }
 }

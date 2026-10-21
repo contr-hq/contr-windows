@@ -37,15 +37,25 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
     [NotifyPropertyChangedFor(nameof(IsDisconnected))]
     public partial bool IsConnected { get; set; }
 
-    /// <summary>Such as <c>Connected · 120 × 32</c> or <c>Exited with code 0</c>.</summary>
+    /// <summary>Such as <c>Connected</c> or <c>Exited (0)</c>.</summary>
     [ObservableProperty]
     public partial string StatusText { get; set; }
+
+    /// <summary>The terminal's columns and rows, such as <c>120 × 32</c>; empty without a session.</summary>
+    [ObservableProperty]
+    public partial string SizeText { get; set; }
+
+    /// <summary>Why the shell did not start or stopped; absent otherwise.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    public partial string? Error { get; set; }
 
     public ContainerTerminalViewModel(ISender sender)
     {
         ArgumentNullException.ThrowIfNull(sender);
         _sender = sender;
         StatusText = "Not connected";
+        SizeText = string.Empty;
     }
 
     /// <summary>Raised with output for the terminal view to draw.</summary>
@@ -56,6 +66,8 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
 
     public bool IsDisconnected => !IsConnected;
 
+    public bool HasError => !string.IsNullOrEmpty(Error);
+
     /// <summary>Starts the chosen shell in <paramref name="id"/>, ending any session in progress.</summary>
     public async Task ConnectAsync(ContainerId id)
     {
@@ -64,6 +76,7 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
         await DisconnectAsync();
         Cleared?.Invoke(this, EventArgs.Empty);
         StatusText = "Connecting";
+        Error = null;
 
         var shell = _shells[Math.Clamp(ShellIndex, 0, _shells.Length - 1)];
         var user = _users[Math.Clamp(UserIndex, 0, _users.Length - 1)];
@@ -71,7 +84,8 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
 
         if (opened.IsFailure)
         {
-            StatusText = opened.Error.Message;
+            StatusText = "Not connected";
+            Error = opened.Error.Message;
 
             return;
         }
@@ -79,6 +93,7 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
         _session = opened.Value;
         _reading = new CancellationTokenSource();
         IsConnected = true;
+        StatusText = "Connected";
         ShowSize();
         _ = ReadAsync(_session, _reading.Token);
     }
@@ -99,6 +114,7 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
         {
             IsConnected = false;
             StatusText = "Disconnected";
+            SizeText = string.Empty;
         }
     }
 
@@ -138,8 +154,7 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
 
     private void ShowSize()
     {
-        var size = $"{_columns.ToString(CultureInfo.CurrentCulture)} × {_rows.ToString(CultureInfo.CurrentCulture)}";
-        StatusText = $"Connected · {size}";
+        SizeText = $"{_columns.ToString(CultureInfo.CurrentCulture)} × {_rows.ToString(CultureInfo.CurrentCulture)}";
     }
 
     private async Task ReadAsync(ITerminalSession session, CancellationToken cancellationToken)
@@ -152,10 +167,11 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
                     OutputReceived?.Invoke(this, data.Bytes);
                     break;
                 case TerminalOutput.Exited exited:
-                    StatusText = $"Exited with code {exited.ExitCode.ToString(CultureInfo.CurrentCulture)}";
+                    StatusText = $"Exited ({exited.ExitCode.ToString(CultureInfo.CurrentCulture)})";
                     break;
                 case TerminalOutput.Failed failed:
-                    StatusText = failed.Error.Message;
+                    StatusText = "Disconnected";
+                    Error = failed.Error.Message;
                     break;
             }
         }
@@ -163,6 +179,7 @@ public sealed partial class ContainerTerminalViewModel : ObservableObject, IAsyn
         if (!cancellationToken.IsCancellationRequested && ReferenceEquals(session, _session))
         {
             IsConnected = false;
+            SizeText = string.Empty;
             _session = null;
             await session.DisposeAsync();
         }

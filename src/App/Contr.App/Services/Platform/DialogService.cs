@@ -22,6 +22,7 @@ public sealed class DialogService : IDialogService
     {
         var dialog = Create(title, new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         dialog.PrimaryButtonText = primaryText;
+        dialog.PrimaryButtonStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DestructiveButtonStyle"];
         dialog.CloseButtonText = closeText;
         dialog.DefaultButton = ContentDialogButton.Close;
 
@@ -38,6 +39,38 @@ public sealed class DialogService : IDialogService
         dialog.DefaultButton = ContentDialogButton.Primary;
 
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? input.Text : null;
+    }
+
+    public async Task<bool> ShowPromptAsync(
+        string title, string label, string initialValue, string primaryText, Func<string, Task<string?>> apply)
+    {
+        ArgumentNullException.ThrowIfNull(apply);
+
+        var error = new InfoBar {
+            IsClosable = false,
+            Severity = InfoBarSeverity.Error,
+            Visibility = Visibility.Collapsed,
+        };
+        var input = new TextBox { Header = label, Text = initialValue, AcceptsReturn = false, MinWidth = 360 };
+        var body = new StackPanel { Spacing = 16, Children = { error, input } };
+        var dialog = Create(title, body);
+        dialog.PrimaryButtonText = primaryText;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        dialog.IsPrimaryButtonEnabled = initialValue.Trim().Length > 0;
+        input.TextChanged += (_, _) => dialog.IsPrimaryButtonEnabled = input.Text.Trim().Length > 0;
+        dialog.PrimaryButtonClick += async (_, args) => {
+            var deferral = args.GetDeferral();
+            var failure = await apply(input.Text);
+
+            args.Cancel = failure is not null;
+            error.Message = failure ?? string.Empty;
+            error.IsOpen = failure is not null;
+            error.Visibility = failure is not null ? Visibility.Visible : Visibility.Collapsed;
+            deferral.Complete();
+        };
+
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     /// <summary>

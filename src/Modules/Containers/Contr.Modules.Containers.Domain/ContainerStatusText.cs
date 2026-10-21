@@ -36,7 +36,7 @@ public static partial class ContainerStatusText
     }
 
     /// <summary>
-    /// How long the container has been up, or since it exited, shortened such as <c>2 h</c> or <c>14 min</c>;
+    /// How long the container has been up, or since it exited, shortened such as <c>2h</c> or <c>14m</c>;
     /// empty when the status names no duration.
     /// </summary>
     public static string Elapsed(string status)
@@ -51,9 +51,9 @@ public static partial class ContainerStatusText
         var duration = match.Groups["duration"].Value;
 
         return duration switch {
-            "Less than a second" => "now",
-            "About a minute" => "1 min",
-            "About an hour" => "1 h",
+            "Less than a second" => "1s",
+            "About a minute" => "1m",
+            "About an hour" => "1h",
             _ => Shorten(duration),
         };
     }
@@ -70,16 +70,16 @@ public static partial class ContainerStatusText
 
         var unit = parts[1].TrimEnd('s') switch {
             "second" => "s",
-            "minute" => "min",
+            "minute" => "m",
             "hour" => "h",
             "day" => "d",
-            "week" => "wk",
+            "week" => "w",
             "month" => "mo",
             "year" => "y",
             _ => null,
         };
 
-        return unit is null ? string.Empty : $"{count.ToString(CultureInfo.CurrentCulture)} {unit}";
+        return unit is null ? string.Empty : $"{count.ToString(CultureInfo.CurrentCulture)}{unit}";
     }
 
     [GeneratedRegex(@"^Exited \((-?\d+)\)", RegexOptions.CultureInvariant)]

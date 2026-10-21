@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Contr.SharedKernel;
+using Contr.UI.Common.Formatting;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
@@ -53,6 +54,20 @@ public sealed partial class ShellViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(HasContext))]
     public partial string ContextText { get; set; }
 
+    /// <summary>Such as <c>CPU 9%</c>; empty while the engine reports no usage.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUsage))]
+    public partial string CpuText { get; set; }
+
+    /// <summary>Such as <c>Memory 2.4 of 8 GB</c>.</summary>
+    [ObservableProperty]
+    public partial string MemoryText { get; set; }
+
+    /// <summary>Such as <c>Disk 18.6 GB</c>; empty until the engine measured it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDisk))]
+    public partial string DiskText { get; set; }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartEngineCommand))]
     public partial bool CanStartEngine { get; set; }
@@ -76,6 +91,9 @@ public sealed partial class ShellViewModel : ViewModel
         SinceText = string.Empty;
         EngineVersionText = string.Empty;
         ContextText = string.Empty;
+        CpuText = string.Empty;
+        MemoryText = string.Empty;
+        DiskText = string.Empty;
         _navigationSubscription = navigationService.OnNavigated.Subscribe(OnNavigated);
         ApplyStatus(daemon.Status);
     }
@@ -87,6 +105,20 @@ public sealed partial class ShellViewModel : ViewModel
     public bool HasEngineVersion => EngineVersionText.Length > 0;
 
     public bool HasContext => ContextText.Length > 0;
+
+    public bool HasUsage => CpuText.Length > 0;
+
+    public bool HasDisk => DiskText.Length > 0;
+
+    /// <summary>Shows the engine's usage, or hides it when absent; call it on the UI thread.</summary>
+    public void ApplyUsage(EngineUsage? usage)
+    {
+        CpuText = usage is null ? string.Empty : $"CPU {usage.CpuShare.ToString("0", CultureInfo.CurrentCulture)}%";
+        MemoryText = usage is null
+            ? string.Empty
+            : $"Memory {HumanFormat.MemoryOf(usage.MemoryUsedBytes, usage.MemoryTotalBytes)}";
+        DiskText = usage is { DiskUsedBytes: > 0 } ? $"Disk {HumanFormat.Bytes(usage.DiskUsedBytes)}" : string.Empty;
+    }
 
     /// <summary>Shows a status; call it on the UI thread.</summary>
     public void ApplyStatus(DaemonStatus status)

@@ -32,7 +32,7 @@ public sealed partial record VolumeRow(
         ArgumentNullException.ThrowIfNull(volume);
 
         var created = volume.CreatedAt is { } createdAt
-            ? HumanFormat.Age(createdAt, DateTimeOffset.UtcNow)
+            ? HumanFormat.Ago(createdAt, DateTimeOffset.UtcNow)
             : string.Empty;
         var labels = volume.Labels
             .Select(label => $"{label.Key}={label.Value}")

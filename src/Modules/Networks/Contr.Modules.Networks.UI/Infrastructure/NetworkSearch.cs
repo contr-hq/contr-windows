@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Modules.Networks.Application.Networks.Queries.WatchNetworks;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Search;
 
@@ -40,7 +41,7 @@ public sealed class NetworkSearch : ISearchSource
             .Select(network => new SearchHit(
                 network.Name,
                 $"Network · {network.Driver}",
-                "\uE968",
+                ContrIcons.Networks,
                 _pageKey,
                 [network.Id.Value]))];
     }

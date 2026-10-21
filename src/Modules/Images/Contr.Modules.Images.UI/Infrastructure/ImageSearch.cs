@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Modules.Images.Application.Images.Queries.WatchImages;
 using Contr.UI.Common.Formatting;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Search;
 
@@ -41,7 +42,7 @@ public sealed class ImageSearch : ISearchSource
             .Select(tagged => new SearchHit(
                 tagged.Tag,
                 $"Image · {HumanFormat.Bytes(tagged.Image.SizeBytes)}",
-                "\uE8B9",
+                ContrIcons.Images,
                 _pageKey,
                 []))];
     }

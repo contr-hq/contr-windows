@@ -25,10 +25,12 @@ public sealed record VolumeItem(VolumeRow Row, IReadOnlyList<VolumeMountDto>? Mo
     };
 
     /// <summary>Why the volume cannot be deleted; empty when it can.</summary>
-    public string DeleteNote => InUse
-        ? $"{string.Join(", ", Names())} {(Names().Count == 1 ? "uses" : "use")} it. "
-            + "Delete those containers before you delete this volume."
-        : string.Empty;
+    public string DeleteNote => Names() switch {
+        [] => string.Empty,
+        [var name] => $"It's in use by {name}. Delete {name} before you delete this volume.",
+        var names => $"It's in use by {string.Join(", ", names)}. "
+            + "Delete those containers before you delete this volume.",
+    };
 
     public string Details => Row.Driver.Length > 0 ? $"{Row.Driver} driver" : string.Empty;
 

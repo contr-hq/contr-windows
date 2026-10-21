@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts.Services.Daemon;
 using Microsoft.UI.Dispatching;
 
@@ -68,11 +69,11 @@ public sealed partial class EngineGateViewModel : ObservableObject
 
     public bool IsDisconnected => State == EngineGateState.Disconnected;
 
-    /// <summary>A Segoe Fluent Icons glyph for the state.</summary>
+    /// <summary>A <see cref="ContrIcons"/> glyph for the state.</summary>
     public string Glyph => State switch {
-        EngineGateState.Failed => "\uE783",
-        EngineGateState.Disconnected => "\uF384",
-        _ => "\uE71A",
+        EngineGateState.Failed => ContrIcons.Error,
+        EngineGateState.Disconnected => ContrIcons.Warning,
+        _ => ContrIcons.Stop,
     };
 
     /// <summary>Whether the client starts the engine whenever it connects; the choice persists.</summary>

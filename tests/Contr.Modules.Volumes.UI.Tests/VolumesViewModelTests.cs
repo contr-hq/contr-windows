@@ -82,7 +82,7 @@ public sealed class VolumesViewModelTests
             .Order();
 
         Assert.Equal(["Not used", "db"], usedBy);
-        Assert.Equal(["2", "1", "1", "0"], viewModel.StatCards.Select(card => card.Value));
+        Assert.Equal(["2 volumes", "1 not used by any container"], viewModel.SummaryPills.Select(pill => pill.Text));
         Assert.NotNull(viewModel.Selected);
     }
 
@@ -131,7 +131,7 @@ public sealed class VolumesViewModelTests
             IsSelected: true);
 
         Assert.True(item.InUse);
-        Assert.Equal("db uses it. Delete those containers before you delete this volume.", item.DeleteNote);
+        Assert.Equal("It's in use by db. Delete db before you delete this volume.", item.DeleteNote);
     }
 
     private static VolumeRow Row(string name, string project)

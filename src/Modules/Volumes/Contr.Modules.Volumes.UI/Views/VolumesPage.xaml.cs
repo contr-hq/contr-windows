@@ -57,6 +57,11 @@ public sealed partial class VolumesPage : Page, IHasViewModel
         return engineOpen && !isLoaded && !hasError;
     }
 
+    public static Visibility WaitVisibility(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return IsWaiting(engineOpen, isLoaded, hasError) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>A volume can be deleted once it is known that no container mounts it.</summary>
     public static bool CanDelete(bool inUse, IReadOnlyList<VolumeMountDto>? mounts)
     {

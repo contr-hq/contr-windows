@@ -38,7 +38,7 @@ public sealed record NetworkRow(
     public string DeleteNote => IsBuiltIn
         ? "The engine created this network and keeps it."
         : HasProject
-            ? $"Compose manages this network. Run docker compose down in {Project} to remove it."
+            ? $"Compose manages this network. Run Down on {Project} to remove it."
             : string.Empty;
 
     public static NetworkRow From(NetworkDto network)

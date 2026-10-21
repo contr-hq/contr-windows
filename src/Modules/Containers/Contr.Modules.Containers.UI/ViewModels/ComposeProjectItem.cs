@@ -10,14 +10,14 @@ public sealed record ComposeProjectItem(string Name, string Location, int Runnin
 {
     public bool HasLocation => Location.Length > 0;
 
-    public StatusKind StatusKind => Running == 0
-        ? StatusKind.Neutral
-        : Running == Total ? StatusKind.Good : StatusKind.Caution;
+    public PillKind PillKind => Running == 0
+        ? PillKind.Hollow
+        : Running == Total ? PillKind.Good : PillKind.Caution;
 
-    /// <summary>Such as <c>3 of 4</c> running, or <c>Not running</c>.</summary>
+    /// <summary>Such as <c>3 of 4 running</c>, or <c>Stopped</c>.</summary>
     public string StatusText => Running == 0
-        ? "Not running"
-        : $"{Running.ToString(CultureInfo.CurrentCulture)} of {Total.ToString(CultureInfo.CurrentCulture)}";
+        ? "Stopped"
+        : $"{Running.ToString(CultureInfo.CurrentCulture)} of {Total.ToString(CultureInfo.CurrentCulture)} running";
 
     public static int Compare(ComposeProjectItem? left, ComposeProjectItem? right)
     {

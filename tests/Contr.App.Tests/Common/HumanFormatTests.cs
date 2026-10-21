@@ -22,6 +22,24 @@ public sealed class HumanFormatTests
     }
 
     [Theory]
+    [InlineData(149_000_000, "142 MB")]
+    [InlineData(2_576_980_378, "2.4 GB")]
+    [InlineData(512, "512 B")]
+    public void Memory_UsesBinaryUnitsWithWindowsLabels(long bytes, string expected)
+    {
+        Assert.Equal(expected, HumanFormat.Memory(bytes));
+    }
+
+    [Theory]
+    [InlineData(2_576_980_378, 8_589_934_592, "2.4 of 8 GB")]
+    [InlineData(536_870_912, 8_589_934_592, "512 MB of 8 GB")]
+    [InlineData(0, 8_589_934_592, "0 of 8 GB")]
+    public void MemoryOf_NamesTheUnitOnceWhenBothShareIt(long used, long total, string expected)
+    {
+        Assert.Equal(expected, HumanFormat.MemoryOf(used, total));
+    }
+
+    [Theory]
     [InlineData(0, "Just now")]
     [InlineData(1, "1 minute ago")]
     [InlineData(150, "2 hours ago")]

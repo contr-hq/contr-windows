@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Contr.UI.Common.Icons;
 using Contr.UI.Common.Lists;
 
 namespace Contr.Modules.Containers.UI.ViewModels;
@@ -22,6 +23,11 @@ public sealed partial class ContainerGroup : ObservableObject
     [ObservableProperty]
     public partial string Summary { get; set; }
 
+    /// <summary>The project's first Compose file, such as <c>C:\src\shop\compose.yaml</c>; may be empty.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasComposeFile))]
+    public partial string ComposeFile { get; set; }
+
     [ObservableProperty]
     public partial bool CanStartAll { get; set; }
 
@@ -34,6 +40,7 @@ public sealed partial class ContainerGroup : ObservableObject
         Key = key;
         IsExpanded = true;
         Summary = string.Empty;
+        ComposeFile = string.Empty;
     }
 
     public string Key { get; }
@@ -44,8 +51,10 @@ public sealed partial class ContainerGroup : ObservableObject
 
     public string Title => IsProject ? Key : "Standalone";
 
-    /// <summary>A Segoe Fluent Icons glyph: a list for a project, a package for the standalone card.</summary>
-    public string Glyph => IsProject ? "\uE8FD" : "\uE7B8";
+    /// <summary>The Compose icon for a project, the container icon for the standalone card.</summary>
+    public string Glyph => IsProject ? ContrIcons.Compose : ContrIcons.Containers;
+
+    public bool HasComposeFile => ComposeFile.Length > 0;
 
     /// <summary>The rows the filter and the stopped toggle let through.</summary>
     public ObservableCollection<ContainerRow> Rows { get; } = [];
@@ -58,6 +67,11 @@ public sealed partial class ContainerGroup : ObservableObject
 
         CollectionSync.Sync(Rows, visible, row => row.Id);
         Summary = Summarise(all);
+        ComposeFile = IsProject
+            ? all
+                .Select(row => row.ComposeFile)
+                .FirstOrDefault(file => file.Length > 0) ?? string.Empty
+            : string.Empty;
         CanStartAll = all.Any(row => row.CanStart);
         CanStopAll = all.Any(row => row.CanStop);
     }
@@ -72,10 +86,7 @@ public sealed partial class ContainerGroup : ObservableObject
         }
 
         var running = all.Count(row => row.IsRunning);
-        var file = all
-            .Select(row => row.ComposeFile)
-            .FirstOrDefault(file => file.Length > 0);
 
-        return file is null ? $"{containers} · {running} running" : $"{containers} · {running} running · {file}";
+        return $"{containers} · {running} running";
     }
 }

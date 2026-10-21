@@ -1,6 +1,8 @@
 using System;
 using Contr.Modules.Containers.UI.ViewModels;
+using Contr.UI.Common.Icons;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Containers;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,16 +20,22 @@ public sealed partial class ContainersPage : Page, IHasViewModel
 
     private readonly INavigationService _navigation;
     private readonly IClipboardService _clipboard;
+    private readonly IContainerRunner _runner;
 
     public ContainersPage(
-        ContainersViewModel viewModel, INavigationService navigation, IClipboardService clipboard)
+        ContainersViewModel viewModel,
+        INavigationService navigation,
+        IClipboardService clipboard,
+        IContainerRunner runner)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(runner);
         ViewModel = viewModel;
         _navigation = navigation;
         _clipboard = clipboard;
+        _runner = runner;
 
         InitializeComponent();
 
@@ -44,7 +52,7 @@ public sealed partial class ContainersPage : Page, IHasViewModel
 
     public static string ChevronGlyph(bool expanded)
     {
-        return expanded ? "\uE70D" : "\uE76C";
+        return expanded ? ContrIcons.ChevronDown : ContrIcons.ChevronRight;
     }
 
     public static string ExpandName(bool expanded)
@@ -55,6 +63,18 @@ public sealed partial class ContainersPage : Page, IHasViewModel
     public static string Shown(string text, bool engineOpen)
     {
         return engineOpen ? text : string.Empty;
+    }
+
+    /// <summary>The dot between a group's counts and its Compose file; nothing without a file.</summary>
+    public static string FileSeparator(string file)
+    {
+        return file.Length > 0 ? " · " : string.Empty;
+    }
+
+    /// <summary>Whether the view switch's button for <paramref name="view"/> shows pressed.</summary>
+    public static bool IsView(int current, int view)
+    {
+        return current == view;
     }
 
     public static Visibility ShowsBoth(bool first, bool second)
@@ -160,6 +180,43 @@ public sealed partial class ContainersPage : Page, IHasViewModel
         }
     }
 
+    private async void OnRunContainer(object sender, RoutedEventArgs e)
+    {
+        await _runner.RunAsync(string.Empty);
+    }
+
+    private async void OnPause(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.PauseAsync(row);
+        }
+    }
+
+    private async void OnUnpause(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.UnpauseAsync(row);
+        }
+    }
+
+    private async void OnKill(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.KillAsync(row);
+        }
+    }
+
+    private async void OnRename(object sender, RoutedEventArgs e)
+    {
+        if (TagOf<ContainerRow>(sender) is { } row)
+        {
+            await ViewModel.RenameAsync(row);
+        }
+    }
+
     private void OnLogs(object sender, RoutedEventArgs e)
     {
         if (TagOf<ContainerRow>(sender) is { } row)
@@ -242,6 +299,21 @@ public sealed partial class ContainersPage : Page, IHasViewModel
     private void OnPullImage(object sender, RoutedEventArgs e)
     {
         _navigation.NavigateTo(_imagesPageKey);
+    }
+
+    private void OnByProject(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ViewIndex = 0;
+    }
+
+    private void OnFlatList(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ViewIndex = 1;
+    }
+
+    private void OnOpenCompose(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenCompose();
     }
 
     private void OnCopyTryCommand(object sender, RoutedEventArgs e)

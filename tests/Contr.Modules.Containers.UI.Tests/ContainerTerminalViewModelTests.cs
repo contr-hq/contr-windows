@@ -51,7 +51,7 @@ public sealed class ContainerTerminalViewModelTests
         await viewModel.ConnectAsync(new ContainerId("c0ffee01"));
 
         Assert.Equal(["/app # "], output);
-        Assert.Equal("Exited with code 0", viewModel.StatusText);
+        Assert.Equal("Exited (0)", viewModel.StatusText);
         Assert.False(viewModel.IsConnected);
     }
 
@@ -65,7 +65,7 @@ public sealed class ContainerTerminalViewModelTests
 
         await viewModel.ConnectAsync(new ContainerId("c0ffee01"));
 
-        Assert.Equal("no such file: /bin/bash", viewModel.StatusText);
+        Assert.Equal("no such file: /bin/bash", viewModel.Error);
         Assert.False(viewModel.IsConnected);
     }
 

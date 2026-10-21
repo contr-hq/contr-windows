@@ -6,44 +6,35 @@
     xmlns:app="using:Contr.Modules.Volumes.Application.Volumes"
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:views="using:Contr.Modules.Volumes.UI.Views"
     xmlns:vm="using:Contr.Modules.Volumes.UI.ViewModels"
     mc:Ignorable="d">
 
     <Page.Resources>
-        <GridLength x:Key="UsedByColumnWidth">200</GridLength>
-        <GridLength x:Key="CreatedColumnWidth">120</GridLength>
+        <!--  The header and every row share these widths, so the columns line up.  -->
+        <GridLength x:Key="NameColumnWidth">2*</GridLength>
+        <GridLength x:Key="UsedByColumnWidth">1.2*</GridLength>
+        <GridLength x:Key="CreatedColumnWidth">90</GridLength>
 
         <DataTemplate x:Key="VolumeTemplate" x:DataType="vm:VolumeItem">
             <Grid
                 AutomationProperties.Name="{x:Bind Name}"
-                Padding="16,6,12,6"
-                Background="Transparent"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,1,0,0"
-                ColumnSpacing="12"
-                MinHeight="48"
+                Style="{StaticResource SelectableTableRowStyle}"
                 Tag="{x:Bind}"
                 Tapped="OnRowTapped">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource NameColumnWidth}" MinWidth="160" />
+                    <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" MinWidth="110" />
                     <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
                 </Grid.ColumnDefinitions>
                 <Border
                     Grid.ColumnSpan="3"
-                    Margin="-16,-6,-12,-6"
+                    Margin="-12,-4,-8,-4"
                     Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                     Visibility="{x:Bind IsSelected}" />
-                <Border
-                    Width="3"
-                    Height="16"
-                    Margin="-11,0,0,0"
-                    HorizontalAlignment="Left"
-                    Background="{ThemeResource AccentFillColorDefaultBrush}"
-                    CornerRadius="1.5"
-                    Visibility="{x:Bind IsSelected}" />
+                <Border Style="{StaticResource SelectionMarkerStyle}" Visibility="{x:Bind IsSelected}" />
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock
                         FontWeight="SemiBold"
@@ -60,195 +51,224 @@
                     Text="{x:Bind UsedBy}" />
                 <TextBlock
                     Grid.Column="2"
-                    Style="{StaticResource CellTextStyle}"
+                    Style="{StaticResource TimeTextStyle}"
                     Text="{x:Bind Row.Created}" />
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="MountTemplate" x:DataType="app:VolumeMountDto">
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Style="{StaticResource CellTextStyle}" Text="{x:Bind Container}" />
+            <StackPanel>
                 <TextBlock
-                    Grid.Column="1"
-                    HorizontalAlignment="Right"
-                    Style="{StaticResource MonoCellTextStyle}"
-                    Text="{x:Bind Destination}" />
-            </Grid>
+                    FontWeight="SemiBold"
+                    Text="{x:Bind Container}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    FontSize="12"
+                    IsTextSelectionEnabled="True"
+                    Style="{StaticResource IdentifierTextStyle}"
+                    Text="{x:Bind Destination}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="LabelTemplate" x:DataType="x:String">
             <TextBlock
+                FontSize="12"
                 IsTextSelectionEnabled="True"
-                Style="{StaticResource MonoCellTextStyle}"
+                Style="{StaticResource IdentifierTextStyle}"
                 Text="{x:Bind}"
                 TextWrapping="Wrap" />
         </DataTemplate>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <ScrollViewer>
+        <Grid Padding="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
+            </Grid.ColumnDefinitions>
 
-        <common:PageHeader Title="Volumes">
-            <StackPanel
-                Orientation="Horizontal"
-                Spacing="2"
-                Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
-                <Button
-                    AutomationProperties.AutomationId="CreateVolumeButton"
-                    Click="OnCreate"
-                    Style="{StaticResource AccentToolbarButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE710;" />
-                        <TextBlock Text="Create volume" />
+            <!--  Margins rather than spacing, so a closed bar leaves no gap behind.  -->
+            <StackPanel>
+                <common:PageHeader Title="Volumes">
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                        <Button
+                            AutomationProperties.AutomationId="CreateVolumeButton"
+                            Click="OnCreate"
+                            Style="{StaticResource AccentButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Add}" Style="{StaticResource IconStyle}" />
+                                <TextBlock Text="Create volume" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            AutomationProperties.AutomationId="RemoveUnusedVolumesButton"
+                            Click="OnRemoveUnused"
+                            IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="{x:Bind icons:ContrIcons.Delete}" Style="{StaticResource IconStyle}" />
+                                <TextBlock Text="Remove unused" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
-                </Button>
-                <Border Style="{StaticResource CommandBarDividerStyle}" />
-                <Button
-                    AutomationProperties.AutomationId="RemoveUnusedVolumesButton"
-                    Click="OnRemoveUnused"
-                    IsEnabled="{x:Bind ViewModel.HasUnused, Mode=OneWay}"
-                    Style="{StaticResource ToolbarButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                        <TextBlock Text="Remove unused" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </common:PageHeader>
+                </common:PageHeader>
 
-        <!--  Counted over every volume.  -->
-        <common:StatStrip
-            Grid.Row="1"
-            Margin="0,16,0,0"
-            AutomationProperties.AutomationId="VolumeStats"
-            Cards="{x:Bind ViewModel.StatCards, Mode=OneWay}"
-            Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
+                <InfoBar
+                    Title="Couldn't list volumes"
+                    Margin="0,16,0,0"
+                    IsClosable="False"
+                    IsOpen="{x:Bind views:VolumesPage.ShowsBoth(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
+                    Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                    Severity="Error"
+                    Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
 
-        <InfoBar
-            Title="Couldn't list volumes"
-            Grid.Row="2"
-            Margin="0,16,0,0"
-            IsClosable="False"
-            IsOpen="{x:Bind views:VolumesPage.ShowsBoth(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
-            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-            Severity="Error"
-            Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
+                <!--  Counted over every volume.  -->
+                <common:PillRow
+                    Margin="0,16,0,0"
+                    AutomationProperties.AutomationId="VolumeStats"
+                    Pills="{x:Bind ViewModel.SummaryPills, Mode=OneWay}"
+                    Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
 
-        <Grid Grid.Row="3" Margin="0,16,0,0">
-            <common:EngineGate
-                Margin="0,0,0,48"
-                ViewModel="{x:Bind ViewModel.Engine}"
-                Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
+                <Grid
+                    Margin="0,16,0,0"
+                    ColumnSpacing="16"
+                    Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="400" />
+                    </Grid.ColumnDefinitions>
 
-            <ProgressRing
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                IsActive="{x:Bind views:VolumesPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
+                    <Border VerticalAlignment="Top" Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel Spacing="12">
+                            <Grid MinHeight="28">
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="{x:Bind ViewModel.Page.Caption, Mode=OneWay}" />
+                                <common:Pager
+                                    HorizontalAlignment="Right"
+                                    NextCommand="{x:Bind ViewModel.Page.NextCommand}"
+                                    PreviousCommand="{x:Bind ViewModel.Page.PreviousCommand}"
+                                    Text="{x:Bind ViewModel.Page.PageText, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.Page.HasPages, Mode=OneWay}" />
+                            </Grid>
+                            <StackPanel>
+                                <Grid Style="{StaticResource SelectableTableHeadStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{StaticResource NameColumnWidth}" MinWidth="160" />
+                                        <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" MinWidth="110" />
+                                        <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Style="{StaticResource ColumnHeadStyle}"
+                                        Text="Used by" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Style="{StaticResource ColumnHeadStyle}"
+                                        Text="Created" />
+                                </Grid>
+                                <ItemsRepeater
+                                    AutomationProperties.AutomationId="VolumesList"
+                                    ItemTemplate="{StaticResource VolumeTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Page.Items}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-            <common:EmptyState
-                Title="No volumes yet"
-                Margin="0,0,0,48"
-                Glyph="&#xEDA2;"
-                Message="Volumes keep data that outlives a container, such as a database's files. Containers and Compose projects create them, or create one here."
-                Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.IsEmpty), Mode=OneWay}">
-                <Button
-                    Click="OnCreate"
-                    Content="Create volume"
-                    Style="{StaticResource AccentButtonStyle}" />
-            </common:EmptyState>
-
-            <Grid ColumnSpacing="16" Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="300" />
-                </Grid.ColumnDefinitions>
-
-                <Border VerticalAlignment="Top" Style="{StaticResource CardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid Padding="16,10,12,8" ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="{StaticResource UsedByColumnWidth}" />
-                                <ColumnDefinition Width="{StaticResource CreatedColumnWidth}" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
-                            <TextBlock
-                                Grid.Column="1"
-                                Style="{StaticResource ColumnHeadStyle}"
-                                Text="Used by" />
-                            <TextBlock
-                                Grid.Column="2"
-                                Style="{StaticResource ColumnHeadStyle}"
-                                Text="Created" />
-                        </Grid>
-                        <ScrollViewer Grid.Row="1">
-                            <ItemsRepeater
-                                AutomationProperties.AutomationId="VolumesList"
-                                ItemTemplate="{StaticResource VolumeTemplate}"
-                                ItemsSource="{x:Bind ViewModel.Items}" />
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
-
-                <Border
-                    Grid.Column="1"
-                    Padding="16"
-                    VerticalAlignment="Top"
-                    AutomationProperties.AutomationId="VolumeDetails"
-                    Style="{StaticResource CardStyle}"
-                    Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
-                    <StackPanel Spacing="12">
-                        <StackPanel>
+                    <Border
+                        Grid.Column="1"
+                        VerticalAlignment="Top"
+                        AutomationProperties.AutomationId="VolumeDetails"
+                        Style="{StaticResource CaptionedCardStyle}"
+                        Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="VOLUME DETAILS" />
                             <TextBlock
                                 Style="{StaticResource SubtitleTextBlockStyle}"
                                 Text="{x:Bind ViewModel.Selected.Name, Mode=OneWay}"
                                 TextWrapping="Wrap" />
-                            <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind ViewModel.Selected.Details, Mode=OneWay}" />
-                        </StackPanel>
-                        <MenuFlyoutSeparator />
-                        <StackPanel Spacing="6">
-                            <TextBlock FontWeight="SemiBold" Text="Mounted in" />
-                            <ItemsControl ItemTemplate="{StaticResource MountTemplate}" ItemsSource="{x:Bind ViewModel.Selected.KnownMounts, Mode=OneWay}" />
+                            <Grid ColumnSpacing="16" RowSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Driver" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Style="{StaticResource IdentifierTextStyle}"
+                                    Text="{x:Bind ViewModel.Selected.Row.Driver, Mode=OneWay}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Style="{StaticResource FieldLabelStyle}"
+                                    Text="Mounted in" />
+                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                    <ItemsControl ItemTemplate="{StaticResource MountTemplate}" ItemsSource="{x:Bind ViewModel.Selected.KnownMounts, Mode=OneWay}" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="No container"
+                                        Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.IsUnused), Mode=OneWay}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Style="{StaticResource FieldLabelStyle}"
+                                    Text="Labels"
+                                    Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.HasLabels), Mode=OneWay}" />
+                                <ItemsControl
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    ItemTemplate="{StaticResource LabelTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Selected.Row.Labels, Mode=OneWay}"
+                                    Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.HasLabels), Mode=OneWay}" />
+                            </Grid>
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Click="OnCopyName" Content="Copy name" />
+                                <Button
+                                    AutomationProperties.AutomationId="DeleteVolumeButton"
+                                    Click="OnDelete"
+                                    Content="Delete…"
+                                    IsEnabled="{x:Bind views:VolumesPage.CanDelete(ViewModel.Selected.InUse, ViewModel.Selected.Mounts), Mode=OneWay}" />
+                            </StackPanel>
                             <TextBlock
-                                Style="{StaticResource SecondaryCellTextStyle}"
-                                Text="No container mounts it."
-                                Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.IsUnused), Mode=OneWay}" />
+                                Margin="0,-4,0,0"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind ViewModel.Selected.DeleteNote, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.InUse), Mode=OneWay}" />
                         </StackPanel>
-                        <StackPanel Spacing="6" Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.HasLabels), Mode=OneWay}">
-                            <MenuFlyoutSeparator />
-                            <TextBlock FontWeight="SemiBold" Text="Labels" />
-                            <ItemsControl ItemTemplate="{StaticResource LabelTemplate}" ItemsSource="{x:Bind ViewModel.Selected.Row.Labels, Mode=OneWay}" />
-                        </StackPanel>
-                        <MenuFlyoutSeparator />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Click="OnCopyName" Content="Copy name" />
-                            <Button
-                                AutomationProperties.AutomationId="DeleteVolumeButton"
-                                Click="OnDelete"
-                                Content="Delete"
-                                IsEnabled="{x:Bind views:VolumesPage.CanDelete(ViewModel.Selected.InUse, ViewModel.Selected.Mounts), Mode=OneWay}" />
-                        </StackPanel>
-                        <TextBlock
-                            Style="{StaticResource SecondaryTextStyle}"
-                            FontSize="12"
-                            Text="{x:Bind ViewModel.Selected.DeleteNote, Mode=OneWay}"
-                            Visibility="{x:Bind views:VolumesPage.WhenTrue(ViewModel.Selected.InUse), Mode=OneWay}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
+                    </Border>
+                </Grid>
+
+                <common:EngineGate
+                    Margin="0,16,0,0"
+                    ViewModel="{x:Bind ViewModel.Engine}"
+                    Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
+
+                <ProgressRing
+                    Margin="0,48,0,0"
+                    HorizontalAlignment="Center"
+                    IsActive="{x:Bind views:VolumesPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}"
+                    Visibility="{x:Bind views:VolumesPage.WaitVisibility(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
+
+                <common:EmptyState
+                    Title="No volumes yet"
+                    Margin="0,16,0,0"
+                    Glyph="{x:Bind icons:ContrIcons.Volumes}"
+                    Message="Volumes keep data that outlives a container, such as a database's files. Containers and Compose projects create them, or create one here."
+                    Visibility="{x:Bind views:VolumesPage.Visible(ViewModel.Engine.IsOpen, ViewModel.IsEmpty), Mode=OneWay}">
+                    <Button
+                        Click="OnCreate"
+                        Content="Create volume"
+                        Style="{StaticResource AccentButtonStyle}" />
+                </common:EmptyState>
+            </StackPanel>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </Page>

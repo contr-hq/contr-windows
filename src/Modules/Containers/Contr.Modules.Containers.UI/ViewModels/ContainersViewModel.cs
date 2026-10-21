@@ -10,15 +10,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Containers.Application.Containers;
+using Contr.Modules.Containers.Application.Containers.Commands.KillContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PauseContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.PruneContainers;
 using Contr.Modules.Containers.Application.Containers.Commands.RemoveContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.RenameContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.RestartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StartContainer;
 using Contr.Modules.Containers.Application.Containers.Commands.StopContainer;
+using Contr.Modules.Containers.Application.Containers.Commands.UnpauseContainer;
 using Contr.Modules.Containers.Application.Containers.Queries.WatchContainers;
 using Contr.Modules.Containers.Domain;
 using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
+using Contr.UI.Common.Formatting;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
@@ -31,6 +37,8 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
 {
     /// <summary>The page key of the container page, derived from its type name.</summary>
     private const string _detailPageKey = "ContainerDetail";
+
+    private const string _composePageKey = "Compose";
 
     private const int _flatView = 1;
 
@@ -55,9 +63,9 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
     [ObservableProperty]
     public partial bool ShowStopped { get; set; }
 
-    /// <summary>Counted over every container, never the filtered set.</summary>
+    /// <summary>Such as <c>5 running</c>, <c>2 stopped</c>; counted over every container, never the filtered.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<StatCard> StatCards { get; set; }
+    public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
     /// <summary>Whether the filter and the stopped toggle let any container through.</summary>
     [ObservableProperty]
@@ -110,7 +118,7 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         _clipboard = clipboard;
         _usage = usage;
         Engine = new EngineGateViewModel(daemon);
-        StatCards = [];
+        SummaryPills = [];
         FilterText = string.Empty;
         ShowStopped = true;
         ExitNotice = string.Empty;
@@ -156,6 +164,39 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         ArgumentNullException.ThrowIfNull(row);
 
         return RunAsync(new RestartContainerCommand(row.ContainerId, row.State), $"Could not restart {row.Name}");
+    }
+
+    public Task PauseAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new PauseContainerCommand(row.ContainerId, row.State), $"Could not pause {row.Name}");
+    }
+
+    public Task UnpauseAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new UnpauseContainerCommand(row.ContainerId, row.State), $"Could not resume {row.Name}");
+    }
+
+    public Task KillAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return RunAsync(new KillContainerCommand(row.ContainerId, row.State), $"Could not kill {row.Name}");
+    }
+
+    /// <summary>Asks for the new name; the dialog stays open while the engine refuses it.</summary>
+    public Task RenameAsync(ContainerRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return _dialogs.ShowPromptAsync("Rename container", "Name", row.Name, "Rename", async name => {
+            var result = await _sender.Send(new RenameContainerCommand(row.ContainerId, name));
+
+            return result.IsSuccess ? null : result.Error.Message;
+        });
     }
 
     /// <summary>Asks first; a running container is killed before it is deleted.</summary>
@@ -205,6 +246,11 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
     }
 
     /// <summary>Deletes every stopped container after asking once.</summary>
+    public void OpenCompose()
+    {
+        _navigation.NavigateTo(_composePageKey);
+    }
+
     public async Task PruneStoppedAsync()
     {
         var stopped = Rows
@@ -225,10 +271,18 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
             return;
         }
 
-        foreach (var row in stopped)
+        var result = await _sender.Send(new PruneContainersCommand());
+
+        if (result.IsFailure)
         {
-            await RunAsync(new RemoveContainerCommand(row.ContainerId, row.State), $"Could not delete {row.Name}");
+            _notifications.Show(result.Error.Message, InfoBarSeverity.Error, "Could not prune the containers");
+
+            return;
         }
+
+        var deleted = result.Value.Deleted == 1 ? "1 container" : $"{result.Value.Deleted} containers";
+        _notifications.Show(
+            $"Deleted {deleted} and freed {HumanFormat.Bytes(result.Value.ReclaimedBytes)}.", InfoBarSeverity.Success);
     }
 
     public void ViewExitedLogs()
@@ -281,7 +335,7 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         Regroup();
     }
 
-    private static List<StatCard> Summarize(List<ContainerRow> rows)
+    private static List<PillItem> Summarize(List<ContainerRow> rows)
     {
         var running = rows.Count(row => row.IsRunning);
         var failed = rows.Count(row => row.HasFailed);
@@ -291,20 +345,25 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
             .Select(row => row.Project)
             .Distinct(StringComparer.Ordinal)
             .Count();
-        var standalone = rows.Count(row => !row.HasProject);
+        var pills = new List<PillItem> { new($"{Count(running)} running", PillKind.Good) };
 
-        return [
-            new StatCard("RUNNING", Count(running), $"of {Count(rows.Count)} containers", "\uE768", StatKind.Positive),
-            new StatCard("STOPPED", Count(stopped), "exited cleanly or not started", "\uE71A", StatKind.Muted),
-            new StatCard(
-                "FAILED",
-                Count(failed),
-                failed == 0 ? "none exited with an error" : "exited with an error",
-                "\uE783",
-                failed == 0 ? StatKind.Muted : StatKind.Critical),
-            new StatCard(
-                "COMPOSE PROJECTS", Count(projects), $"{Count(standalone)} standalone", "\uE8FD", StatKind.Accent),
-        ];
+        if (stopped > 0)
+        {
+            pills.Add(new PillItem($"{Count(stopped)} stopped", PillKind.Hollow));
+        }
+
+        if (failed > 0)
+        {
+            pills.Add(new PillItem($"{Count(failed)} failed", PillKind.Critical));
+        }
+
+        if (projects > 0)
+        {
+            pills.Add(new PillItem(
+                projects == 1 ? "1 compose project" : $"{Count(projects)} compose projects", PillKind.Plain));
+        }
+
+        return pills;
     }
 
     private static string Count(int count)
@@ -393,11 +452,11 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
             .ToList();
         _usage.Follow(running);
 
-        var cards = Summarize(all);
+        var pills = Summarize(all);
 
-        if (!cards.SequenceEqual(StatCards))
+        if (!pills.SequenceEqual(SummaryPills))
         {
-            StatCards = cards;
+            SummaryPills = pills;
         }
 
         HasMatches = visible.Count > 0;

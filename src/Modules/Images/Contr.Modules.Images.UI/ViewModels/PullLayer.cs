@@ -1,6 +1,7 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.Modules.Images.Application.Images;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Formatting;
 
 namespace Contr.Modules.Images.UI.ViewModels;
@@ -14,19 +15,27 @@ public sealed partial class PullLayer : ObservableObject
     public partial double Progress { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnderway))]
     public partial bool IsDone { get; set; }
 
     [ObservableProperty]
     public partial string StatusText { get; set; }
+
+    /// <summary>The status pill's dot: done, moving, or not started.</summary>
+    [ObservableProperty]
+    public partial PillKind Kind { get; set; }
 
     public PullLayer(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
         Id = id.Length > _shortIdLength ? id[.._shortIdLength] : id;
         StatusText = "Waiting";
+        Kind = PillKind.Hollow;
     }
 
     public string Id { get; }
+
+    public bool IsUnderway => !IsDone;
 
     /// <summary>The layer's size; zero while the engine has not reported it.</summary>
     public long TotalBytes { get; private set; }
@@ -56,6 +65,14 @@ public sealed partial class PullLayer : ObservableObject
         CurrentBytes = IsDone ? TotalBytes : CurrentBytes;
         Progress = IsDone ? 100 : TotalBytes > 0 ? 100.0 * CurrentBytes / TotalBytes : 0;
         StatusText = Describe(layer);
+        Kind = IsDone ? PillKind.Good : Moves(layer.Status) ? PillKind.Busy : PillKind.Hollow;
+    }
+
+    private static bool Moves(string status)
+    {
+        return status.StartsWith("Downloading", StringComparison.Ordinal)
+            || status.StartsWith("Extracting", StringComparison.Ordinal)
+            || status.StartsWith("Verifying", StringComparison.Ordinal);
     }
 
     private string Describe(PullEvent.Layer layer)
