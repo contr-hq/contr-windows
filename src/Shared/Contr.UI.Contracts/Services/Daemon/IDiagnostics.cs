@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.SharedKernel;
@@ -26,6 +27,17 @@ public interface IDiagnostics
     /// or <c>Daemon.Conflict</c> when it failed otherwise.</returns>
     Task<Result<RemediationOutcome>> RunRemediationAsync(
         string actionId, IProgress<EngineProgress> progress, CancellationToken cancellationToken);
+
+    /// <summary>Writes a zip for support to <paramref name="destination"/>: versions, settings, check results, the
+    /// engine's state and recent logs, with credentials and the user's name, home folder, computer name and Windows
+    /// SIDs replaced.</summary>
+    /// <param name="destination">Receives the zip, which is whole only when the call succeeds.</param>
+    /// <param name="progress">Receives each step the daemon reports.</param>
+    /// <param name="cancellationToken">Stops the bundle.</param>
+    /// <returns>A failure with code <c>Daemon.FeatureUnavailable</c> from a daemon older than API revision 18.
+    /// </returns>
+    Task<Result> CreateBundleAsync(
+        Stream destination, IProgress<EngineProgress> progress, CancellationToken cancellationToken);
 }
 
 /// <summary>What one check found.</summary>

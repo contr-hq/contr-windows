@@ -1,6 +1,8 @@
+using System.Threading;
 using Contr.Daemon.UI;
 using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
+using Grpc.Core;
 using Xunit;
 using Wire = Contr.Sdk.Diagnostics.V1;
 using WireRemediation = Contr.Sdk.Common.V1.Remediation;
@@ -75,5 +77,18 @@ public sealed class DiagnosticsClientTests
         var error = DiagnosticsClient.Reason(declined, Remediation.InstallWslId);
 
         Assert.Equal(IDiagnostics.ElevationDeclinedCode, error.Code);
+    }
+
+    [Fact]
+    public void Dismisses_ACancelTheCallerDidNotAskFor()
+    {
+        var cancelled = new RpcException(new Status(StatusCode.Cancelled, "the prompt was dismissed"));
+        using var asked = new CancellationTokenSource();
+        asked.Cancel();
+
+        Assert.True(DiagnosticsClient.Dismisses(cancelled, CancellationToken.None));
+        Assert.False(DiagnosticsClient.Dismisses(cancelled, asked.Token));
+        Assert.False(DiagnosticsClient.Dismisses(
+            new RpcException(new Status(StatusCode.Internal, "boom")), CancellationToken.None));
     }
 }
