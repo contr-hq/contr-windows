@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Contr.App.UI.Onboarding;
+using Contr.UI.Common.Controls;
 using Contr.UI.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -15,7 +16,6 @@ public sealed partial class SettingsPage : Page, IHasViewModel
     private static readonly string[] _tabNames = [
         "General",
         "Resources",
-        "WSL integration",
         "Proxies and certificates",
         "Engine",
         "Kubernetes",
@@ -73,12 +73,6 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         return text.Length > 0 ? text : "—";
     }
 
-    /// <summary>The installed version, else the bundled one.</summary>
-    public static string ToolVersion(string installed, string bundled)
-    {
-        return installed.Length > 0 ? installed : bundled.Length > 0 ? $"{bundled} (bundled)" : "—";
-    }
-
     public static string ProcessorsText()
     {
         return $"This PC has {Environment.ProcessorCount.ToString(CultureInfo.CurrentCulture)} logical processors.";
@@ -87,6 +81,16 @@ public sealed partial class SettingsPage : Page, IHasViewModel
     public static bool Not(bool value)
     {
         return !value;
+    }
+
+    public static PillKind KindOf(PillItem? pill)
+    {
+        return pill?.Kind ?? PillKind.Plain;
+    }
+
+    public static string TextOf(PillItem? pill)
+    {
+        return pill?.Text ?? string.Empty;
     }
 
     public static bool Is(int value, int expected)
@@ -119,6 +123,11 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         {
             ViewModel.Proxies.ModeIndex = mode;
         }
+    }
+
+    private void OnCopyVersions(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CopyVersions();
     }
 
     private void OnDiscardProxyChanges(object sender, RoutedEventArgs e)

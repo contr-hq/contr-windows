@@ -60,8 +60,8 @@
     <Thickness x:Key="SettingsCardPadding">0,14,0,14</Thickness>
     <Thickness x:Key="SettingsCardHeaderIconMargin">0,0,16,0</Thickness>
     <Thickness x:Key="SettingsExpanderHeaderPadding">0,14,0,14</Thickness>
-    <Thickness x:Key="SettingsExpanderItemPadding">36,10,0,10</Thickness>
-    <Thickness x:Key="ClickableSettingsExpanderItemPadding">36,10,0,10</Thickness>
+    <Thickness x:Key="SettingsExpanderItemPadding">52,10,16,10</Thickness>
+    <Thickness x:Key="ClickableSettingsExpanderItemPadding">52,10,16,10</Thickness>
 
     <!--  The group: a captioned card whose rows bring their own vertical padding.  -->
     <Style
