@@ -62,7 +62,7 @@ public sealed partial class Paging<TItem> : ObservableObject
     /// <summary>Such as <c>1 / 2</c>.</summary>
     public string PageText => $"{Number(Page)} / {Number(PageCount)}";
 
-    /// <summary>Shows <paramref name="all"/>, keeping the page unless it no longer exists.</summary>
+    /// <summary>Shows <paramref name="all"/> on the same page, or on the last one when fewer pages remain.</summary>
     public void Show(IReadOnlyList<TItem> all)
     {
         ArgumentNullException.ThrowIfNull(all);
