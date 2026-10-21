@@ -4,6 +4,7 @@ using System.Globalization;
 using Contr.App.UI.Onboarding;
 using Contr.UI.Common.Controls;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Daemon;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -93,6 +94,15 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         return pill?.Text ?? string.Empty;
     }
 
+    /// <summary>The <c>daemon.json</c> keys Contr writes itself, one per line.</summary>
+    public static string ContrKeys => string.Join(
+        "\n", ["hosts", "data-root", "host-gateway-ip", "host-gateway-ips", "proxies", "registry-mirrors"]);
+
+    public static string SuggestedKey(UnknownDaemonKey? suggestion)
+    {
+        return suggestion?.Suggestion ?? string.Empty;
+    }
+
     public static bool Is(int value, int expected)
     {
         return value == expected;
@@ -123,6 +133,31 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         {
             ViewModel.Proxies.ModeIndex = mode;
         }
+    }
+
+    private void OnFormatEngineFile(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Engine.Format();
+    }
+
+    private void OnResetEngineFile(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Engine.ResetToDefaults();
+    }
+
+    private void OnDiscardEngineChanges(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Engine.Discard();
+    }
+
+    private async void OnApplyEngineChanges(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Engine.ApplyAsync();
+    }
+
+    private async void OnChangeToSuggestion(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Engine.ChangeToSuggestionAsync();
     }
 
     private void OnCopyVersions(object sender, RoutedEventArgs e)

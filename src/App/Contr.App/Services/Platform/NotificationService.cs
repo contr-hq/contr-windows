@@ -31,4 +31,12 @@ public sealed class NotificationService : INotificationService
         _infoBar.Severity = severity;
         _infoBar.IsOpen = true;
     }
+
+    public void Close()
+    {
+        if (_infoBar is not null)
+        {
+            _infoBar.IsOpen = false;
+        }
+    }
 }
