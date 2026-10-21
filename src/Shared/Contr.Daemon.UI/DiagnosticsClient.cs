@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Outcome = Contr.UI.Contracts.Services.Daemon.RemediationOutcome;
 using Remediation = Contr.UI.Contracts.Services.Daemon.Remediation;
 using WireCheck = Contr.Sdk.Diagnostics.V1.Check;
 using WireOutcome = Contr.Sdk.Diagnostics.V1.RemediationOutcome;
+using WireProgress = Contr.Sdk.Common.V1.Progress;
 using WireStatus = Contr.Sdk.Diagnostics.V1.CheckStatus;
 
 namespace Contr.Daemon.UI;
@@ -19,8 +21,12 @@ namespace Contr.Daemon.UI;
 /// <summary><see cref="IDiagnostics"/> over DiagnosticsService.</summary>
 public sealed class DiagnosticsClient : IDiagnostics
 {
-    /// <summary>The daemon's reason when the user declines the administrator prompt.</summary>
+    /// <summary>A daemon older than API revision 17 reports a declined administrator prompt by this reason.
+    /// </summary>
     private const string _declined = "the administrator prompt was declined";
+
+    private static readonly Error _declinedError =
+        new(IDiagnostics.ElevationDeclinedCode, "The administrator prompt was declined.");
 
     private readonly IDaemonClient _daemon;
 
@@ -53,29 +59,41 @@ public sealed class DiagnosticsClient : IDiagnostics
         ArgumentNullException.ThrowIfNull(progress);
 
         var request = new RunRemediationRequest { ActionId = actionId };
+        var dismissed = false;
         var result = await _daemon
             .CallAsync(
                 async (client, token) => {
                     using var call = client.Diagnostics.RunRemediation(request, cancellationToken: token);
                     Outcome? outcome = null;
-                    await foreach (var response in call.ResponseStream.ReadAllAsync(token).ConfigureAwait(false))
+                    try
                     {
-                        if (response.EventCase == RunRemediationResponse.EventOneofCase.Progress)
+                        await foreach (var response in call.ResponseStream.ReadAllAsync(token).ConfigureAwait(false))
                         {
-                            progress.Report(new EngineProgress(
-                                response.Progress.Message,
-                                response.Progress.HasFraction ? response.Progress.Fraction : null));
+                            if (response.EventCase == RunRemediationResponse.EventOneofCase.Progress)
+                            {
+                                progress.Report(Step(response.Progress));
+                            }
+                            else if (response.EventCase == RunRemediationResponse.EventOneofCase.Outcome)
+                            {
+                                outcome = ToOutcome(response.Outcome);
+                            }
                         }
-                        else if (response.EventCase == RunRemediationResponse.EventOneofCase.Outcome)
-                        {
-                            outcome = ToOutcome(response.Outcome);
-                        }
+                    }
+                    catch (RpcException exception) when (Dismisses(exception, token))
+                    {
+                        // From API revision 17 the daemon fails a fix whose prompt the user dismissed as CANCELLED.
+                        dismissed = true;
                     }
 
                     return outcome;
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+
+        if (dismissed)
+        {
+            return Result.Failure<Outcome>(_declinedError);
+        }
 
         if (result.IsFailure)
         {
@@ -124,10 +142,57 @@ public sealed class DiagnosticsClient : IDiagnostics
 
         if (reason == _declined)
         {
-            return new Error(IDiagnostics.ElevationDeclinedCode, "The administrator prompt was declined.");
+            return _declinedError;
         }
 
         return reason.Length > 0 ? error with { Message = reason } : error;
+    }
+
+    public async Task<Result> CreateBundleAsync(
+        Stream destination, IProgress<EngineProgress> progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(progress);
+
+        var request = new CreateBundleRequest();
+        var result = await _daemon
+            .CallAsync(
+                async (client, token) => {
+                    using var call = client.Diagnostics.CreateBundle(request, cancellationToken: token);
+                    await foreach (var response in call.ResponseStream.ReadAllAsync(token).ConfigureAwait(false))
+                    {
+                        if (response.EventCase == CreateBundleResponse.EventOneofCase.Progress)
+                        {
+                            progress.Report(Step(response.Progress));
+                        }
+                        else if (response.EventCase == CreateBundleResponse.EventOneofCase.Chunk)
+                        {
+                            await destination.WriteAsync(response.Chunk.Memory, token).ConfigureAwait(false);
+                        }
+                    }
+
+                    await destination.FlushAsync(token).ConfigureAwait(false);
+
+                    return true;
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess ? Result.Success() : Result.Failure(result.Error);
+    }
+
+    /// <summary>Whether the daemon refused the call because the user dismissed its prompt, rather than the caller
+    /// cancelling it.</summary>
+    public static bool Dismisses(RpcException exception, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return exception.StatusCode == StatusCode.Cancelled && !cancellationToken.IsCancellationRequested;
+    }
+
+    private static EngineProgress Step(WireProgress progress)
+    {
+        return new EngineProgress(progress.Message, progress.HasFraction ? progress.Fraction : null);
     }
 
     private static Outcome ToOutcome(WireOutcome outcome)
