@@ -10,5 +10,5 @@ internal static class Product
     public const string DiscoveryFile = "daemon.json";
     public const string DaemonBinary = "contrd";
     public const string SdkVersion = "0.1.0";
-    public const uint ApiRevision = 7;
+    public const uint ApiRevision = 8;
 }
