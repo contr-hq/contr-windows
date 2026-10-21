@@ -4,7 +4,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:common="using:Contr.UI.Common.Controls"
-    xmlns:contracts="using:Contr.UI.Contracts.Services.Daemon"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:icons="using:Contr.UI.Common.Icons"
@@ -18,18 +17,98 @@
                 <ResourceDictionary Source="ms-appx:///Styles/SettingsGroups.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <DataTemplate x:Key="ToolTemplate" x:DataType="contracts:CliTool">
-                <StackPanel Width="180">
-                    <TextBlock
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="{x:Bind Name}" />
-                    <TextBlock
-                        FontFamily="Cascadia Mono,Consolas"
-                        FontSize="13"
-                        Text="{x:Bind local:SettingsPage.ToolVersion(InstalledVersion, BundledVersion)}" />
-                </StackPanel>
+            <!--  A row of the installed versions; the columns line up with the header in ItemsHeader.  -->
+            <DataTemplate x:Key="ComponentTemplate" x:DataType="local:InstalledComponent">
+                <Border Style="{StaticResource TableRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="150" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="{x:Bind Name}" />
+                        <TextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind WhatItIs}"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            Grid.Column="2"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            FontFamily="Cascadia Mono,Consolas"
+                            FontSize="13"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind Version}" />
+                        <common:PillView
+                            Grid.Column="3"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Kind="{x:Bind Kind}"
+                            Text="{x:Bind Status}"
+                            Visibility="{x:Bind HasStatus}" />
+                    </Grid>
+                </Border>
             </DataTemplate>
+
+            <!--  A row of the tools table: the columns line up with the header in ItemsHeader.  -->
+            <DataTemplate x:Key="ToolTemplate" x:DataType="local:CliToolRow">
+                <Border Style="{StaticResource TableRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="170" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock
+                                FontFamily="Cascadia Mono,Consolas"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Name}" />
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind Description}" />
+                        </StackPanel>
+                        <TextBlock
+                            Grid.Column="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            FontFamily="Cascadia Mono,Consolas"
+                            FontSize="13"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind Version}" />
+                        <common:PillView
+                            Grid.Column="2"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Kind="{x:Bind Kind}"
+                            Text="{x:Bind Status}" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+
+            <!--  A table inside an expander card: rows line up under the header's text, dividers between.  -->
+            <Style x:Key="TableRowStyle" TargetType="Border">
+                <Setter Property="MinHeight" Value="52" />
+                <Setter Property="Padding" Value="52,14,16,14" />
+                <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+            </Style>
+
+            <Style x:Key="TableHeaderStyle" TargetType="Grid">
+                <Setter Property="Padding" Value="52,8,16,8" />
+                <Setter Property="ColumnSpacing" Value="16" />
+                <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+            </Style>
 
             <Style x:Key="ProxyFieldStyle" TargetType="TextBox">
                 <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
@@ -81,18 +160,18 @@
                         Title="WSL integration is not available yet"
                         Margin="0,16,0,0"
                         IsClosable="False"
-                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 1, ViewModel.LacksWslIntegration), Mode=OneWay}"
                         Message="This version of the Contr daemon does not integrate your WSL distributions."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 1, ViewModel.LacksWslIntegration), Mode=OneWay}" />
                     <InfoBar
                         Title="WSL integration didn't change"
                         Margin="0,16,0,0"
                         IsClosable="False"
-                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 1, ViewModel.HasWslError), Mode=OneWay}"
                         Message="{x:Bind ViewModel.WslError, Mode=OneWay}"
                         Severity="Error"
-                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 1, ViewModel.HasWslError), Mode=OneWay}" />
                     <InfoBar
                         Title="Proxy and certificate settings aren't available"
                         Margin="0,16,0,0"
@@ -100,7 +179,7 @@
                         IsOpen="True"
                         Message="This engine doesn't take proxy, certificate or registry mirror settings from Contr."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Proxies.LacksOffer), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.Proxies.LacksOffer), Mode=OneWay}" />
                     <InfoBar
                         Title="Engine configuration is not available yet"
                         Margin="0,16,0,0"
@@ -108,7 +187,7 @@
                         IsOpen="True"
                         Message="This version of the Contr daemon cannot edit the engine's daemon.json."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}" />
                     <InfoBar
                         Title="Updates are not available yet"
                         Margin="0,16,0,0"
@@ -116,7 +195,7 @@
                         IsOpen="True"
                         Message="This version of Contr does not check for updates."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}" />
 
                     <SelectorBar
                         x:Name="Tabs"
@@ -124,7 +203,6 @@
                         SelectionChanged="OnTabSelectionChanged">
                         <SelectorBarItem x:Name="GeneralTab" Text="General" />
                         <SelectorBarItem x:Name="ResourcesTab" Text="Resources" />
-                        <SelectorBarItem x:Name="WslTab" Text="WSL integration" />
                         <SelectorBarItem x:Name="ProxiesTab" Text="Proxies and certificates" />
                         <SelectorBarItem x:Name="EngineTab" Text="Engine" />
                         <SelectorBarItem x:Name="KubernetesTab" Text="Kubernetes" />
@@ -203,42 +281,70 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingsGroupStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="COMMAND-LINE TOOLS" />
+                        <!--  The tools are a table, so their caption sits above the card, as the board shows.  -->
+                        <StackPanel Spacing="8">
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="COMMAND-LINE TOOLS" />
+                            <Border Padding="0" Style="{StaticResource CardStyle}">
                                 <controls:SettingsExpander
+                                    AutomationProperties.AutomationId="CliTools"
                                     Description="{x:Bind ViewModel.ToolsDetail, Mode=OneWay}"
                                     Header="{x:Bind ViewModel.ToolsTitle, Mode=OneWay}"
-                                    IsExpanded="True">
+                                    IsExpanded="True"
+                                    ItemTemplate="{StaticResource ToolTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Tools}">
                                     <controls:SettingsExpander.HeaderIcon>
                                         <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource IconStyle}" />
                                     </controls:SettingsExpander.HeaderIcon>
-                                    <Button
-                                        AutomationProperties.AutomationId="InstallToolsButton"
-                                        Command="{x:Bind ViewModel.InstallToolsCommand}"
-                                        Content="{x:Bind ViewModel.InstallToolsText, Mode=OneWay}"
-                                        IsEnabled="{x:Bind ViewModel.CanInstallTools, Mode=OneWay}" />
-                                    <controls:SettingsExpander.Items>
-                                        <controls:SettingsCard ContentAlignment="Left">
-                                            <ItemsControl ItemTemplate="{StaticResource ToolTemplate}" ItemsSource="{x:Bind ViewModel.Tools}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal" Spacing="12" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                            </ItemsControl>
-                                        </controls:SettingsCard>
-                                        <controls:SettingsCard ContentAlignment="Left" Visibility="{x:Bind ViewModel.HasToolsNote, Mode=OneWay}">
+                                    <common:PillView
+                                        Kind="{x:Bind local:SettingsPage.KindOf(ViewModel.ToolsSummary), Mode=OneWay}"
+                                        Text="{x:Bind local:SettingsPage.TextOf(ViewModel.ToolsSummary), Mode=OneWay}"
+                                        Visibility="{x:Bind ViewModel.HasToolsSummary, Mode=OneWay}" />
+                                    <controls:SettingsExpander.ItemsHeader>
+                                        <Grid Style="{StaticResource TableHeaderStyle}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="170" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="TOOL" />
                                             <TextBlock
-                                                FontSize="12"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Text="{x:Bind ViewModel.ToolsNote, Mode=OneWay}"
-                                                TextWrapping="Wrap" />
+                                                Grid.Column="1"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource CaptionLabelStyle}"
+                                                Text="VERSION" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource CaptionLabelStyle}"
+                                                Text="STATUS" />
+                                        </Grid>
+                                    </controls:SettingsExpander.ItemsHeader>
+                                    <controls:SettingsExpander.ItemsFooter>
+                                        <controls:SettingsCard
+                                            Padding="52,14,16,14"
+                                            Description="Reinstalls them and puts the folder back on your PATH."
+                                            Header="Repair the tools">
+                                            <Button
+                                                AutomationProperties.AutomationId="InstallToolsButton"
+                                                Command="{x:Bind ViewModel.InstallToolsCommand}"
+                                                Content="{x:Bind ViewModel.InstallToolsText, Mode=OneWay}"
+                                                IsEnabled="{x:Bind ViewModel.CanInstallTools, Mode=OneWay}" />
                                         </controls:SettingsCard>
-                                    </controls:SettingsExpander.Items>
+                                    </controls:SettingsExpander.ItemsFooter>
                                 </controls:SettingsExpander>
-                            </StackPanel>
-                        </Border>
+                            </Border>
+                            <InfoBar
+                                Title="docker is second on your PATH."
+                                AutomationProperties.AutomationId="PathWarning"
+                                IsClosable="False"
+                                IsOpen="{x:Bind ViewModel.HasPathWarning, Mode=OneWay}"
+                                Message="{x:Bind ViewModel.PathWarning, Mode=OneWay}"
+                                Severity="Informational"
+                                Visibility="{x:Bind ViewModel.HasPathWarning, Mode=OneWay}" />
+                        </StackPanel>
 
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
@@ -373,13 +479,7 @@
                                 </controls:SettingsCard>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
 
-                    <!--  WSL integration  -->
-                    <StackPanel
-                        Margin="0,12,0,0"
-                        Spacing="16"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 2), Mode=OneWay}">
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="WSL INTEGRATION" />
@@ -391,8 +491,9 @@
                                     <Run FontFamily="Cascadia Mono,Consolas" Text="docker" />
                                     <Run Text="command work inside your own distros. Contr shares one engine with all of them." />
                                 </TextBlock>
-                                <!--  Each switch applies when flipped; the daemon keeps the choice across restarts.  -->
+                                <!--  Switches apply when flipped. The template insets the header 16 px; the margin undoes it.  -->
                                 <controls:SettingsExpander
+                                    Margin="-16,0,-16,0"
                                     AutomationProperties.AutomationId="WslDistributions"
                                     Description="{x:Bind local:SettingsPage.Or(ViewModel.WslSummary, 'docker inside these distros talks to Contr.'), Mode=OneWay}"
                                     Header="Your distros"
@@ -427,7 +528,7 @@
                     <StackPanel
                         Margin="0,12,0,0"
                         Spacing="16"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 2), Mode=OneWay}">
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="PROXY" />
@@ -606,7 +707,7 @@
                     <StackPanel
                         Margin="0,12,0,0"
                         Spacing="16"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}">
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="ENGINE CONFIGURATION" />
@@ -625,7 +726,7 @@
                     <StackPanel
                         Margin="0,12,0,0"
                         Spacing="16"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}">
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="KUBERNETES" />
@@ -646,50 +747,94 @@
                     <StackPanel
                         Margin="0,12,0,0"
                         Spacing="16"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}">
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="UPDATE SETTINGS" />
                                 <controls:SettingsCard
                                     BorderThickness="0"
-                                    Description="Your images, volumes and settings stay through an update."
+                                    Description="Which releases Contr installs."
+                                    Header="Release channel"
+                                    IsEnabled="False">
+                                    <ComboBox MinWidth="160" PlaceholderText="—" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Contr never restarts the engine without asking."
+                                    Header="Download updates in the background"
+                                    IsEnabled="False">
+                                    <ToggleSwitch />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Never checked."
                                     Header="Check for updates"
                                     IsEnabled="False">
                                     <Button Content="Check now" />
                                 </controls:SettingsCard>
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource CaptionedCardStyle}">
-                            <StackPanel Spacing="12">
-                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="INSTALLED VERSIONS" />
-                                <Grid ColumnSpacing="16" RowSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Contr app" />
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        IsTextSelectionEnabled="True"
-                                        Style="{StaticResource IdentifierTextStyle}"
-                                        Text="{x:Bind ViewModel.AppVersion}" />
-                                    <TextBlock
-                                        Grid.Row="1"
-                                        Style="{StaticResource FieldLabelStyle}"
-                                        Text="Contr daemon" />
-                                    <TextBlock
-                                        Grid.Row="1"
-                                        Grid.Column="1"
-                                        IsTextSelectionEnabled="True"
-                                        Style="{StaticResource IdentifierTextStyle}"
-                                        Text="{x:Bind ViewModel.DaemonVersion}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="INSTALLED VERSIONS" />
+                            <Border Padding="0" Style="{StaticResource CardStyle}">
+                                <controls:SettingsExpander
+                                    AutomationProperties.AutomationId="InstalledVersions"
+                                    Description="{x:Bind ViewModel.ComponentsSummary, Mode=OneWay}"
+                                    IsExpanded="True"
+                                    ItemTemplate="{StaticResource ComponentTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Components}">
+                                    <controls:SettingsExpander.Header>
+                                        <TextBlock>
+                                            <Run Text="Contr" />
+                                            <Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind ViewModel.AppVersion}" />
+                                        </TextBlock>
+                                    </controls:SettingsExpander.Header>
+                                    <controls:SettingsExpander.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Containers}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsExpander.HeaderIcon>
+                                    <controls:SettingsExpander.ItemsHeader>
+                                        <Grid Style="{StaticResource TableHeaderStyle}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="150" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="COMPONENT" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Style="{StaticResource CaptionLabelStyle}"
+                                                Text="WHAT IT IS" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource CaptionLabelStyle}"
+                                                Text="INSTALLED" />
+                                            <TextBlock
+                                                Grid.Column="3"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource CaptionLabelStyle}"
+                                                Text="STATUS" />
+                                        </Grid>
+                                    </controls:SettingsExpander.ItemsHeader>
+                                    <controls:SettingsExpander.ItemsFooter>
+                                        <controls:SettingsCard
+                                            Padding="52,14,16,14"
+                                            Description="Copies every version above as text, for bug reports and support."
+                                            Header="Version details">
+                                            <Button AutomationProperties.AutomationId="CopyVersions" Click="OnCopyVersions">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource IconStyle}" />
+                                                    <TextBlock Text="Copy" />
+                                                </StackPanel>
+                                            </Button>
+                                        </controls:SettingsCard>
+                                    </controls:SettingsExpander.ItemsFooter>
+                                </controls:SettingsExpander>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </Grid>
@@ -703,7 +848,7 @@
             Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0"
-            Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Proxies.HasChanges), Mode=OneWay}">
+            Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.Proxies.HasChanges), Mode=OneWay}">
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

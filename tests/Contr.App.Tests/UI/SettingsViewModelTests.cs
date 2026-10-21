@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Contr.App.Services.Platform;
 using Contr.App.UI;
 using Contr.SharedKernel;
+using Contr.UI.Common.Controls;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
@@ -162,25 +163,50 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
-    public void ShowTools_DescribesInstalledToolsAndAShadowingDocker()
+    public void ShowTools_ListsEachToolAndWarnsOfAShadowingDocker()
     {
         var viewModel = CreateViewModel();
         var tools = new CliToolsStatus(
-            [new CliTool("docker", "28.3.2", "28.3.2"), new CliTool("compose", "2.39.1", "2.39.1")],
+            [
+                new CliTool("buildx", "0.26.1", "0.25.0"),
+                new CliTool("compose", "2.39.1", "2.39.1"),
+                new CliTool("credential-wincred", "0.9.10", string.Empty),
+                new CliTool("docker", "28.3.2", "28.3.2"),
+            ],
             @"C:\Users\me\AppData\Local\Contr\bin",
             IsOnPath: true,
-            ShadowedBy: @"C:\Tools\docker.exe");
+            ShadowedBy: @"C:\Tools\docker\docker.exe");
 
         viewModel.ShowTools(tools, string.Empty);
 
         Assert.Equal("Installed for your account", viewModel.ToolsTitle);
-        Assert.Equal(@"C:\Users\me\AppData\Local\Contr\bin · on your PATH", viewModel.ToolsDetail);
-        Assert.StartsWith(
-            @"Another docker comes first on your PATH: C:\Tools\docker.exe.",
-            viewModel.ToolsNote,
-            System.StringComparison.Ordinal);
+        Assert.Equal(
+            ["docker", "docker compose", "docker buildx", "docker-credential-wincred"],
+            viewModel.Tools.Select(row => row.Name));
+        Assert.Equal(
+            ["Second on PATH", "Ready", "0.26.1 bundled", "Not installed"],
+            viewModel.Tools.Select(row => row.Status));
+        Assert.Equal(new PillItem("4 tools · 3 need attention", PillKind.Caution), viewModel.ToolsSummary);
+        Assert.Equal(
+            @"Typing docker runs C:\Tools\docker\docker.exe first. Contr leaves it in place.", viewModel.PathWarning);
         Assert.Equal("Repair", viewModel.InstallToolsText);
-        Assert.Equal(2, viewModel.Tools.Count);
+        Assert.Contains(viewModel.Components, row => row is { Name: "Compose", Version: "2.39.1" });
+    }
+
+    [Fact]
+    public void Components_ShowWhatTheDaemonReports()
+    {
+        _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/x", "0.1.0", 12, "WSL 2"));
+        _daemon.Status.Returns(new DaemonStatus(DaemonConnectionState.Connected, EngineState.Running, string.Empty) {
+            Details = new EngineDetails("29.0.1", "contr"),
+        });
+
+        var viewModel = CreateViewModel();
+
+        Assert.Contains(viewModel.Components, row => row is { Name: "Engine", Version: "29.0.1" });
+        Assert.Contains(
+            viewModel.Components, row => row is { Name: "API revision", Version: "12", Status: "Compatible" });
+        Assert.DoesNotContain(viewModel.Components, row => row.Name is "Kubernetes" or "WSL");
     }
 
     [Fact]
@@ -267,6 +293,16 @@ public sealed class SettingsViewModelTests
     private SettingsViewModel CreateViewModel()
     {
         return new SettingsViewModel(
-            _theme, _accent, _daemon, _signIn, _cliTools, _navigation, _wsl, _settings, _dialogs, _notifications);
+            _theme,
+            _accent,
+            _daemon,
+            _signIn,
+            _cliTools,
+            _navigation,
+            _wsl,
+            _settings,
+            _dialogs,
+            _notifications,
+            Substitute.For<IClipboardService>());
     }
 }

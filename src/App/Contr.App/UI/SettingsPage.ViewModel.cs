@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Contr.App.Services.Platform;
 using Contr.SharedKernel;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
@@ -39,6 +40,7 @@ public sealed partial class SettingsViewModel : ViewModel
     private readonly IDaemonSettings _settings;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IClipboardService _clipboard;
     private readonly DispatcherQueue? _dispatcher;
     private IDisposable? _subscription;
     private bool _isShowing;
@@ -82,9 +84,16 @@ public sealed partial class SettingsViewModel : ViewModel
     [ObservableProperty]
     public partial string ToolsDetail { get; set; }
 
+    /// <summary>Such as <c>4 tools · 1 needs attention</c>; empty until the daemon answered.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasToolsNote))]
-    public partial string ToolsNote { get; set; }
+    [NotifyPropertyChangedFor(nameof(HasToolsSummary))]
+    public partial PillItem? ToolsSummary { get; set; }
+
+    /// <summary>Why typing <c>docker</c> may not run Contr's, such as another one earlier on PATH; empty when
+    /// it does.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPathWarning))]
+    public partial string PathWarning { get; set; }
 
     [ObservableProperty]
     public partial bool AreToolsInstalled { get; set; }
@@ -114,7 +123,8 @@ public sealed partial class SettingsViewModel : ViewModel
         IWslDistributions wsl,
         IDaemonSettings settings,
         IDialogService dialogs,
-        INotificationService notifications)
+        INotificationService notifications,
+        IClipboardService clipboard)
     {
         ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(accentService);
@@ -126,6 +136,7 @@ public sealed partial class SettingsViewModel : ViewModel
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
+        ArgumentNullException.ThrowIfNull(clipboard);
         _themeService = themeService;
         _accentService = accentService;
         _daemon = daemon;
@@ -136,6 +147,7 @@ public sealed partial class SettingsViewModel : ViewModel
         _settings = settings;
         _dialogs = dialogs;
         _notifications = notifications;
+        _clipboard = clipboard;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         Autostart = new EngineAutostartViewModel(daemon, settings, notifications);
         Proxies = new ProxySettingsViewModel(settings, daemon, notifications);
@@ -151,7 +163,7 @@ public sealed partial class SettingsViewModel : ViewModel
         StartAtSignIn = signIn.IsEnabled;
         ToolsTitle = string.Empty;
         ToolsDetail = string.Empty;
-        ToolsNote = string.Empty;
+        PathWarning = string.Empty;
         InstallToolsText = "Install";
         WslSummary = string.Empty;
         WslError = string.Empty;
@@ -162,6 +174,7 @@ public sealed partial class SettingsViewModel : ViewModel
         DaemonVersion = daemon.Identity is { } known
             ? $"{known.Version} · API revision {known.ApiRevision.ToString(CultureInfo.InvariantCulture)}"
             : "—";
+        ShowComponents(null);
     }
 
     public bool HasAccentChoice { get; }
@@ -197,9 +210,17 @@ public sealed partial class SettingsViewModel : ViewModel
     /// <summary>Such as <c>0.1.0 · API revision 6</c>; a dash while no daemon answered.</summary>
     public string DaemonVersion { get; }
 
-    public bool HasToolsNote => ToolsNote.Length > 0;
+    public bool HasPathWarning => PathWarning.Length > 0;
 
-    public ObservableCollection<CliTool> Tools { get; } = [];
+    public bool HasToolsSummary => ToolsSummary is not null;
+
+    public ObservableCollection<CliToolRow> Tools { get; } = [];
+
+    /// <summary>The installed versions the app and the daemon report.</summary>
+    public ObservableCollection<InstalledComponent> Components { get; } = [];
+
+    /// <summary>Such as <c>4 components</c>.</summary>
+    public string ComponentsSummary => $"{Components.Count.ToString(CultureInfo.CurrentCulture)} components";
 
     /// <summary>The user's WSL distributions, the default first.</summary>
     public ObservableCollection<WslDistributionItem> Distributions { get; } = [];
@@ -323,28 +344,67 @@ public sealed partial class SettingsViewModel : ViewModel
         {
             ToolsTitle = "Unknown";
             ToolsDetail = error;
+            ToolsSummary = null;
+            PathWarning = string.Empty;
             CanInstallTools = false;
 
             return;
         }
 
-        foreach (var tool in tools.Tools)
+        foreach (var tool in tools.Tools.OrderBy(CliToolRow.Rank))
         {
-            Tools.Add(tool);
+            Tools.Add(CliToolRow.From(tool, tools));
         }
 
-        var bundles = tools.Tools.Count > 0 && tools.Tools[0].BundledVersion.Length > 0;
+        var bundles = tools.Tools.Any(tool => tool.BundledVersion.Length > 0);
+        var attention = Tools.Count(row => row.NeedsAttention);
         AreToolsInstalled = tools.BinFolder.Length > 0;
         ToolsTitle = AreToolsInstalled ? "Installed for your account" : "Not installed";
         ToolsDetail = AreToolsInstalled
-            ? $"{tools.BinFolder} · {(tools.IsOnPath ? "on your PATH" : "not on your PATH")}"
+            ? $"{Shortened(tools.BinFolder)} · {(tools.IsOnPath ? "on your PATH" : "not on your PATH")}"
             : bundles ? "Contr can add docker and its plugins to your PATH." : "This daemon bundles no tools.";
-        ToolsNote = tools.ShadowedBy.Length > 0
-            ? $"Another docker comes first on your PATH: {tools.ShadowedBy}. Typing docker runs that one, and Contr "
-                + "leaves it in place."
+        var count = Tools.Count == 1 ? "1 tool" : $"{Tools.Count} tools";
+        ToolsSummary = attention switch {
+            0 => new PillItem($"{count} · ready", PillKind.Good),
+            1 => new PillItem($"{count} · 1 needs attention", PillKind.Caution),
+            _ => new PillItem($"{count} · {attention} need attention", PillKind.Caution),
+        };
+        PathWarning = tools.ShadowedBy.Length > 0
+            ? $"Typing docker runs {tools.ShadowedBy} first. Contr leaves it in place."
             : string.Empty;
         CanInstallTools = bundles;
         InstallToolsText = AreToolsInstalled ? "Repair" : "Install";
+        ShowComponents(tools);
+    }
+
+    public void CopyVersions()
+    {
+        _clipboard.SetText(InstalledComponent.Details(Components));
+    }
+
+    private void ShowComponents(CliToolsStatus? tools)
+    {
+        Components.Clear();
+
+        foreach (var row in InstalledComponent.From(AppVersion, _daemon.Identity, _daemon.Status.Details, tools))
+        {
+            Components.Add(row);
+        }
+
+        OnPropertyChanged(nameof(ComponentsSummary));
+    }
+
+    /// <summary>A path under the user's local application data as Windows Explorer accepts it, such as
+    /// <c>%LOCALAPPDATA%\Contr\bin</c>.</summary>
+    public static string Shortened(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        return local.Length > 0 && path.StartsWith(local, StringComparison.OrdinalIgnoreCase)
+            ? $"%LOCALAPPDATA%{path[local.Length..]}"
+            : path;
     }
 
     /// <summary>Lists the user's WSL distributions where the daemon offers it; call it when the page loads.</summary>
