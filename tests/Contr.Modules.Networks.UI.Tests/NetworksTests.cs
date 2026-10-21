@@ -89,7 +89,8 @@ public sealed class NetworksTests
         var daemon = Substitute.For<IDaemonConnection>();
         daemon.Status.Returns(new DaemonStatus(DaemonConnectionState.Connected, EngineState.Running, string.Empty));
 
-        await new NetworksViewModel(sender, dialogs, Substitute.For<INotificationService>(), daemon)
+        await new NetworksViewModel(
+                sender, dialogs, Substitute.For<INotificationService>(), daemon, Substitute.For<IDaemonSettings>())
             .RemoveAsync(Row("shop_default"));
 
         await sender.DidNotReceiveWithAnyArgs().Send(Arg.Any<RemoveNetworkCommand>(), default);

@@ -43,7 +43,8 @@ public sealed class ComposeViewModelTests
         _sender
             .Send(Arg.Any<WatchContainersQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(stream));
-        var viewModel = new ComposeViewModel(_sender, Substitute.For<INotificationService>(), _daemon);
+        var viewModel = new ComposeViewModel(
+            _sender, Substitute.For<INotificationService>(), _daemon, Substitute.For<IDaemonSettings>());
 
         viewModel.Activate();
 

@@ -14,7 +14,11 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
     /// <summary>The connected daemon; <see langword="null"/> while not connected.</summary>
     DaemonIdentity? Identity { get; }
 
-    /// <summary>Whether connecting starts a stopped or unprovisioned engine; the choice persists.</summary>
+    /// <summary>
+    /// Whether connecting starts a stopped or unprovisioned engine; the choice persists. Only for a daemon older
+    /// than API revision 11: a newer one starts the engine itself, as
+    /// <see cref="DaemonSetting.StartEngineWithDaemon"/> says.
+    /// </summary>
     bool StartsEngineOnConnect { get; set; }
 
     /// <summary>

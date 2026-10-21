@@ -61,7 +61,8 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         IDialogService dialogs,
         INotificationService notifications,
         IClipboardService clipboard,
-        IDaemonConnection daemon)
+        IDaemonConnection daemon,
+        IDaemonSettings settings)
         : base(
             new LiveCollection<VolumeDto, VolumeRow>(VolumeRow.From, row => row.Name, VolumeRow.Compare),
             _retryDelay)
@@ -74,7 +75,7 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         _dialogs = dialogs;
         _notifications = notifications;
         _clipboard = clipboard;
-        Engine = new EngineGateViewModel(daemon);
+        Engine = new EngineGateViewModel(daemon, settings, notifications);
         SummaryPills = [];
         Rows.CollectionChanged += OnRowsChanged;
     }

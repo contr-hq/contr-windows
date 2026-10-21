@@ -86,8 +86,9 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         INotificationService notifications,
         INavigationService navigation,
         IClipboardService clipboard,
-        IDaemonConnection daemon)
-        : this(sender, dialogs, notifications, navigation, clipboard, daemon, new UsageSampler(sender))
+        IDaemonConnection daemon,
+        IDaemonSettings settings)
+        : this(sender, dialogs, notifications, navigation, clipboard, daemon, settings, new UsageSampler(sender))
     {
     }
 
@@ -98,6 +99,7 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         INavigationService navigation,
         IClipboardService clipboard,
         IDaemonConnection daemon,
+        IDaemonSettings settings,
         UsageSampler usage)
         : base(
             new LiveCollection<ContainerDto, ContainerRow>(
@@ -117,7 +119,7 @@ public sealed partial class ContainersViewModel : LiveListViewModel<ContainerDto
         _navigation = navigation;
         _clipboard = clipboard;
         _usage = usage;
-        Engine = new EngineGateViewModel(daemon);
+        Engine = new EngineGateViewModel(daemon, settings, notifications);
         SummaryPills = [];
         FilterText = string.Empty;
         ShowStopped = true;

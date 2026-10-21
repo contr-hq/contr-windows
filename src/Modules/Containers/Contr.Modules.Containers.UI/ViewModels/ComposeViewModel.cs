@@ -67,13 +67,17 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
     public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
     public ComposeViewModel(
-        ISender sender, INotificationService notifications, IDaemonConnection daemon)
-        : this(sender, notifications, daemon, new ContainerUsage())
+        ISender sender, INotificationService notifications, IDaemonConnection daemon, IDaemonSettings settings)
+        : this(sender, notifications, daemon, settings, new ContainerUsage())
     {
     }
 
     private ComposeViewModel(
-        ISender sender, INotificationService notifications, IDaemonConnection daemon, ContainerUsage usage)
+        ISender sender,
+        INotificationService notifications,
+        IDaemonConnection daemon,
+        IDaemonSettings settings,
+        ContainerUsage usage)
         : base(
             new LiveCollection<ContainerDto, ContainerRow>(
                 container => ContainerRow.From(container, usage),
@@ -85,7 +89,7 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ContainerDto, C
         ArgumentNullException.ThrowIfNull(notifications);
         _sender = sender;
         _notifications = notifications;
-        Engine = new EngineGateViewModel(daemon);
+        Engine = new EngineGateViewModel(daemon, settings, notifications);
         ConfigFile = string.Empty;
         SummaryPills = [];
         IsFollowing = true;

@@ -152,6 +152,7 @@ public sealed class VolumesViewModelTests
 
     private VolumesViewModel CreateViewModel()
     {
-        return new VolumesViewModel(_sender, _dialogs, _notifications, _clipboard, _daemon);
+        return new VolumesViewModel(
+            _sender, _dialogs, _notifications, _clipboard, _daemon, Substitute.For<IDaemonSettings>());
     }
 }
