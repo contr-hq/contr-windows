@@ -163,6 +163,16 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public void Kubectl_ReadsAsTheKubernetesClient()
+    {
+        var tools = new CliToolsStatus([], string.Empty, IsOnPath: true, ShadowedBy: string.Empty);
+
+        var row = CliToolRow.From(new CliTool("kubectl", "1.37.1", "1.37.1"), tools);
+
+        Assert.Equal(("kubectl", "Kubernetes command-line client", "Ready"), (row.Name, row.Description, row.Status));
+    }
+
+    [Fact]
     public void ShowTools_ListsEachToolAndWarnsOfAShadowingDocker()
     {
         var viewModel = CreateViewModel();
