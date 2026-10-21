@@ -90,6 +90,37 @@ public sealed class DaemonSettingsClientTests
     }
 
     [Fact]
+    public void ToSettings_ReadsKubernetesAndTheRevision()
+    {
+        var state = new Wire.SettingsState {
+            Settings = new Wire.Settings {
+                Kubernetes = new Wire.KubernetesSettings { Enabled = true, Version = "v1.36.5", Traefik = true },
+            },
+            LockedPaths = { "kubernetes.version" },
+            Etag = "42",
+        };
+
+        var settings = DaemonSettingsClient.ToSettings(state);
+
+        Assert.Equal(new KubernetesSettings(true, "v1.36.5", true), settings.Kubernetes);
+        Assert.True(settings.IsLocked(DaemonSetting.KubernetesVersion));
+        Assert.Equal(42UL, settings.Revision);
+        Assert.Equal(KubernetesSettings.Default, DaemonSettingsClient.ToSettings(new Wire.SettingsState()).Kubernetes);
+    }
+
+    [Fact]
+    public void ToRequest_NamesTheKubernetesSettings()
+    {
+        var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit {
+            KubernetesEnabled = false,
+            KubernetesVersion = string.Empty,
+        });
+
+        Assert.Equal(["kubernetes.enabled", "kubernetes.version"], request.UpdateMask.Paths);
+        Assert.False(request.Settings.Kubernetes.Enabled);
+    }
+
+    [Fact]
     public void ToRequest_NamesOnlyTheEditedSettings()
     {
         var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit {
