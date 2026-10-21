@@ -100,6 +100,29 @@ public sealed class OnboardingWslTests
     }
 
     [Fact]
+    public async Task WslStep_CanInstallAgainWhenTheEngineStillFindsWslMissing()
+    {
+        _daemon.Status.Returns(
+            new DaemonStatus(DaemonConnectionState.Connected, EngineState.Failed, "WSL is not installed.") {
+                ProblemCode = "WSL_NOT_INSTALLED",
+            });
+        _daemon
+            .StartEngineAsync(Arg.Any<IProgress<EngineProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure(new Error("Daemon.Failed", "WSL is not installed.")));
+        _settings.Read<bool>(OnboardingViewModel.ResumeAtEngineKey).Returns(true);
+        var viewModel = CreateViewModel();
+        List<string?> changed = [];
+        viewModel.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        await viewModel.StartAsync();
+
+        Assert.True(viewModel.IsWsl);
+        Assert.True(viewModel.CanGoNext);
+        Assert.True(
+            changed.LastIndexOf(nameof(viewModel.CanGoNext)) > changed.LastIndexOf(nameof(viewModel.StepIndex)));
+    }
+
+    [Fact]
     public async Task WslStep_GoesOnToTheEngineWhenNoRestartIsNeeded()
     {
         Prerequisites(DiagnosticStatus.Fail, new Remediation(Remediation.InstallWslId, true));

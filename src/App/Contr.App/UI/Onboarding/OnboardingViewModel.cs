@@ -51,7 +51,7 @@ public sealed partial class OnboardingViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(StepCaption), nameof(StepNumber), nameof(StepTitle), nameof(StepLead))]
     [NotifyPropertyChangedFor(nameof(IsChecking), nameof(IsWsl), nameof(IsEngine))]
     [NotifyPropertyChangedFor(nameof(IsTools), nameof(IsReady), nameof(CanGoBack), nameof(NextText))]
-    [NotifyPropertyChangedFor(nameof(CanPostpone), nameof(NextNeedsApproval))]
+    [NotifyPropertyChangedFor(nameof(CanPostpone), nameof(NextNeedsApproval), nameof(CanGoNext))]
     public partial int StepIndex { get; set; }
 
     [ObservableProperty]
