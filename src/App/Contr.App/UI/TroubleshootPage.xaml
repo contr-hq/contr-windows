@@ -224,9 +224,36 @@
                                 <TextBlock
                                     FontSize="12"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="A zip of logs and check results to send to whoever helps you."
+                                    Text="A zip of logs and check results for your IT team. Credentials, your user name, home folder and this PC's name are removed."
                                     TextWrapping="Wrap" />
-                                <Button Content="Create bundle" IsEnabled="False" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button
+                                        AutomationProperties.AutomationId="CreateBundleButton"
+                                        Click="OnCreateBundle"
+                                        Content="Create bundle"
+                                        IsEnabled="{x:Bind ViewModel.CanCreateBundle, Mode=OneWay}" />
+                                    <StackPanel
+                                        VerticalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="8"
+                                        Visibility="{x:Bind ViewModel.IsCreatingBundle, Mode=OneWay}">
+                                        <ProgressRing
+                                            Width="16"
+                                            Height="16"
+                                            IsActive="{x:Bind ViewModel.IsCreatingBundle, Mode=OneWay}" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind ViewModel.BundleStatus, Mode=OneWay}"
+                                            TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="This version of Contr's background service doesn't make bundles."
+                                    TextWrapping="Wrap"
+                                    Visibility="{x:Bind local:TroubleshootPage.Not(ViewModel.OffersBundle), Mode=OneWay}" />
                             </StackPanel>
                         </Border>
 
@@ -316,8 +343,10 @@
                                     <Button
                                         Grid.Column="1"
                                         VerticalAlignment="Center"
-                                        Content="Reset"
-                                        IsEnabled="False" />
+                                        AutomationProperties.AutomationId="ResetKubernetesButton"
+                                        Click="OnResetKubernetes"
+                                        Content="Reset…"
+                                        IsEnabled="{x:Bind ViewModel.CanResetKubernetes, Mode=OneWay}" />
                                 </Grid>
                                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                                 <Grid ColumnSpacing="12">

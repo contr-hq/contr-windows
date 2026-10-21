@@ -56,8 +56,12 @@ public sealed partial class TroubleshootViewModel : ViewModel
 
     private const int _logLines = 80;
 
+    /// <summary>The first API revision with diagnostics bundles.</summary>
+    private const uint _bundleRevision = 18;
+
     private readonly IDaemonConnection _daemon;
     private readonly IDiagnostics _diagnostics;
+    private readonly IKubernetesCluster _cluster;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly DispatcherQueue? _dispatcher;
@@ -138,6 +142,28 @@ public sealed partial class TroubleshootViewModel : ViewModel
     [ObservableProperty]
     public partial string ResetStatus { get; set; }
 
+    /// <summary>Whether the daemon makes diagnostics bundles.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCreateBundle))]
+    public partial bool OffersBundle { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCreateBundle))]
+    public partial bool IsCreatingBundle { get; set; }
+
+    /// <summary>The bundle's latest step, such as <c>Collecting the engine's logs</c>.</summary>
+    [ObservableProperty]
+    public partial string BundleStatus { get; set; }
+
+    /// <summary>Whether the daemon runs a Kubernetes cluster to reset.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanResetKubernetes))]
+    public partial bool OffersKubernetes { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanResetKubernetes))]
+    public partial bool IsResettingKubernetes { get; set; }
+
     /// <summary>The space the engine's data takes, such as <c>18.6 GB</c>; empty until measured.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasDiskText))]
@@ -146,15 +172,18 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public TroubleshootViewModel(
         IDaemonConnection daemon,
         IDiagnostics diagnostics,
+        IKubernetesCluster cluster,
         IDialogService dialogs,
         INotificationService notifications)
     {
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(diagnostics);
+        ArgumentNullException.ThrowIfNull(cluster);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
         _daemon = daemon;
         _diagnostics = diagnostics;
+        _cluster = cluster;
         _dialogs = dialogs;
         _notifications = notifications;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
@@ -164,6 +193,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
         ChecksSummary = string.Empty;
         CheckPills = [];
         ResetStatus = string.Empty;
+        BundleStatus = string.Empty;
         DiskText = string.Empty;
         FixStatus = string.Empty;
         FixError = string.Empty;
@@ -178,6 +208,16 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public bool HasProblemCode => ProblemCode.Length > 0;
 
     public bool CanReset => OffersReset && !IsResetting;
+
+    public bool CanCreateBundle => OffersBundle && !IsCreatingBundle;
+
+    public bool CanResetKubernetes => OffersKubernetes && !IsResettingKubernetes;
+
+    /// <summary>Such as <c>contr-diagnostics-2026-10-22</c>, the name the save dialog suggests.</summary>
+    public static string BundleName(DateTimeOffset now)
+    {
+        return $"contr-diagnostics-{now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+    }
 
     public bool HasDiskText => DiskText.Length > 0;
 
@@ -245,6 +285,72 @@ public sealed partial class TroubleshootViewModel : ViewModel
         else
         {
             _notifications.Show("The engine was reset. Start it when you need it.", InfoBarSeverity.Success);
+        }
+    }
+
+    /// <summary>Writes the daemon's diagnostics bundle to <paramref name="destination"/>, following its steps in
+    /// <see cref="BundleStatus"/>.</summary>
+    /// <param name="path">Where the bundle goes, for the notice.</param>
+    /// <returns>Whether the bundle is whole; the caller deletes a file that is not.</returns>
+    public async Task<bool> CreateBundleAsync(Stream destination, string path)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(path);
+
+        IsCreatingBundle = true;
+        BundleStatus = "Collecting";
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => BundleStatus = step.Message);
+            var result = await _diagnostics.CreateBundleAsync(destination, progress, CancellationToken.None);
+
+            if (result.IsFailure)
+            {
+                _notifications.Show(
+                    result.Error.Message, InfoBarSeverity.Error, "The diagnostics bundle wasn't created");
+
+                return false;
+            }
+
+            _notifications.Show($"Saved the diagnostics bundle to {path}.", InfoBarSeverity.Success);
+
+            return true;
+        }
+        finally
+        {
+            IsCreatingBundle = false;
+        }
+    }
+
+    /// <summary>Asks first, then deletes the cluster's workloads and data; it starts anew while Kubernetes is on.
+    /// </summary>
+    public async Task ResetKubernetesAsync()
+    {
+        const string message = "Deletes every workload and the cluster's data; a new cluster starts while Kubernetes "
+            + "is on. Your images stay.";
+
+        if (!await _dialogs.ShowConfirmAsync("Reset Kubernetes", message, "Reset", "Cancel"))
+        {
+            return;
+        }
+
+        IsResettingKubernetes = true;
+        try
+        {
+            var result = await _cluster.ResetAsync(CancellationToken.None);
+
+            if (result.IsFailure)
+            {
+                _notifications.Show(result.Error.Message, InfoBarSeverity.Error, "Kubernetes wasn't reset");
+            }
+            else
+            {
+                _notifications.Show("The cluster was reset.", InfoBarSeverity.Success);
+            }
+        }
+        finally
+        {
+            IsResettingKubernetes = false;
         }
     }
 
@@ -451,6 +557,8 @@ public sealed partial class TroubleshootViewModel : ViewModel
     private void Run(DaemonStatus status)
     {
         OffersReset = _daemon.Identity?.Capabilities.Contains(DaemonCapability.Reset) == true;
+        OffersBundle = _daemon.Identity?.ApiRevision >= _bundleRevision;
+        OffersKubernetes = _daemon.Identity?.Capabilities.Contains(DaemonCapability.Kubernetes) == true;
         HasProblem = status.Connection == DaemonConnectionState.Unavailable || status.Engine == EngineState.Failed;
         ProblemTitle = status.Connection == DaemonConnectionState.Unavailable
             ? "Contr's background service isn't reachable"
