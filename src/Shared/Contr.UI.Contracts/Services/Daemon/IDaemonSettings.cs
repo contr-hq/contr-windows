@@ -71,6 +71,10 @@ public enum DaemonSetting
 
     /// <summary>The engine's own <c>daemon.json</c>, from its next start.</summary>
     DaemonJson,
+
+    /// <summary>New containers and builds also receive the engine's proxy as <c>HTTP_PROXY</c>, <c>HTTPS_PROXY</c>
+    /// and <c>NO_PROXY</c>, unless they set the variable themselves; from the engine's next start.</summary>
+    PassProxyToContainers,
 }
 
 /// <summary>How the engine finds its proxy.</summary>
@@ -93,6 +97,9 @@ public enum ProxyMode
 /// <param name="Exclude">See <see cref="DaemonSetting.ProxyExclude"/>; empty for none.</param>
 public sealed record ProxySettings(ProxyMode Mode, string Http, string Https, string Exclude)
 {
+    /// <summary>See <see cref="DaemonSetting.PassProxyToContainers"/>.</summary>
+    public bool PassToContainers { get; init; }
+
     /// <summary>The daemon's defaults.</summary>
     public static ProxySettings Default { get; } = new(ProxyMode.System, string.Empty, string.Empty, string.Empty);
 }
@@ -144,6 +151,9 @@ public sealed record DaemonSettingsEdit
     /// <summary>See <see cref="DaemonSetting.ProxyExclude"/>.</summary>
     public string? ProxyExclude { get; init; }
 
+    /// <summary>See <see cref="DaemonSetting.PassProxyToContainers"/>.</summary>
+    public bool? PassProxyToContainers { get; init; }
+
     /// <summary>See <see cref="DaemonSetting.TrustSystemCertificates"/>.</summary>
     public bool? TrustSystemCertificates { get; init; }
 
@@ -163,6 +173,7 @@ public sealed record DaemonSettingsEdit
             (ProxyHttp is not null, DaemonSetting.ProxyHttp),
             (ProxyHttps is not null, DaemonSetting.ProxyHttps),
             (ProxyExclude is not null, DaemonSetting.ProxyExclude),
+            (PassProxyToContainers is not null, DaemonSetting.PassProxyToContainers),
             (TrustSystemCertificates is not null, DaemonSetting.TrustSystemCertificates),
             (RegistryMirrors is not null, DaemonSetting.RegistryMirrors),
             (DaemonJson is not null, DaemonSetting.DaemonJson),
@@ -208,6 +219,7 @@ public static class DaemonSettingPaths
         (DaemonSetting.TrustSystemCertificates, "certificates.trust_system"),
         (DaemonSetting.RegistryMirrors, "registry.mirrors"),
         (DaemonSetting.DaemonJson, "engine.daemon_json"),
+        (DaemonSetting.PassProxyToContainers, "proxy.pass_to_containers"),
     ];
 
     /// <summary>Such as <c>proxy.http</c>.</summary>

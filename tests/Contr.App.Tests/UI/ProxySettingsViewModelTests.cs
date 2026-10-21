@@ -72,6 +72,24 @@ public sealed class ProxySettingsViewModelTests
     }
 
     [Fact]
+    public void PassToContainers_IsAnEditFromApiRevision14()
+    {
+        Assert.False(Create().OffersPassToContainers);
+
+        _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/x", "0.1.0", 14, "WSL 2") {
+            Capabilities = new HashSet<DaemonCapability> { DaemonCapability.EngineConfiguration },
+        });
+        var viewModel = Create();
+        viewModel.Show(Saved(ProxyMode.System));
+
+        viewModel.PassesToContainers = true;
+
+        Assert.True(viewModel.CanEditPass);
+        Assert.True(viewModel.Edit().PassProxyToContainers);
+        Assert.Equal(1, viewModel.ChangeCount);
+    }
+
+    [Fact]
     public void WithoutTheCapability_NothingCanChange()
     {
         _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/x", "0.1.0", 12, "Fake"));

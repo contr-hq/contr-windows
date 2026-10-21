@@ -58,6 +58,7 @@ public sealed class DaemonSettingsClientTests
                     Mode = Wire.ProxyMode.Manual,
                     Http = "http://proxy.corp:8080",
                     Exclude = ".corp",
+                    PassToContainers = true,
                 },
                 Certificates = new Wire.CertificateSettings { TrustSystem = false },
                 Registry = new Wire.RegistrySettings { Mirrors = { "https://mirror.corp" } },
@@ -68,7 +69,10 @@ public sealed class DaemonSettingsClientTests
         var settings = DaemonSettingsClient.ToSettings(state);
 
         Assert.Equal(
-            new ProxySettings(ProxyMode.Manual, "http://proxy.corp:8080", string.Empty, ".corp"), settings.Proxy);
+            new ProxySettings(ProxyMode.Manual, "http://proxy.corp:8080", string.Empty, ".corp") {
+                PassToContainers = true,
+            },
+            settings.Proxy);
         Assert.False(settings.TrustSystemCertificates);
         Assert.Equal(["https://mirror.corp"], settings.RegistryMirrors);
         Assert.True(settings.IsLocked(DaemonSetting.ProxyExclude));
@@ -91,10 +95,13 @@ public sealed class DaemonSettingsClientTests
         var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit {
             ProxyMode = ProxyMode.None,
             ProxyHttp = string.Empty,
+            PassProxyToContainers = true,
             RegistryMirrors = ["https://mirror.corp"],
         });
 
-        Assert.Equal(["proxy.mode", "proxy.http", "registry.mirrors"], request.UpdateMask.Paths);
+        Assert.Equal(
+            ["proxy.mode", "proxy.http", "proxy.pass_to_containers", "registry.mirrors"], request.UpdateMask.Paths);
+        Assert.True(request.Settings.Proxy.PassToContainers);
         Assert.Equal(Wire.ProxyMode.None, request.Settings.Proxy.Mode);
         Assert.Equal(string.Empty, request.Settings.Proxy.Http);
         Assert.Equal(["https://mirror.corp"], request.Settings.Registry.Mirrors);

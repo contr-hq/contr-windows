@@ -144,7 +144,9 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
         return new DaemonSettings(engine.StartWithDaemon, engine.ServeDefaultPipe, Known(state.LockedPaths)) {
             Proxy = proxy is null
                 ? ProxySettings.Default
-                : new ProxySettings(ToMode(proxy.Mode), proxy.Http, proxy.Https, proxy.Exclude),
+                : new ProxySettings(ToMode(proxy.Mode), proxy.Http, proxy.Https, proxy.Exclude) {
+                    PassToContainers = proxy.PassToContainers,
+                },
             TrustSystemCertificates = state.Settings?.Certificates?.TrustSystem ?? true,
             RegistryMirrors = state.Settings?.Registry is { } registry ? [.. registry.Mirrors] : [],
             DaemonJson = engine.DaemonJson.Length > 0 ? engine.DaemonJson : "{}",
@@ -172,6 +174,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
                 Http = edit.ProxyHttp ?? string.Empty,
                 Https = edit.ProxyHttps ?? string.Empty,
                 Exclude = edit.ProxyExclude ?? string.Empty,
+                PassToContainers = edit.PassProxyToContainers ?? false,
             },
             Certificates = new CertificateSettings { TrustSystem = edit.TrustSystemCertificates ?? false },
             Registry = new RegistrySettings { Mirrors = { edit.RegistryMirrors ?? [] } },
