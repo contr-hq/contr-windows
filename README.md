@@ -20,9 +20,11 @@ sign-in), and Settings has the design's tabs: General lists the command-line too
 Resources holds a switch per WSL distribution where the daemon integrates them, and Updates lists the installed
 versions.
 Settings and the engine-stopped page change the daemon's settings (starting the engine with Contr, the standard Docker
-pipe), show the ones an administrator fixes as managed by the organization, and return them to their defaults. Where
-the engine takes them, the Proxies and certificates tab edits the engine's proxy, its trust in Windows' certificates and
-its registry mirror, and applies them together, restarting a running engine.
+pipe), show the ones an administrator fixes as managed by the organization, and return them to their defaults. Where the
+engine takes them, the Proxies and certificates tab edits the engine's proxy, whether new containers and builds receive
+it, the engine's trust in Windows' certificates and its registry mirror, and applies them together, restarting a running
+engine. The Engine tab edits the engine's `daemon.json`, names the line of a key the engine does not take, and renames
+it to the key the engine suggests.
 
 Next: a Velopack installer that bundles a pinned core release.
 Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from

@@ -60,6 +60,8 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
   `WatchSettings` while connected, so Settings and every engine-stopped page show the same values and
   locks. From API revision 11 the daemon starts the engine itself when `engine.start_with_daemon` is
   on, and `DaemonConnection` stops starting it; for older daemons the client's own choice still applies.
+  From API revision 13 it saves `engine.daemon_json` and reads the unknown keys and the engine's suggestions
+  from the `DaemonJsonRejection` detail of a refusal.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
