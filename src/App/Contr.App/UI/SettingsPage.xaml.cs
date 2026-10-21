@@ -89,6 +89,11 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         return !value;
     }
 
+    public static bool Is(int value, int expected)
+    {
+        return value == expected;
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Tabs.SelectedItem ??= GeneralTab;
@@ -105,6 +110,25 @@ public sealed partial class SettingsPage : Page, IHasViewModel
     private async void OnResetSettings(object sender, RoutedEventArgs e)
     {
         await ViewModel.ResetSettingsAsync();
+    }
+
+    private void OnProxyModeChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag }
+            && int.TryParse(tag, CultureInfo.InvariantCulture, out var mode))
+        {
+            ViewModel.Proxies.ModeIndex = mode;
+        }
+    }
+
+    private void OnDiscardProxyChanges(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Proxies.Discard();
+    }
+
+    private async void OnApplyProxyChanges(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Proxies.ApplyAsync();
     }
 
     private void OnTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
