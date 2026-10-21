@@ -90,6 +90,20 @@ public static class HumanFormat
         };
     }
 
+    /// <summary>A span such as <c>28s</c>, <c>4m 12s</c>, <c>2h 5m</c> or <c>3 days</c>.</summary>
+    public static string Duration(TimeSpan span)
+    {
+        var whole = span < TimeSpan.Zero ? TimeSpan.Zero : span;
+
+        return whole switch {
+            { TotalMinutes: < 1 } => $"{(int)whole.TotalSeconds}s",
+            { TotalHours: < 1 } => $"{whole.Minutes}m {whole.Seconds}s",
+            { TotalDays: < 1 } => $"{whole.Hours}h {whole.Minutes}m",
+            { Days: 1 } => "1 day",
+            _ => $"{whole.Days} days",
+        };
+    }
+
     private static (string Value, int Unit) MemoryUnit(long bytes)
     {
         double value = Math.Max(0, bytes);

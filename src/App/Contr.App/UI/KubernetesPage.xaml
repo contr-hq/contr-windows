@@ -6,6 +6,8 @@
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
+    xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -14,6 +16,94 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ms-appx:///Styles/SettingsGroups.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="CodeRunStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
+                <Setter Property="FontSize" Value="12" />
+            </Style>
+
+            <!--  A step: its state as an icon, its name, then what it did, such as 236 MB · 28s.  -->
+            <DataTemplate x:Key="StepTemplate" x:DataType="local:ClusterStepRow">
+                <Grid AutomationProperties.Name="{x:Bind Title}" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid
+                        Width="16"
+                        Height="16"
+                        Margin="0,2,0,0"
+                        VerticalAlignment="Top">
+                        <FontIcon
+                            FontSize="16"
+                            Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                            Glyph="{x:Bind icons:ContrIcons.Success}"
+                            Style="{StaticResource IconStyle}"
+                            Visibility="{x:Bind IsDone}" />
+                        <ProgressRing
+                            Width="16"
+                            Height="16"
+                            MinWidth="0"
+                            MinHeight="0"
+                            IsActive="{x:Bind IsRunning}"
+                            Visibility="{x:Bind IsRunning}" />
+                        <Ellipse
+                            Width="15"
+                            Height="15"
+                            Stroke="{ThemeResource TextFillColorTertiaryBrush}"
+                            StrokeThickness="1.2"
+                            Visibility="{x:Bind IsPending}" />
+                        <FontIcon
+                            FontSize="16"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            Glyph="{x:Bind icons:ContrIcons.Error}"
+                            Style="{StaticResource IconStyle}"
+                            Visibility="{x:Bind IsFailed}" />
+                    </Grid>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock
+                            FontWeight="{x:Bind local:KubernetesPage.StepWeight(IsRunning)}"
+                            Opacity="{x:Bind local:KubernetesPage.StepOpacity(IsPending)}"
+                            Text="{x:Bind Title}"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextTrimming="CharacterEllipsis">
+                            <Run Text="{x:Bind Detail}" /><Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind Code}" />
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="PodTemplate" x:DataType="local:SystemPodRow">
+                <Grid
+                    Padding="0,10"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="100" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Style="{StaticResource IdentifierTextStyle}"
+                        Text="{x:Bind Name}"
+                        TextTrimming="CharacterEllipsis" />
+                    <common:PillView
+                        Grid.Column="1"
+                        HorizontalAlignment="Left"
+                        Kind="{x:Bind PillKind}"
+                        Text="{x:Bind Phase}" />
+                    <TextBlock
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind ReadyText}" />
+                </Grid>
+            </DataTemplate>
         </ResourceDictionary>
     </Page.Resources>
 
@@ -27,65 +117,263 @@
                 <common:PageHeader Title="Kubernetes" />
 
                 <InfoBar
-                    Title="Kubernetes is not available yet"
+                    Title="Kubernetes isn't available"
                     IsClosable="False"
-                    IsOpen="{x:Bind ViewModel.IsNotOffered}"
-                    Message="This version of the Contr daemon does not run a Kubernetes cluster. These settings wait for one that does."
+                    IsOpen="{x:Bind ViewModel.IsNotOffered, Mode=OneWay}"
+                    Message="This engine's daemon doesn't run a Kubernetes cluster."
                     Severity="Informational"
-                    Visibility="{x:Bind ViewModel.IsNotOffered}" />
+                    Visibility="{x:Bind ViewModel.IsNotOffered, Mode=OneWay}" />
 
-                <Border Style="{StaticResource SettingsGroupStyle}">
+                <InfoBar
+                    Title="Kubernetes failed"
+                    AutomationProperties.AutomationId="KubernetesError"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.HasFailed, Mode=OneWay}"
+                    Message="{x:Bind ViewModel.Error, Mode=OneWay}"
+                    Severity="Error"
+                    Visibility="{x:Bind ViewModel.HasFailed, Mode=OneWay}" />
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Visibility="{x:Bind ViewModel.IsOffered, Mode=OneWay}">
+                    <common:PillView Kind="{x:Bind ViewModel.Status.PillKind, Mode=OneWay}" Text="{x:Bind ViewModel.Status.PillText, Mode=OneWay}" />
+                    <Border Style="{StaticResource PillStyle}" Visibility="{x:Bind ViewModel.HasShownVersion, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource CodeRunStyle}" Text="{x:Bind local:KubernetesPage.K3s(ViewModel.ShownVersion), Mode=OneWay}" />
+                    </Border>
+                    <Border Style="{StaticResource PillStyle}" Visibility="{x:Bind ViewModel.HasAddress, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource CodeRunStyle}" Text="{x:Bind ViewModel.Address, Mode=OneWay}" />
+                    </Border>
+                </StackPanel>
+
+                <Border Style="{StaticResource CaptionedCardStyle}" Visibility="{x:Bind ViewModel.IsOffered, Mode=OneWay}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="STATUS" />
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                Width="40"
+                                Height="40"
+                                VerticalAlignment="Top"
+                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                CornerRadius="20">
+                                <FontIcon
+                                    FontSize="20"
+                                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                    Glyph="{x:Bind icons:ContrIcons.Kubernetes}"
+                                    Style="{StaticResource IconStyle}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="KubernetesStatusTitle"
+                                        AutomationProperties.HeadingLevel="Level2"
+                                        Style="{StaticResource SubtitleTextBlockStyle}"
+                                        Text="{x:Bind ViewModel.Status.Title, Mode=OneWay}" />
+                                    <common:PillView
+                                        VerticalAlignment="Center"
+                                        Kind="Locked"
+                                        Text="Managed by your organization"
+                                        Visibility="{x:Bind ViewModel.IsEnabledLocked, Mode=OneWay}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="{x:Bind ViewModel.Status.Message, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AutomationId="KubernetesTurnOn"
+                                Click="OnSwitch"
+                                Content="{x:Bind ViewModel.Status.Action, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.CanSwitch, Mode=OneWay}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Visibility="{x:Bind ViewModel.Status.ActionIsAccent, Mode=OneWay}" />
+                            <Button
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AutomationId="KubernetesTurnOff"
+                                Click="OnSwitch"
+                                Content="{x:Bind ViewModel.Status.Action, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.CanSwitch, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.Status.ActionIsPlain, Mode=OneWay}" />
+                        </Grid>
+
+                        <ProgressBar
+                            IsIndeterminate="{x:Bind ViewModel.Status.IsIndeterminate, Mode=OneWay}"
+                            Maximum="100"
+                            Visibility="{x:Bind ViewModel.Status.ShowsProgress, Mode=OneWay}"
+                            Value="{x:Bind ViewModel.Status.ProgressValue, Mode=OneWay}" />
+
+                        <ItemsRepeater
+                            AutomationProperties.AutomationId="KubernetesSteps"
+                            ItemTemplate="{StaticResource StepTemplate}"
+                            ItemsSource="{x:Bind ViewModel.Steps}"
+                            Visibility="{x:Bind ViewModel.ShowsSteps, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <UniformGridLayout
+                                    ItemsStretch="Fill"
+                                    MaximumRowsOrColumns="4"
+                                    MinColumnSpacing="16"
+                                    MinItemWidth="160" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+
+                        <!--  A ready cluster: where kubectl reaches it and how long it has run.  -->
+                        <Grid
+                            ColumnSpacing="16"
+                            RowSpacing="8"
+                            Visibility="{x:Bind ViewModel.ShowsApiServer, Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource FieldLabelStyle}"
+                                Text="API server" />
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    IsTextSelectionEnabled="True"
+                                    Style="{StaticResource IdentifierTextStyle}"
+                                    Text="{x:Bind ViewModel.ApiServer, Mode=OneWay}" />
+                                <Button
+                                    AutomationProperties.AutomationId="CopyApiServer"
+                                    AutomationProperties.Name="Copy the API server's address"
+                                    Click="OnCopyApiServer"
+                                    Style="{StaticResource RowActionButtonStyle}"
+                                    ToolTipService.ToolTip="Copy">
+                                    <FontIcon
+                                        FontSize="14"
+                                        Glyph="{x:Bind icons:ContrIcons.Copy}"
+                                        Style="{StaticResource IconStyle}" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock
+                                Grid.Row="1"
+                                Style="{StaticResource FieldLabelStyle}"
+                                Text="Running for" />
+                            <TextBlock
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Text="{x:Bind ViewModel.Uptime, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CaptionedCardStyle}" Visibility="{x:Bind ViewModel.ShowsPods, Mode=OneWay}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="{x:Bind ViewModel.PodsCaption, Mode=OneWay}" />
+                        <ItemsRepeater
+                            AutomationProperties.AutomationId="KubernetesPods"
+                            ItemTemplate="{StaticResource PodTemplate}"
+                            ItemsSource="{x:Bind ViewModel.SystemPods}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SettingsGroupStyle}" Visibility="{x:Bind ViewModel.IsOffered, Mode=OneWay}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="CLUSTER" />
-                        <controls:SettingsCard
-                            BorderThickness="0"
-                            Description="Runs a single-node cluster as a container on your engine."
-                            Header="Kubernetes"
-                            IsEnabled="False">
-                            <ToggleSwitch AutomationProperties.Name="Run Kubernetes" />
+                        <controls:SettingsCard BorderThickness="0" Description="Changing it recreates the cluster. Images stay.">
+                            <controls:SettingsCard.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Version" />
+                                    <common:PillView
+                                        Kind="Locked"
+                                        Text="Managed by your organization"
+                                        Visibility="{x:Bind ViewModel.IsVersionLocked, Mode=OneWay}" />
+                                </StackPanel>
+                            </controls:SettingsCard.Header>
+                            <ComboBox
+                                x:Name="VersionBox"
+                                MinWidth="140"
+                                AutomationProperties.AutomationId="KubernetesVersion"
+                                AutomationProperties.Name="Kubernetes version"
+                                IsEnabled="{x:Bind ViewModel.CanChooseVersion, Mode=OneWay}"
+                                ItemsSource="{x:Bind ViewModel.Versions}"
+                                PlaceholderText="—"
+                                SelectionChanged="OnVersionChanged" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard
-                            Description="Changing it recreates the cluster. Images stay."
-                            Header="Version"
-                            IsEnabled="False">
-                            <ComboBox MinWidth="140" PlaceholderText="—" />
+                        <controls:SettingsCard Header="Make contr the current kubectl context">
+                            <controls:SettingsCard.Description>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="{x:Bind ViewModel.ContextLead, Mode=OneWay}" /><Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind ViewModel.CurrentContext, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.ContextTail, Mode=OneWay}" />
+                                </TextBlock>
+                            </controls:SettingsCard.Description>
+                            <ToggleSwitch
+                                x:Name="ContextSwitch"
+                                AutomationProperties.AutomationId="KubernetesContext"
+                                AutomationProperties.Name="Make contr the current kubectl context"
+                                IsEnabled="{x:Bind ViewModel.CanChooseContext, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.IsCurrentContext, Mode=OneWay}"
+                                Toggled="OnContextToggled" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard
-                            Description="Whether kubectl uses this cluster unless told otherwise."
-                            Header="Make contr the current kubectl context"
-                            IsEnabled="False">
-                            <ToggleSwitch AutomationProperties.Name="Make contr the current kubectl context" />
+                        <controls:SettingsCard Description="Routes Ingress resources to your services.">
+                            <controls:SettingsCard.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Traefik ingress controller" />
+                                    <common:PillView
+                                        Kind="Locked"
+                                        Text="Managed by your organization"
+                                        Visibility="{x:Bind ViewModel.IsTraefikLocked, Mode=OneWay}" />
+                                </StackPanel>
+                            </controls:SettingsCard.Header>
+                            <ToggleSwitch
+                                x:Name="TraefikSwitch"
+                                AutomationProperties.AutomationId="KubernetesTraefik"
+                                AutomationProperties.Name="Traefik ingress controller"
+                                IsEnabled="{x:Bind ViewModel.CanChooseTraefik, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.UsesTraefik, Mode=OneWay}"
+                                Toggled="OnTraefikToggled" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard
-                            Description="Routes Ingress resources to your services."
-                            Header="Traefik ingress controller"
-                            IsEnabled="False">
-                            <ToggleSwitch AutomationProperties.Name="Traefik ingress controller" />
-                        </controls:SettingsCard>
-                        <controls:SettingsCard
-                            Description="Where kubectl finds the cluster's address and credentials."
-                            Header="Kubeconfig"
-                            IsEnabled="False">
-                            <Button Content="Open folder" />
+                        <controls:SettingsCard Header="Kubeconfig">
+                            <controls:SettingsCard.Description>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="{x:Bind ViewModel.KubeconfigLead, Mode=OneWay}" /><Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind ViewModel.KubeconfigText, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.KubeconfigTail, Mode=OneWay}" />
+                                </TextBlock>
+                            </controls:SettingsCard.Description>
+                            <Button
+                                AutomationProperties.AutomationId="KubernetesOpenFolder"
+                                Click="OnOpenKubeconfigFolder"
+                                Content="Open folder"
+                                IsEnabled="{x:Bind ViewModel.CanOpenKubeconfig, Mode=OneWay}" />
                         </controls:SettingsCard>
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource SettingsGroupStyle}">
+                <Border Style="{StaticResource SettingsGroupStyle}" Visibility="{x:Bind ViewModel.IsOffered, Mode=OneWay}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="MAINTENANCE" />
                         <controls:SettingsCard
                             BorderThickness="0"
                             Description="Copies images from your engine into the cluster, so pods can use them without a registry."
-                            Header="Use local images in the cluster"
-                            IsEnabled="False">
-                            <Button Content="Import images…" />
+                            Header="Use local images in the cluster">
+                            <Button
+                                AutomationProperties.AutomationId="KubernetesImport"
+                                Click="OnImportImages"
+                                Content="Import images…"
+                                IsEnabled="{x:Bind ViewModel.CanImport, Mode=OneWay}" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard
-                            Description="Deletes all workloads and cluster data. Your images stay."
-                            Header="Reset cluster"
-                            IsEnabled="False">
-                            <Button Content="Reset…" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                        <controls:SettingsCard Description="Deletes all workloads and cluster data. Your images stay." Header="Reset cluster">
+                            <Button
+                                AutomationProperties.AutomationId="KubernetesReset"
+                                Click="OnReset"
+                                Content="Reset…"
+                                IsEnabled="{x:Bind ViewModel.CanReset, Mode=OneWay}"
+                                Style="{StaticResource DestructiveButtonStyle}" />
                         </controls:SettingsCard>
                     </StackPanel>
                 </Border>

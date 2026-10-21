@@ -31,6 +31,18 @@ public sealed class HumanFormatTests
     }
 
     [Theory]
+    [InlineData(28, "28s")]
+    [InlineData(252, "4m 12s")]
+    [InlineData(7_500, "2h 5m")]
+    [InlineData(90_000, "1 day")]
+    [InlineData(300_000, "3 days")]
+    [InlineData(-5, "0s")]
+    public void Duration_ReadsAsTheLargestUnitsThatMatter(int seconds, string expected)
+    {
+        Assert.Equal(expected, HumanFormat.Duration(TimeSpan.FromSeconds(seconds)));
+    }
+
+    [Theory]
     [InlineData(2_576_980_378, 8_589_934_592, "2.4 of 8 GB")]
     [InlineData(536_870_912, 8_589_934_592, "512 MB of 8 GB")]
     [InlineData(0, 8_589_934_592, "0 of 8 GB")]
