@@ -112,7 +112,8 @@ public sealed partial class TroubleshootViewModel : ViewModel
         }
     }
 
-    private static CheckRow WindowsCheck(int build)
+    /// <summary>Passes the Windows build WSL 2 needs.</summary>
+    public static CheckRow WindowsCheck(int build)
     {
         var name = build >= 22000 ? "Windows 11" : "Windows 10";
         var detail = $"{name} · build {build.ToString(CultureInfo.CurrentCulture)}";

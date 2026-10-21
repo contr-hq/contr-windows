@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Contr.App.Services.Platform;
 using Contr.App.UI;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +27,11 @@ public sealed class SplashOrchestrator : IStartupOrchestrator
 
     public Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        if (SignInStartup.IsBackgroundLaunch())
+        {
+            return Task.CompletedTask;
+        }
+
         var splash = _services.GetRequiredService<SplashWindow>();
         _context.Splash = splash;
         splash.Activate();

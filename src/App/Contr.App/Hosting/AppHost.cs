@@ -7,6 +7,7 @@ using Contr.App.Infrastructure.Observability;
 using Contr.App.Services;
 using Contr.App.Services.Platform;
 using Contr.App.UI;
+using Contr.App.UI.Onboarding;
 using Contr.Daemon.UI;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Platform;
@@ -73,6 +74,9 @@ internal static class AppHost
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IMainWindowProvider, MainWindowProvider>();
         services.AddSingleton<TrayService>();
+        services.AddSingleton<ISignInStartup, SignInStartup>();
+        services.AddTransient<OnboardingViewModel>();
+        services.AddTransient<OnboardingWindow>();
         services.AddTransient<TrayViewModel>();
         services.AddSingleton<Func<TrayViewModel>>(provider => provider.GetRequiredService<TrayViewModel>);
     }
@@ -104,6 +108,7 @@ internal static class AppHost
         services.AddSingleton<IStartupOrchestrator, ThemeOrchestrator>();
         services.AddSingleton<IStartupOrchestrator, TrayOrchestrator>();
         services.AddSingleton<IStartupOrchestrator, ActivationOrchestrator>();
+        services.AddSingleton<IStartupOrchestrator, OnboardingOrchestrator>();
     }
 
     private static void AddModules(IServiceCollection services)

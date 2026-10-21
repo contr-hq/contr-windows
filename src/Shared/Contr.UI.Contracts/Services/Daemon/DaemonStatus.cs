@@ -75,6 +75,11 @@ public sealed record DaemonStatus(DaemonConnectionState Connection, EngineState 
 /// <param name="DockerContext">The Docker CLI context targeting the engine; empty when the daemon made none.</param>
 public sealed record EngineDetails(string Version, string DockerContext);
 
+/// <summary>One step of a long engine operation, such as provisioning it.</summary>
+/// <param name="Message">The daemon's description of the step.</param>
+/// <param name="Fraction">The share done, 0 to 1; absent while the daemon cannot tell.</param>
+public sealed record EngineProgress(string Message, double? Fraction);
+
 /// <summary>The daemon the client is connected to, as its handshake described it.</summary>
 /// <param name="Endpoint">The local endpoint, such as <c>npipe:////./pipe/contr-S-1-5-21-…-api</c>.</param>
 /// <param name="Version">The daemon's release version.</param>

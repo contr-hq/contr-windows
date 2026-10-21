@@ -24,6 +24,9 @@ internal static class StartupOrder
     /// <summary>After the shell, whose window the tray icon shows and hides.</summary>
     public const int Tray = 35;
 
-    /// <summary>Last, so the splash stays up until the main window is ready.</summary>
+    /// <summary>After the main window is ready, so the splash stays up until then.</summary>
     public const int Activation = 40;
+
+    /// <summary>Last: the first run's setup opens over the activated main window.</summary>
+    public const int Onboarding = 45;
 }

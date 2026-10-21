@@ -4,3 +4,4 @@ WM_ACTIVATE
 WA_ACTIVE
 WA_INACTIVE
 AllowSetForegroundWindow
+IsProcessorFeaturePresent

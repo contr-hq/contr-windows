@@ -31,6 +31,11 @@ public interface IDaemonConnection : IUiContractService, ISingletonDependency
     /// <summary>Provisions the engine when needed and starts it; completes when the operation ends.</summary>
     Task<Result> StartEngineAsync(CancellationToken cancellationToken);
 
+    /// <summary>Starts the engine, as the overload without progress does, reporting each step.</summary>
+    /// <param name="progress">Receives the daemon's steps, on the thread that reads them.</param>
+    /// <param name="cancellationToken">Stops waiting; the daemon goes on with the operation.</param>
+    Task<Result> StartEngineAsync(IProgress<EngineProgress> progress, CancellationToken cancellationToken);
+
     /// <summary>Stops the engine and its containers.</summary>
     Task<Result> StopEngineAsync(CancellationToken cancellationToken);
 
