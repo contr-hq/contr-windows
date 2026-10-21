@@ -121,6 +121,30 @@ public sealed class ContainersGateway : IContainersGateway
             cancellationToken);
     }
 
+    public Task<Result<ITerminalSession>> OpenTerminalAsync(
+        ContainerId id, string shell, string user, int columns, int rows, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(shell);
+        ArgumentNullException.ThrowIfNull(user);
+
+        var start = new ContainersV1.ExecStart {
+            ContainerId = id.Value,
+            Tty = true,
+            AttachStdin = true,
+            User = user,
+            TerminalSize = Size(columns, rows),
+        };
+        start.Command.Add(shell);
+
+        return TerminalSession.OpenAsync(_daemon, start, cancellationToken);
+    }
+
+    internal static ContainersV1.TerminalSize Size(int columns, int rows)
+    {
+        return new ContainersV1.TerminalSize { Columns = (uint)Math.Max(1, columns), Rows = (uint)Math.Max(1, rows) };
+    }
+
     public IAsyncEnumerable<ContainerStatsEvent> StreamStatsAsync(ContainerId id, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(id);

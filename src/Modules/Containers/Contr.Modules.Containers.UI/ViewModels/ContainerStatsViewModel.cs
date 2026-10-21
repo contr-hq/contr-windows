@@ -74,6 +74,10 @@ public sealed partial class ContainerStatsViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial string MemoryDetail { get; set; }
 
+    /// <summary>The latest memory use as a percentage of the limit; zero without one.</summary>
+    [ObservableProperty]
+    public partial double MemoryShare { get; set; }
+
     [ObservableProperty]
     public partial string NetworkText { get; set; }
 
@@ -175,7 +179,7 @@ public sealed partial class ContainerStatsViewModel : ObservableObject, IDisposa
         return rates;
     }
 
-    private static string MemoryShare(ContainerStatsDto sample)
+    private static string ShareOfLimit(ContainerStatsDto sample)
     {
         return Percent(100.0 * sample.MemoryUsageBytes / sample.MemoryLimitBytes);
     }
@@ -232,8 +236,9 @@ public sealed partial class ContainerStatsViewModel : ObservableObject, IDisposa
         CpuText = Percent(latest.CpuPercent);
         CpuDetail = $"Peak {Percent(Cpu.Max())} · 100% is one full core";
         MemoryText = HumanFormat.Bytes(latest.MemoryUsageBytes);
+        MemoryShare = latest.MemoryLimitBytes > 0 ? 100.0 * latest.MemoryUsageBytes / latest.MemoryLimitBytes : 0;
         MemoryDetail = latest.MemoryLimitBytes > 0
-            ? $"Of {HumanFormat.Bytes(latest.MemoryLimitBytes)} · {MemoryShare(latest)}"
+            ? $"Of {HumanFormat.Bytes(latest.MemoryLimitBytes)} · {ShareOfLimit(latest)}"
             : string.Empty;
 
         Received = Rates(window, sample => sample.NetworkRxBytes);

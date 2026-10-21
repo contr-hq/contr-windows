@@ -5,13 +5,16 @@ C# SDK the core repository generates, over a per-user named pipe.
 
 ## Status
 
-First working client: containers (start, stop, restart, delete, logs), images (pull with progress, delete), volumes
-(create, delete) and networks (delete), all following the daemon's Watch streams. The status bar shows the engine state
-and starts or stops the engine; the tray keeps Contr reachable while its window is closed. Until the core's WSL backend
-lands, run it against `contrd --backend fake`.
+The design's shell, Containers (grouped by Compose project, with a page per container: logs, inspect, a terminal and
+stats), Images (pull with per-layer progress, prune), Volumes and Networks, all following the daemon's Watch streams.
+The status bar shows the engine state and starts or stops the engine; the tray keeps Contr reachable while its window is
+closed. Until the core's WSL backend lands, run it against `contrd --backend fake`.
 
-Next: the exec terminal (WebView2 + xterm.js), Compose, Kubernetes, onboarding, settings, and a Velopack installer that
-bundles a pinned core release.
+Next: the tray flyout, Troubleshoot, Compose, Kubernetes, onboarding, settings, and a Velopack installer that bundles a
+pinned core release. Screens whose daemon API does not exist yet show their layout with the actions disabled.
+
+The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
+`src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
 
 ## Build and run
 

@@ -35,6 +35,7 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly INavigationService _navigation;
+    private readonly IClipboardService _clipboard;
     private readonly ContainerUsage _noUsage = new();
     private ContainerId? _id;
     private ContainerDetailsDto? _details;
@@ -43,6 +44,8 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Trail), nameof(StatusKind), nameof(StatusLine), nameof(Image))]
     [NotifyPropertyChangedFor(nameof(CanStart), nameof(CanStop), nameof(CanRestart), nameof(CanRemove))]
+    [NotifyPropertyChangedFor(nameof(ShortId), nameof(FirstPort), nameof(HasPort), nameof(Ports))]
+    [NotifyPropertyChangedFor(nameof(IsRunning))]
     public partial ContainerRow? Row { get; set; }
 
     [ObservableProperty]
@@ -70,7 +73,9 @@ public sealed partial class ContainerDetailViewModel : ViewModel
         _dialogs = dialogs;
         _notifications = notifications;
         _navigation = navigation;
+        _clipboard = clipboard;
         Logs = new ContainerLogsViewModel(sender, clipboard);
+        Terminal = new ContainerTerminalViewModel(sender);
         Inspect = new ContainerInspectViewModel(clipboard);
         Stats = new ContainerStatsViewModel(sender);
     }
@@ -80,6 +85,19 @@ public sealed partial class ContainerDetailViewModel : ViewModel
     public ContainerInspectViewModel Inspect { get; }
 
     public ContainerStatsViewModel Stats { get; }
+
+    public ContainerTerminalViewModel Terminal { get; }
+
+    public string ShortId => Row?.ShortId ?? string.Empty;
+
+    public bool IsRunning => !IsGone && Row?.State == ContainerState.Running;
+
+    public IReadOnlyList<PortLink> Ports => Row?.Ports ?? [];
+
+    /// <summary>The first published port with an http address, for the header's open button.</summary>
+    public PortLink? FirstPort => Row?.Ports.FirstOrDefault(port => port.IsLink);
+
+    public bool HasPort => FirstPort is not null;
 
     /// <summary>Containers, then the Compose project when there is one, then the container.</summary>
     public IReadOnlyList<string> Trail => Row is not { } row
@@ -137,7 +155,7 @@ public sealed partial class ContainerDetailViewModel : ViewModel
         _ = LoadAsync(id, openLogs: true);
     }
 
-    /// <summary>Stops every stream; call it from the page's <c>Unloaded</c>.</summary>
+    /// <summary>Stops every stream and ends the terminal session; call it from the page's <c>Unloaded</c>.</summary>
     public void Deactivate()
     {
         _watch?.Cancel();
@@ -145,6 +163,33 @@ public sealed partial class ContainerDetailViewModel : ViewModel
         _watch = null;
         Logs.Close();
         Stats.Stop();
+        _ = Terminal.DisconnectAsync();
+    }
+
+    /// <summary>Starts a shell in the running container unless one is connected.</summary>
+    public Task ConnectTerminalAsync()
+    {
+        return IsRunning && !Terminal.IsConnected && Row is { } row
+            ? Terminal.ConnectAsync(row.ContainerId)
+            : Task.CompletedTask;
+    }
+
+    public void CopyText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (text.Length > 0)
+        {
+            _clipboard.SetText(text);
+        }
+    }
+
+    public void CopyId()
+    {
+        if (Row is { } row)
+        {
+            _clipboard.SetText(row.Id);
+        }
     }
 
     public void OpenList()
@@ -222,6 +267,7 @@ public sealed partial class ContainerDetailViewModel : ViewModel
         {
             var exit = newValue.ExitCode is { } code ? $"container exited with code {code}" : "container stopped";
             Logs.Note(exit);
+            _ = Terminal.DisconnectAsync();
         }
 
         _ = LoadAsync(id, openLogs: !oldValue.IsRunning && newValue.IsRunning);
@@ -242,7 +288,9 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
     private void FollowStats()
     {
-        if (Tab == ContainerDetailTab.Stats && Row is { State: ContainerState.Running } row && _watch is not null)
+        var showsUsage = Tab is ContainerDetailTab.Stats or ContainerDetailTab.Exec;
+
+        if (showsUsage && Row is { State: ContainerState.Running } row && _watch is not null)
         {
             Stats.Start(row.ContainerId);
         }
@@ -328,6 +376,7 @@ public sealed partial class ContainerDetailViewModel : ViewModel
             Row = ContainerRow.From(container, _noUsage);
         }
 
+        OnPropertyChanged(nameof(IsRunning));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));
         OnPropertyChanged(nameof(CanRestart));
