@@ -1,5 +1,10 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Contr.App.Services.Platform;
 using Contr.App.UI;
+using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
@@ -16,6 +21,7 @@ public sealed class SettingsViewModelTests
     private readonly ISignInStartup _signIn = Substitute.For<ISignInStartup>();
     private readonly ICliTools _cliTools = Substitute.For<ICliTools>();
     private readonly INavigationService _navigation = Substitute.For<INavigationService>();
+    private readonly IWslDistributions _wsl = Substitute.For<IWslDistributions>();
 
     public SettingsViewModelTests()
     {
@@ -114,8 +120,83 @@ public sealed class SettingsViewModelTests
         Assert.Equal(2, viewModel.Tools.Count);
     }
 
+    [Fact]
+    public async Task LoadWsl_ListsTheDefaultFirstAndCountsTheConnected()
+    {
+        OfferWsl(
+            Distribution("Debian", WslIntegrationState.Disabled),
+            Distribution("Ubuntu-24.04", WslIntegrationState.Active) with { IsDefault = true },
+            Distribution("openSUSE", WslIntegrationState.Disabled) with { Version = 1 });
+        var viewModel = CreateViewModel();
+
+        await viewModel.LoadWslAsync();
+
+        Assert.Equal(["Ubuntu-24.04", "Debian", "openSUSE"], viewModel.Distributions.Select(item => item.Name));
+        Assert.Equal("1 of 3 connected", viewModel.WslSummary);
+        Assert.Equal([true, false, false], viewModel.Distributions.Select(item => item.IsOn));
+        Assert.False(viewModel.Distributions[2].CanChange);
+    }
+
+    [Fact]
+    public async Task LoadWsl_AsksNothingWithoutTheCapability()
+    {
+        _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/contr-test", "0.1.0", 4, "Fake"));
+
+        await CreateViewModel().LoadWslAsync();
+
+        await _wsl.DidNotReceiveWithAnyArgs().ListAsync(default);
+    }
+
+    [Fact]
+    public async Task Switch_ShowsTheDaemonsAnswer()
+    {
+        OfferWsl(Distribution("Debian", WslIntegrationState.Disabled));
+        _wsl
+            .SetIntegrationAsync("Debian", true, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(Distribution("Debian", WslIntegrationState.Pending)));
+        var viewModel = CreateViewModel();
+        await viewModel.LoadWslAsync();
+
+        viewModel.Distributions[0].IsOn = true;
+
+        Assert.Equal(WslIntegrationState.Pending, viewModel.Distributions[0].Distribution.State);
+        Assert.True(viewModel.Distributions[0].IsOn);
+        Assert.False(viewModel.HasWslError);
+    }
+
+    [Fact]
+    public async Task Switch_TurnsBackWhenTheDaemonRefuses()
+    {
+        OfferWsl(Distribution("Debian", WslIntegrationState.Disabled));
+        _wsl
+            .SetIntegrationAsync("Debian", true, Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<WslDistribution>(new Error("Daemon.NotFound", "Debian is not registered")));
+        var viewModel = CreateViewModel();
+        await viewModel.LoadWslAsync();
+
+        viewModel.Distributions[0].IsOn = true;
+
+        Assert.False(viewModel.Distributions[0].IsOn);
+        Assert.Equal("Debian was not turned on: Debian is not registered", viewModel.WslError);
+    }
+
+    private static WslDistribution Distribution(string name, WslIntegrationState state)
+    {
+        return new WslDistribution(name, 2, IsDefault: false, state, string.Empty);
+    }
+
+    private void OfferWsl(params WslDistribution[] distributions)
+    {
+        _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/contr-test", "0.1.0", 4, "WSL 2") {
+            Capabilities = new HashSet<DaemonCapability> { DaemonCapability.WslIntegration },
+        });
+        _wsl
+            .ListAsync(Arg.Any<CancellationToken>())
+            .Returns(Result.Success<IReadOnlyList<WslDistribution>>(distributions));
+    }
+
     private SettingsViewModel CreateViewModel()
     {
-        return new SettingsViewModel(_theme, _accent, _daemon, _signIn, _cliTools, _navigation);
+        return new SettingsViewModel(_theme, _accent, _daemon, _signIn, _cliTools, _navigation, _wsl);
     }
 }

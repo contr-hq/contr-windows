@@ -50,6 +50,9 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
   for a pipe that does not exist.
 - `DaemonCalls.CallAsync`, `RunAsync` and `StreamAsync` turn SDK and gRPC failures into
   `DaemonErrors`, so module gateways stay a few lines each.
+- `IntegrationClient` serves `ICliTools` and `IWslDistributions` over `ContrClient.Integration`, on the
+  same connection. Setup and Settings show the WSL distributions only when the handshake lists
+  `WslIntegration`.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user

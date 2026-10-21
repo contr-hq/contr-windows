@@ -34,6 +34,11 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         return tab == shown ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    public static string Or(string text, string fallback)
+    {
+        return text.Length > 0 ? text : fallback;
+    }
+
     public static string OrDash(string text)
     {
         return text.Length > 0 ? text : "—";
@@ -54,6 +59,7 @@ public sealed partial class SettingsPage : Page, IHasViewModel
     {
         Tabs.SelectedItem ??= GeneralTab;
         await ViewModel.LoadToolsAsync();
+        await ViewModel.LoadWslAsync();
     }
 
     private void OnTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)

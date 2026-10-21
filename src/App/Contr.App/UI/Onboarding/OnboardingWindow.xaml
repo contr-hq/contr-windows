@@ -7,6 +7,7 @@
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Contr.App.UI.Onboarding"
+    xmlns:ui="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winex="using:WinUIEx"
     Title="Set up Contr"
@@ -265,6 +266,31 @@
                                     Style="{StaticResource SecondaryCellTextStyle}"
                                     Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
                                     TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border
+                            Padding="16"
+                            AutomationProperties.AutomationId="WslDistributionsCard"
+                            Style="{StaticResource CardStyle}"
+                            Visibility="{x:Bind ViewModel.HasDistributions, Mode=OneWay}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Use the engine from your WSL distros" />
+                                <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="docker inside the checked distros talks to Contr." />
+                                <ItemsRepeater Margin="0,6,0,0" ItemsSource="{x:Bind ViewModel.Distributions}">
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="ui:WslDistributionItem">
+                                            <CheckBox IsChecked="{x:Bind IsOn, Mode=TwoWay}" IsEnabled="{x:Bind CanChange}">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <TextBlock Text="{x:Bind Name}" />
+                                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind DefaultText}" />
+                                                    </StackPanel>
+                                                    <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind Detail, Mode=OneWay}" />
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
                             </StackPanel>
                         </Border>
                         <Border Padding="16" Style="{StaticResource CardStyle}">

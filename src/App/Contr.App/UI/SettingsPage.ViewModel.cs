@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +30,7 @@ public sealed partial class SettingsViewModel : ViewModel
     private readonly ISignInStartup _signIn;
     private readonly ICliTools _cliTools;
     private readonly INavigationService _navigation;
+    private readonly IWslDistributions _wsl;
 
     [ObservableProperty]
     public partial int ThemeIndex { get; set; }
@@ -67,13 +69,23 @@ public sealed partial class SettingsViewModel : ViewModel
     [ObservableProperty]
     public partial string InstallToolsText { get; set; }
 
+    /// <summary>Such as <c>2 of 3 connected</c>; empty until the daemon answered.</summary>
+    [ObservableProperty]
+    public partial string WslSummary { get; set; }
+
+    /// <summary>Why the distributions could not be listed or changed; empty when nothing failed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWslError))]
+    public partial string WslError { get; set; }
+
     public SettingsViewModel(
         IThemeService themeService,
         IAccentService accentService,
         IDaemonConnection daemon,
         ISignInStartup signIn,
         ICliTools cliTools,
-        INavigationService navigation)
+        INavigationService navigation,
+        IWslDistributions wsl)
     {
         ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(accentService);
@@ -81,12 +93,14 @@ public sealed partial class SettingsViewModel : ViewModel
         ArgumentNullException.ThrowIfNull(signIn);
         ArgumentNullException.ThrowIfNull(cliTools);
         ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(wsl);
         _themeService = themeService;
         _accentService = accentService;
         _daemon = daemon;
         _signIn = signIn;
         _cliTools = cliTools;
         _navigation = navigation;
+        _wsl = wsl;
         ThemeIndex = themeService.Theme switch {
             ElementTheme.Light => 1,
             ElementTheme.Dark => 2,
@@ -102,6 +116,8 @@ public sealed partial class SettingsViewModel : ViewModel
         ToolsDetail = string.Empty;
         ToolsNote = string.Empty;
         InstallToolsText = "Install";
+        WslSummary = string.Empty;
+        WslError = string.Empty;
         ContextName = daemon.Status.Details?.DockerContext ?? string.Empty;
         OffersWslIntegration = daemon.Identity?.Capabilities.Contains(DaemonCapability.WslIntegration) == true;
         OffersResourceLimits = daemon.Identity?.Capabilities.Contains(DaemonCapability.ResourceLimits) == true;
@@ -135,6 +151,11 @@ public sealed partial class SettingsViewModel : ViewModel
     public bool HasToolsNote => ToolsNote.Length > 0;
 
     public ObservableCollection<CliTool> Tools { get; } = [];
+
+    /// <summary>The user's WSL distributions, the default first.</summary>
+    public ObservableCollection<WslDistributionItem> Distributions { get; } = [];
+
+    public bool HasWslError => WslError.Length > 0;
 
     public static string Describe(DaemonIdentity? daemon)
     {
@@ -182,6 +203,64 @@ public sealed partial class SettingsViewModel : ViewModel
         InstallToolsText = AreToolsInstalled ? "Repair" : "Install";
     }
 
+    /// <summary>Lists the user's WSL distributions where the daemon offers it; call it when the page loads.</summary>
+    public async Task LoadWslAsync()
+    {
+        if (!OffersWslIntegration)
+        {
+            return;
+        }
+
+        var listed = await _wsl.ListAsync(CancellationToken.None);
+
+        if (listed.IsFailure)
+        {
+            WslError = listed.Error.Message;
+
+            return;
+        }
+
+        WslError = string.Empty;
+
+        foreach (var item in Distributions)
+        {
+            item.Switched -= OnDistributionSwitched;
+        }
+
+        Distributions.Clear();
+
+        foreach (var distribution in WslDistributionItem.Ordered(listed.Value))
+        {
+            var item = new WslDistributionItem(distribution);
+            item.Switched += OnDistributionSwitched;
+            Distributions.Add(item);
+        }
+
+        SummarizeWsl();
+    }
+
+    /// <summary>Asks the daemon for what <paramref name="item"/>'s switch now says; a refusal turns it back.</summary>
+    public async Task ApplyAsync(WslDistributionItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        var wanted = item.IsOn;
+        var result = await _wsl.SetIntegrationAsync(item.Name, wanted, CancellationToken.None);
+
+        if (result.IsFailure)
+        {
+            item.SetQuietly(!wanted);
+            WslError = $"{item.Name} was not turned {(wanted ? "on" : "off")}: {result.Error.Message}";
+        }
+        else
+        {
+            WslError = string.Empty;
+            item.Show(result.Value);
+        }
+
+        SummarizeWsl();
+    }
+
     public void OpenKubernetes()
     {
         _navigation.NavigateTo(_kubernetesPageKey);
@@ -215,6 +294,22 @@ public sealed partial class SettingsViewModel : ViewModel
         {
             _daemon.StartsEngineOnConnect = value;
         }
+    }
+
+    private void OnDistributionSwitched(object? sender, EventArgs e)
+    {
+        if (sender is WslDistributionItem item)
+        {
+            _ = ApplyAsync(item);
+        }
+    }
+
+    private void SummarizeWsl()
+    {
+        var connected = Distributions.Count(item => item.Distribution.State == WslIntegrationState.Active);
+        WslSummary = Distributions.Count == 0
+            ? "No distros besides Contr's own"
+            : $"{connected} of {Distributions.Count} connected";
     }
 
     private static string ClientVersion()
