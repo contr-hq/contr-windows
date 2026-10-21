@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.App.UI;
@@ -68,6 +70,7 @@ public sealed class TroubleshootViewModelTests
         var viewModel = new TroubleshootViewModel(
             daemon,
             Substitute.For<IDiagnostics>(),
+            Substitute.For<IKubernetesCluster>(),
             Substitute.For<IDialogService>(),
             Substitute.For<INotificationService>());
 
@@ -212,6 +215,81 @@ public sealed class TroubleshootViewModelTests
         notifications.DidNotReceiveWithAnyArgs().Show(default!, default, default);
     }
 
+    [Fact]
+    public async Task CreateBundle_WritesTheZipAndSaysWhere()
+    {
+        var diagnostics = Diagnostics();
+        diagnostics
+            .CreateBundleAsync(default!, default!, default)
+            .ReturnsForAnyArgs(Result.Success());
+        var notifications = Substitute.For<INotificationService>();
+        var viewModel = Create(Daemon(DaemonStatus.Connecting), diagnostics, notifications);
+        using var stream = new MemoryStream();
+
+        var created = await viewModel.CreateBundleAsync(stream, @"C:\Users\dev\Downloads\contr-diagnostics.zip");
+
+        Assert.True(created);
+        Assert.False(viewModel.IsCreatingBundle);
+        notifications.Received(1).Show(
+            @"Saved the diagnostics bundle to C:\Users\dev\Downloads\contr-diagnostics.zip.",
+            InfoBarSeverity.Success,
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task CreateBundle_SaysWhyTheDaemonFailed()
+    {
+        var diagnostics = Diagnostics();
+        diagnostics
+            .CreateBundleAsync(default!, default!, default)
+            .ReturnsForAnyArgs(Result.Failure(new Error("Daemon.Failed", "the log is locked")));
+        var notifications = Substitute.For<INotificationService>();
+        var viewModel = Create(Daemon(DaemonStatus.Connecting), diagnostics, notifications);
+        using var stream = new MemoryStream();
+
+        var created = await viewModel.CreateBundleAsync(stream, "bundle.zip");
+
+        Assert.False(created);
+        notifications.Received(1).Show(
+            "the log is locked", InfoBarSeverity.Error, "The diagnostics bundle wasn't created");
+    }
+
+    [Fact]
+    public void Bundles_AreOfferedFromApiRevision18AndNamedByTheDay()
+    {
+        var daemon = Daemon(DaemonStatus.Connecting);
+        daemon.StatusChanges.Returns(Observable.Return(DaemonStatus.Connecting));
+        daemon.Identity.Returns(_identity with { ApiRevision = 18 });
+        var viewModel = Create(daemon, Diagnostics(), Substitute.For<INotificationService>());
+
+        viewModel.Activate();
+
+        Assert.True(viewModel.CanCreateBundle);
+        Assert.Equal(
+            "contr-diagnostics-2026-10-22",
+            TroubleshootViewModel.BundleName(new DateTimeOffset(2026, 10, 22, 23, 0, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public async Task ResetKubernetes_ResetsTheClusterOnceConfirmed()
+    {
+        var cluster = Substitute.For<IKubernetesCluster>();
+        cluster
+            .ResetAsync(Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+        var dialogs = Substitute.For<IDialogService>();
+        dialogs
+            .ShowConfirmAsync(default!, default!, default!, default!)
+            .ReturnsForAnyArgs(true);
+        var notifications = Substitute.For<INotificationService>();
+        var viewModel = Create(Daemon(DaemonStatus.Connecting), Diagnostics(), notifications, cluster, dialogs);
+
+        await viewModel.ResetKubernetesAsync();
+
+        await cluster.Received(1).ResetAsync(Arg.Any<CancellationToken>());
+        notifications.Received(1).Show("The cluster was reset.", InfoBarSeverity.Success, Arg.Any<string?>());
+    }
+
     private static DiagnosticCheck Check(string id, DiagnosticStatus status, params Remediation[] fixes)
     {
         return new DiagnosticCheck(id, id, status, $"{id} detail", fixes);
@@ -236,8 +314,17 @@ public sealed class TroubleshootViewModelTests
     }
 
     private static TroubleshootViewModel Create(
-        IDaemonConnection daemon, IDiagnostics diagnostics, INotificationService notifications)
+        IDaemonConnection daemon,
+        IDiagnostics diagnostics,
+        INotificationService notifications,
+        IKubernetesCluster? cluster = null,
+        IDialogService? dialogs = null)
     {
-        return new TroubleshootViewModel(daemon, diagnostics, Substitute.For<IDialogService>(), notifications);
+        return new TroubleshootViewModel(
+            daemon,
+            diagnostics,
+            cluster ?? Substitute.For<IKubernetesCluster>(),
+            dialogs ?? Substitute.For<IDialogService>(),
+            notifications);
     }
 }
