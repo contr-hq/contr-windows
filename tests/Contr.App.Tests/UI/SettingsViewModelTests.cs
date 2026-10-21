@@ -58,14 +58,16 @@ public sealed class SettingsViewModelTests
         Assert.True(viewModel.HasLockedSettings);
         Assert.True(viewModel.ServesDefaultPipe);
         Assert.False(viewModel.CanChangeDefaultPipe);
-        _settings.DidNotReceiveWithAnyArgs().SetAsync(default, default, default);
+        _settings.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
     }
 
     [Fact]
     public async Task DefaultPipe_SaysWhenItWaitsForTheEngine()
     {
         _settings
-            .SetAsync(DaemonSetting.ServeDefaultPipe, false, Arg.Any<CancellationToken>())
+            .UpdateAsync(
+                Arg.Is<DaemonSettingsEdit>(edit => edit != null && edit.ServeDefaultPipe == false),
+                Arg.Any<CancellationToken>())
             .Returns(Result.Success(new DaemonSettingsChange(
                 SettingsOf(servesDefaultPipe: false),
                 new HashSet<DaemonSetting> { DaemonSetting.ServeDefaultPipe })));

@@ -111,6 +111,9 @@ public enum DaemonCapability
 
     /// <summary>Resets the engine to a clean state.</summary>
     Reset,
+
+    /// <summary>Gives the engine the proxy, certificate and registry mirror settings.</summary>
+    EngineConfiguration,
 }
 
 /// <summary>What a reset of the engine keeps.</summary>

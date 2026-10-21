@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Contr.Application.Abstractions.Daemon;
 using Contr.Sdk;
 using Contr.Sdk.Settings.V1;
 using Contr.SharedKernel;
@@ -11,6 +12,10 @@ using Contr.UI.Contracts.Services.Daemon;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
+using ProxyMode = Contr.UI.Contracts.Services.Daemon.ProxyMode;
+using ProxySettings = Contr.UI.Contracts.Services.Daemon.ProxySettings;
+using WireMode = Contr.Sdk.Settings.V1.ProxyMode;
+using WireProxy = Contr.Sdk.Settings.V1.ProxySettings;
 using WireSettings = Contr.Sdk.Settings.V1.Settings;
 
 namespace Contr.Daemon.UI;
@@ -18,9 +23,6 @@ namespace Contr.Daemon.UI;
 /// <summary><see cref="IDaemonSettings"/> over SettingsService.</summary>
 public sealed partial class DaemonSettingsClient : IDaemonSettings
 {
-    private const string _startEngineWithDaemonPath = "engine.start_with_daemon";
-    private const string _serveDefaultPipePath = "engine.serve_default_pipe";
-
     private readonly IDaemonClient _daemon;
     private readonly ILogger<DaemonSettingsClient> _logger;
     private readonly IObservable<DaemonSettings?> _changes;
@@ -44,18 +46,12 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
 
     public IObservable<DaemonSettings?> Changes => _changes;
 
-    public async Task<Result<DaemonSettingsChange>> SetAsync(
-        DaemonSetting setting, bool value, CancellationToken cancellationToken)
+    public async Task<Result<DaemonSettingsChange>> UpdateAsync(
+        DaemonSettingsEdit edit, CancellationToken cancellationToken)
     {
-        var request = new UpdateSettingsRequest {
-            Settings = new WireSettings {
-                Engine = setting switch {
-                    DaemonSetting.StartEngineWithDaemon => new EngineSettings { StartWithDaemon = value },
-                    _ => new EngineSettings { ServeDefaultPipe = value },
-                },
-            },
-            UpdateMask = new FieldMask { Paths = { PathOf(setting) } },
-        };
+        ArgumentNullException.ThrowIfNull(edit);
+
+        var request = ToRequest(edit);
         var result = await _daemon
             .CallAsync(
                 async (client, token) => await client.Settings
@@ -66,7 +62,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
             .ConfigureAwait(false);
 
         return result.IsFailure
-            ? Result.Failure<DaemonSettingsChange>(result.Error)
+            ? Result.Failure<DaemonSettingsChange>(Refusal(result.Error))
             : Result.Success(ToChange(result.Value.State, result.Value.RestartRequired));
     }
 
@@ -92,8 +88,15 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
         ArgumentNullException.ThrowIfNull(state);
 
         var engine = state.Settings?.Engine ?? new EngineSettings();
+        var proxy = state.Settings?.Proxy;
 
-        return new DaemonSettings(engine.StartWithDaemon, engine.ServeDefaultPipe, Known(state.LockedPaths));
+        return new DaemonSettings(engine.StartWithDaemon, engine.ServeDefaultPipe, Known(state.LockedPaths)) {
+            Proxy = proxy is null
+                ? ProxySettings.Default
+                : new ProxySettings(ToMode(proxy.Mode), proxy.Http, proxy.Https, proxy.Exclude),
+            TrustSystemCertificates = state.Settings?.Certificates?.TrustSystem ?? true,
+            RegistryMirrors = state.Settings?.Registry is { } registry ? [.. registry.Mirrors] : [],
+        };
     }
 
     public static DaemonSettingsChange ToChange(SettingsState? state, IEnumerable<string> restartRequired)
@@ -101,28 +104,66 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
         return new DaemonSettingsChange(ToSettings(state ?? new SettingsState()), Known(restartRequired));
     }
 
+    /// <summary>The request that changes what <paramref name="edit"/> names, and only that.</summary>
+    public static UpdateSettingsRequest ToRequest(DaemonSettingsEdit edit)
+    {
+        ArgumentNullException.ThrowIfNull(edit);
+
+        var settings = new WireSettings {
+            Engine = new EngineSettings {
+                StartWithDaemon = edit.StartEngineWithDaemon ?? false,
+                ServeDefaultPipe = edit.ServeDefaultPipe ?? false,
+            },
+            Proxy = new WireProxy {
+                Mode = edit.ProxyMode is { } mode ? ToWire(mode) : WireMode.Unspecified,
+                Http = edit.ProxyHttp ?? string.Empty,
+                Https = edit.ProxyHttps ?? string.Empty,
+                Exclude = edit.ProxyExclude ?? string.Empty,
+            },
+            Certificates = new CertificateSettings { TrustSystem = edit.TrustSystemCertificates ?? false },
+            Registry = new RegistrySettings { Mirrors = { edit.RegistryMirrors ?? [] } },
+        };
+        var mask = new FieldMask();
+        mask.Paths.AddRange(edit
+            .Settings()
+            .Select(DaemonSettingPaths.Of));
+
+        return new UpdateSettingsRequest { Settings = settings, UpdateMask = mask };
+    }
+
+    /// <summary>A refusal that names a setting first gets <see cref="IDaemonSettings.InvalidValueCode"/>.</summary>
+    public static Error Refusal(Error error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+
+        return error.Code == DaemonErrors.FailedCode && DaemonSettingPaths.Refused(error.Message) is not null
+            ? error with { Code = IDaemonSettings.InvalidValueCode }
+            : error;
+    }
+
+    private static ProxyMode ToMode(WireMode mode)
+    {
+        return mode switch {
+            WireMode.Manual => ProxyMode.Manual,
+            WireMode.None => ProxyMode.None,
+            _ => ProxyMode.System,
+        };
+    }
+
+    private static WireMode ToWire(ProxyMode mode)
+    {
+        return mode switch {
+            ProxyMode.Manual => WireMode.Manual,
+            ProxyMode.None => WireMode.None,
+            _ => WireMode.System,
+        };
+    }
+
     private static HashSet<DaemonSetting> Known(IEnumerable<string> paths)
     {
         return [.. paths
-            .Select(SettingOf)
+            .Select(DaemonSettingPaths.At)
             .OfType<DaemonSetting>()];
-    }
-
-    private static DaemonSetting? SettingOf(string path)
-    {
-        return path switch {
-            _startEngineWithDaemonPath => DaemonSetting.StartEngineWithDaemon,
-            _serveDefaultPipePath => DaemonSetting.ServeDefaultPipe,
-            _ => null,
-        };
-    }
-
-    private static string PathOf(DaemonSetting setting)
-    {
-        return setting switch {
-            DaemonSetting.StartEngineWithDaemon => _startEngineWithDaemonPath,
-            _ => _serveDefaultPipePath,
-        };
     }
 
     /// <summary>The daemon's settings until the stream ends; then absent, as from a daemon that keeps none.</summary>

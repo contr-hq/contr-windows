@@ -247,7 +247,8 @@ public sealed partial class SettingsViewModel : ViewModel
     /// <summary>Asks the daemon for <paramref name="value"/>; a refusal turns the switch back and says why.</summary>
     public async Task ApplyDefaultPipeAsync(bool value)
     {
-        var result = await _settings.SetAsync(DaemonSetting.ServeDefaultPipe, value, CancellationToken.None);
+        var result = await _settings.UpdateAsync(
+            new DaemonSettingsEdit { ServeDefaultPipe = value }, CancellationToken.None);
 
         if (result.IsFailure)
         {
