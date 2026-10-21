@@ -3,6 +3,7 @@
     x:Class="Contr.Modules.Networks.UI.Views.NetworksPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="using:Contr.Modules.Networks.Application.Networks"
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,125 +11,220 @@
     xmlns:vm="using:Contr.Modules.Networks.UI.ViewModels"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,16" RowSpacing="12">
+    <Page.Resources>
+        <GridLength x:Key="DriverColumnWidth">110</GridLength>
+        <GridLength x:Key="SubnetColumnWidth">180</GridLength>
+
+        <DataTemplate x:Key="NetworkTemplate" x:DataType="vm:NetworkRow">
+            <Grid
+                MinHeight="48"
+                Padding="16,6,12,6"
+                AutomationProperties.Name="{x:Bind Name}"
+                Background="Transparent"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                ColumnSpacing="12"
+                Tag="{x:Bind}"
+                Tapped="OnRowTapped">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{StaticResource DriverColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource SubnetColumnWidth}" />
+                </Grid.ColumnDefinitions>
+                <Border
+                    Grid.ColumnSpan="3"
+                    Margin="-16,-6,-12,-6"
+                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                    Visibility="{x:Bind IsSelected}" />
+                <Border
+                    Width="3"
+                    Height="16"
+                    Margin="-11,0,0,0"
+                    HorizontalAlignment="Left"
+                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                    CornerRadius="1.5"
+                    Visibility="{x:Bind IsSelected}" />
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Style="{StaticResource CellTextStyle}"
+                            Text="{x:Bind Name}" />
+                        <Border
+                            Padding="6,1"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                            CornerRadius="4"
+                            Visibility="{x:Bind IsBuiltIn}">
+                            <TextBlock FontSize="12" Text="Built in" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock
+                        Style="{StaticResource SecondaryCellTextStyle}"
+                        Text="{x:Bind views:NetworksPage.ProjectText(Project)}"
+                        Visibility="{x:Bind HasProject}" />
+                </StackPanel>
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind Driver}" />
+                <TextBlock
+                    Grid.Column="2"
+                    Style="{StaticResource MonoCellTextStyle}"
+                    Text="{x:Bind SubnetText}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="EndpointTemplate" x:DataType="app:NetworkEndpointDto">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Ellipse
+                    Width="8"
+                    Height="8"
+                    VerticalAlignment="Center"
+                    Fill="{ThemeResource SystemFillColorSuccessBrush}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CellTextStyle}"
+                    Text="{x:Bind Container}" />
+                <TextBlock
+                    Grid.Column="2"
+                    Style="{StaticResource MonoCellTextStyle}"
+                    Text="{x:Bind Address}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="36,24,36,16" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Networks" />
+        <common:PageHeader Title="Networks" Subtitle="{x:Bind views:NetworksPage.Shown(ViewModel.Subtitle, ViewModel.Engine.IsOpen), Mode=OneWay}">
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="8"
+                Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
+                <Button
+                    AutomationProperties.AutomationId="CreateNetworkButton"
+                    Click="OnCreate"
+                    Style="{StaticResource AccentButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Glyph="&#xE710;" />
+                        <TextBlock Text="Create network" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    AutomationProperties.AutomationId="RemoveUnusedNetworksButton"
+                    Click="OnRemoveUnused"
+                    Content="Remove unused" />
+            </StackPanel>
+        </common:PageHeader>
 
         <InfoBar
             Grid.Row="1"
             IsClosable="False"
-            IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+            IsOpen="{x:Bind views:NetworksPage.ShowsBoth(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
             Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-            Severity="{x:Bind views:NetworksPage.SeverityFor(ViewModel.IsEngineDown), Mode=OneWay}"
-            Visibility="{x:Bind ViewModel.HasError, Mode=OneWay}" />
+            Severity="Error" />
 
-        <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+        <Grid Grid.Row="2">
+            <common:EngineGate
+                Margin="0,0,0,48"
+                ViewModel="{x:Bind ViewModel.Engine}"
+                Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
 
-                <Grid ColumnSpacing="12" Style="{StaticResource ListHeaderStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="1*" />
-                        <ColumnDefinition Width="1*" />
-                        <ColumnDefinition Width="0.8*" />
-                        <ColumnDefinition Width="1.6*" />
-                        <ColumnDefinition Width="48" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Name" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Network ID" />
-                    <TextBlock
-                        Grid.Column="2"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Driver" />
-                    <TextBlock
-                        Grid.Column="3"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Scope" />
-                    <TextBlock
-                        Grid.Column="4"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
-                        Text="Subnet" />
-                </Grid>
+            <ProgressRing
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsActive="{x:Bind views:NetworksPage.IsWaiting(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
 
-                <ListView
-                    Grid.Row="1"
-                    AutomationProperties.Name="Networks"
-                    ItemContainerStyle="{StaticResource ListRowStyle}"
-                    ItemsSource="{x:Bind ViewModel.Rows}"
-                    SelectionMode="None">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:NetworkRow">
-                            <Grid ColumnSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="0.8*" />
-                                    <ColumnDefinition Width="1.6*" />
-                                    <ColumnDefinition Width="48" />
-                                </Grid.ColumnDefinitions>
+            <Grid ColumnSpacing="16" Visibility="{x:Bind views:NetworksPage.Visible(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="320" />
+                </Grid.ColumnDefinitions>
 
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock
-                                        FontWeight="SemiBold"
-                                        Style="{StaticResource CellTextStyle}"
-                                        Text="{x:Bind Name}" />
-                                    <TextBlock
-                                        Style="{StaticResource SecondaryCellTextStyle}"
-                                        Text="{x:Bind Project}"
-                                        Visibility="{x:Bind HasProject}" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Style="{StaticResource MonoCellTextStyle}"
-                                    Text="{x:Bind ShortId}" />
-                                <TextBlock
-                                    Grid.Column="2"
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="{x:Bind Driver}" />
-                                <TextBlock
-                                    Grid.Column="3"
-                                    Style="{StaticResource SecondaryCellTextStyle}"
-                                    Text="{x:Bind Scope}" />
-                                <TextBlock
-                                    Grid.Column="4"
-                                    Style="{StaticResource MonoCellTextStyle}"
-                                    Text="{x:Bind Subnets}" />
+                <Border VerticalAlignment="Top" Style="{StaticResource ListCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Padding="16,10,12,8" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="{StaticResource DriverColumnWidth}" />
+                                <ColumnDefinition Width="{StaticResource SubnetColumnWidth}" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Name" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Style="{StaticResource ColumnHeaderTextStyle}"
+                                Text="Driver" />
+                            <TextBlock
+                                Grid.Column="2"
+                                Style="{StaticResource ColumnHeaderTextStyle}"
+                                Text="Subnet" />
+                        </Grid>
+                        <ScrollViewer Grid.Row="1">
+                            <ItemsRepeater
+                                AutomationProperties.AutomationId="NetworksList"
+                                ItemTemplate="{StaticResource NetworkTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Items}" />
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
 
-                                <Button
-                                    Grid.Column="5"
-                                    HorizontalAlignment="Right"
-                                    AutomationProperties.HelpText="{x:Bind Name}"
-                                    AutomationProperties.Name="Delete"
-                                    Click="OnRemove"
-                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                    IsEnabled="{x:Bind CanRemove}"
-                                    Style="{StaticResource RowActionButtonStyle}"
-                                    Tag="{x:Bind}"
-                                    ToolTipService.ToolTip="{x:Bind views:NetworksPage.RemoveToolTip(CanRemove)}">
-                                    <FontIcon FontSize="14" Glyph="&#xE74D;" />
-                                </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-
-                <ProgressRing
-                    Grid.Row="1"
-                    IsActive="{x:Bind views:NetworksPage.IsWaiting(ViewModel.IsLoaded, ViewModel.HasError), Mode=OneWay}" />
+                <Border
+                    Grid.Column="1"
+                    Padding="16"
+                    VerticalAlignment="Top"
+                    AutomationProperties.AutomationId="NetworkDetails"
+                    Style="{StaticResource ListCardStyle}"
+                    Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
+                    <StackPanel Spacing="12">
+                        <StackPanel>
+                            <TextBlock
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="{x:Bind ViewModel.Selected.Name, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind ViewModel.Selected.Details, Mode=OneWay}" />
+                        </StackPanel>
+                        <MenuFlyoutSeparator />
+                        <StackPanel Spacing="8">
+                            <TextBlock FontWeight="SemiBold" Text="Connected containers" />
+                            <ItemsControl ItemTemplate="{StaticResource EndpointTemplate}" ItemsSource="{x:Bind ViewModel.Endpoints}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <TextBlock
+                                Style="{StaticResource SecondaryCellTextStyle}"
+                                Text="{x:Bind ViewModel.EndpointsNote, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <MenuFlyoutSeparator />
+                        <Button
+                            AutomationProperties.AutomationId="DeleteNetworkButton"
+                            Click="OnDelete"
+                            Content="Delete"
+                            IsEnabled="{x:Bind views:NetworksPage.CanDelete(ViewModel.Selected.CanRemove, ViewModel.Selected.HasProject), Mode=OneWay}" />
+                        <TextBlock
+                            FontSize="12"
+                            Style="{StaticResource SecondaryTextStyle}"
+                            Text="{x:Bind ViewModel.Selected.DeleteNote, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
             </Grid>
-        </Border>
+        </Grid>
     </Grid>
 </Page>

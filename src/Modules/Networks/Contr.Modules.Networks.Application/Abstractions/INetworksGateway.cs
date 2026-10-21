@@ -17,4 +17,14 @@ public interface INetworksGateway
 
     /// <summary>Deletes a network; the engine refuses while a container is connected to it.</summary>
     Task<Result> RemoveAsync(NetworkId id, CancellationToken cancellationToken);
+
+    /// <summary>Creates a bridge network with a subnet the engine allocates.</summary>
+    Task<Result> CreateAsync(string name, CancellationToken cancellationToken);
+
+    /// <summary>The running containers connected to the network.</summary>
+    Task<Result<IReadOnlyList<NetworkEndpointDto>>> GetEndpointsAsync(
+        NetworkId id, CancellationToken cancellationToken);
+
+    /// <summary>Deletes unused user-defined networks; returns how many it deleted.</summary>
+    Task<Result<int>> PruneAsync(CancellationToken cancellationToken);
 }

@@ -29,8 +29,14 @@ internal static class ImageMapping
             new ImageId(image.Id),
             [.. image.RepoTags],
             image.CreatedAt?.ToDateTimeOffset() ?? DateTimeOffset.UnixEpoch,
-            (long)image.SizeBytes,
-            image.Containers);
+            ToLong(image.SizeBytes),
+            image.Containers,
+            image.RepoDigests.Count > 0);
+    }
+
+    public static long ToLong(ulong value)
+    {
+        return value > long.MaxValue ? long.MaxValue : (long)value;
     }
 
     /// <summary>Returns <see langword="null"/> for an event kind this client does not know.</summary>

@@ -24,7 +24,7 @@ public sealed class ImageHandlerTests
             .Handle(new PullImageQuery("Not Valid"), CancellationToken.None);
 
         Assert.Equal("Images.Reference.Invalid", result.Error.Code);
-        _gateway.DidNotReceiveWithAnyArgs().PullAsync(default!, default);
+        _gateway.DidNotReceiveWithAnyArgs().PullAsync(default!, default!, default);
     }
 
     [Fact]
@@ -34,11 +34,12 @@ public sealed class ImageHandlerTests
         _gateway
             .PullAsync(
                 Arg.Is<ImageReference>(reference => reference != null && reference.Canonical == "nginx:1.29"),
+                "linux/arm64",
                 Arg.Any<CancellationToken>())
             .Returns(events);
 
         var result = await new PullImageQueryHandler(_gateway)
-            .Handle(new PullImageQuery(" nginx:1.29 "), CancellationToken.None);
+            .Handle(new PullImageQuery(" nginx:1.29 ", "linux/arm64"), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Same(events, result.Value);

@@ -32,11 +32,13 @@ public sealed class ImagesGateway : IImagesGateway
             cancellationToken);
     }
 
-    public IAsyncEnumerable<PullEvent> PullAsync(ImageReference reference, CancellationToken cancellationToken)
+    public IAsyncEnumerable<PullEvent> PullAsync(
+        ImageReference reference, string platform, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(reference);
+        ArgumentNullException.ThrowIfNull(platform);
 
-        var request = new ImagesV1.PullImageRequest { Reference = reference.Canonical };
+        var request = new ImagesV1.PullImageRequest { Reference = reference.Canonical, Platform = platform };
 
         return _daemon.StreamAsync(
             (client, token) => client.Images.PullImage(request, cancellationToken: token),
@@ -56,5 +58,26 @@ public sealed class ImagesGateway : IImagesGateway
                 .RemoveImageAsync(request, cancellationToken: token)
                 .ResponseAsync,
             cancellationToken);
+    }
+
+    public async Task<Result<PruneResult>> PruneAsync(bool all, CancellationToken cancellationToken)
+    {
+        var request = new ImagesV1.PruneImagesRequest { All = all };
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Images
+                    .PruneImagesAsync(request, cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return Result.Failure<PruneResult>(result.Error);
+        }
+
+        var response = result.Value;
+
+        return Result.Success(new PruneResult(response.Deleted.Count, ImageMapping.ToLong(response.ReclaimedBytes)));
     }
 }

@@ -1,12 +1,16 @@
 using System;
+using System.Collections.Generic;
+using Contr.Modules.Volumes.Application.Volumes;
 using Contr.Modules.Volumes.UI.ViewModels;
+using Contr.UI.Contracts;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace Contr.Modules.Volumes.UI.Views;
 
-/// <summary>The engine's volumes, with creation and removal.</summary>
-public sealed partial class VolumesPage : Page
+/// <summary>The volumes, the containers that use them, and a details panel for the selected one.</summary>
+public sealed partial class VolumesPage : Page, IHasViewModel
 {
     public VolumesPage(VolumesViewModel viewModel)
     {
@@ -21,24 +25,60 @@ public sealed partial class VolumesPage : Page
 
     public VolumesViewModel ViewModel { get; }
 
-    public static InfoBarSeverity SeverityFor(bool engineDown)
+    Contr.UI.Contracts.ViewModel IHasViewModel.ViewModel => ViewModel;
+
+    public static string Shown(string text, bool engineOpen)
     {
-        return engineDown ? InfoBarSeverity.Warning : InfoBarSeverity.Error;
+        return engineOpen ? text : string.Empty;
     }
 
-    public static bool IsWaiting(bool isLoaded, bool hasError)
+    public static Visibility Visible(bool first, bool second)
     {
-        return !isLoaded && !hasError;
+        return first && second ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static bool ShowsBoth(bool first, bool second)
+    {
+        return first && second;
+    }
+
+    public static Visibility WhenTrue(bool value)
+    {
+        return value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public static Visibility WhenText(string text)
+    {
+        return string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public static bool IsWaiting(bool engineOpen, bool isLoaded, bool hasError)
+    {
+        return engineOpen && !isLoaded && !hasError;
+    }
+
+    /// <summary>A volume can be deleted once it is known that no container mounts it.</summary>
+    public static bool CanDelete(bool inUse, IReadOnlyList<VolumeMountDto>? mounts)
+    {
+        return !inUse && mounts is not null;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StartWatching();
+        ViewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.StopWatching();
+        ViewModel.Deactivate();
+    }
+
+    private void OnRowTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is VolumeItem item)
+        {
+            ViewModel.Select(item);
+        }
     }
 
     private async void OnCreate(object sender, RoutedEventArgs e)
@@ -46,11 +86,24 @@ public sealed partial class VolumesPage : Page
         await ViewModel.PromptAndCreateAsync();
     }
 
-    private async void OnRemove(object sender, RoutedEventArgs e)
+    private async void OnRemoveUnused(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.Tag is VolumeRow row)
+        await ViewModel.RemoveUnusedAsync();
+    }
+
+    private void OnCopyName(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Selected is { } item)
         {
-            await ViewModel.RemoveAsync(row);
+            ViewModel.CopyName(item);
+        }
+    }
+
+    private async void OnDelete(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Selected is { } item)
+        {
+            await ViewModel.RemoveAsync(item);
         }
     }
 }

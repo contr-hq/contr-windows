@@ -45,4 +45,49 @@ public sealed class NetworksGateway : INetworksGateway
                 .ResponseAsync,
             cancellationToken);
     }
+
+    public Task<Result> CreateAsync(string name, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var request = new NetworksV1.CreateNetworkRequest { Name = name };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Networks
+                .CreateNetworkAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
+    public async Task<Result<IReadOnlyList<NetworkEndpointDto>>> GetEndpointsAsync(
+        NetworkId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        var request = new NetworksV1.InspectNetworkRequest { Id = id.Value };
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Networks
+                    .InspectNetworkAsync(request, cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Result.Success(NetworkMapping.ToEndpoints(result.Value.RawJson))
+            : Result.Failure<IReadOnlyList<NetworkEndpointDto>>(result.Error);
+    }
+
+    public async Task<Result<int>> PruneAsync(CancellationToken cancellationToken)
+    {
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Networks
+                    .PruneNetworksAsync(new NetworksV1.PruneNetworksRequest(), cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess ? Result.Success(result.Value.Deleted.Count) : Result.Failure<int>(result.Error);
+    }
 }

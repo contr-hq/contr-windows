@@ -38,9 +38,35 @@ public sealed class ImageRowTests
         Assert.Equal("192 MB", row.Size);
     }
 
-    private static ImageDto Image(string[] tags, long containers)
+    [Theory]
+    [InlineData(-1, "—")]
+    [InlineData(0, "Not used")]
+    [InlineData(1, "1 container")]
+    [InlineData(3, "3 containers")]
+    public void UsedBy_CountsTheContainers(long containers, string expected)
+    {
+        Assert.Equal(expected, ImageRow.From(Image(["nginx:1.29"], containers)).UsedBy);
+    }
+
+    [Fact]
+    public void From_MarksATaggedImageNoRegistryKnowsAsALocalBuild()
+    {
+        var built = ImageRow.From(Image(["shop-api-worker:dev"], containers: 0, hasDigest: false));
+        var dangling = ImageRow.From(Image([], containers: 0, hasDigest: false));
+
+        Assert.True(built.IsLocalBuild);
+        Assert.False(dangling.IsLocalBuild);
+        Assert.True(dangling.IsDangling);
+    }
+
+    private static ImageDto Image(string[] tags, long containers, bool hasDigest = true)
     {
         return new ImageDto(
-            new ImageId("sha256:5e1a000000000000"), tags, DateTimeOffset.UtcNow.AddDays(-3), 192_000_000, containers);
+            new ImageId("sha256:5e1a000000000000"),
+            tags,
+            DateTimeOffset.UtcNow.AddDays(-3),
+            192_000_000,
+            containers,
+            hasDigest);
     }
 }
