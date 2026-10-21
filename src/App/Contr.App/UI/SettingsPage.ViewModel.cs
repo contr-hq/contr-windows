@@ -138,6 +138,7 @@ public sealed partial class SettingsViewModel : ViewModel
         _notifications = notifications;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         Autostart = new EngineAutostartViewModel(daemon, settings, notifications);
+        Proxies = new ProxySettingsViewModel(settings, daemon, notifications);
         ThemeIndex = themeService.Theme switch {
             ElementTheme.Light => 1,
             ElementTheme.Dark => 2,
@@ -169,6 +170,9 @@ public sealed partial class SettingsViewModel : ViewModel
     public EngineAutostartViewModel Autostart { get; }
 
     public bool CanChangeDefaultPipe => !IsDefaultPipeLocked;
+
+    /// <summary>The Proxies and certificates tab.</summary>
+    public ProxySettingsViewModel Proxies { get; }
 
     public string DaemonDescription { get; }
 
@@ -213,6 +217,7 @@ public sealed partial class SettingsViewModel : ViewModel
     public void Activate()
     {
         Autostart.Start();
+        Proxies.Activate();
         _subscription ??= _settings.Changes.Subscribe(settings => {
             // Changes emits on a background thread.
             if (_dispatcher is null)
@@ -229,6 +234,7 @@ public sealed partial class SettingsViewModel : ViewModel
     public void Deactivate()
     {
         Autostart.Stop();
+        Proxies.Deactivate();
         _subscription?.Dispose();
         _subscription = null;
     }
@@ -242,6 +248,7 @@ public sealed partial class SettingsViewModel : ViewModel
         ServesDefaultPipe = settings?.ServeDefaultPipe == true;
         IsDefaultPipeLocked = settings?.IsLocked(DaemonSetting.ServeDefaultPipe) == true;
         _isShowing = false;
+        Proxies.Show(settings);
     }
 
     /// <summary>Asks the daemon for <paramref name="value"/>; a refusal turns the switch back and says why.</summary>

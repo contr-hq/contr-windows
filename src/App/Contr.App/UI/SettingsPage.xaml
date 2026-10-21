@@ -30,539 +30,704 @@
                         Text="{x:Bind local:SettingsPage.ToolVersion(InstalledVersion, BundledVersion)}" />
                 </StackPanel>
             </DataTemplate>
+
+            <Style x:Key="ProxyFieldStyle" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
+                <Setter Property="Margin" Value="0,6,0,0" />
+            </Style>
         </ResourceDictionary>
     </Page.Resources>
 
-    <ScrollViewer>
-        <Grid Padding="24">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
-            </Grid.ColumnDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <!--  Margins rather than spacing, so a closed bar leaves no gap behind.  -->
-            <StackPanel>
-                <common:PageHeader Trail="{x:Bind local:SettingsPage.Trail(ViewModel.TabIndex), Mode=OneWay}" TrailClicked="OnTrailClicked" />
+        <ScrollViewer>
+            <Grid Padding="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition MaxWidth="{StaticResource PageContentMaxWidth}" />
+                </Grid.ColumnDefinitions>
 
-                <InfoBar
-                    Title="Some settings are managed by your organization."
-                    Margin="0,16,0,0"
-                    AutomationProperties.AutomationId="ManagedSettings"
-                    IsClosable="False"
-                    IsOpen="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}"
-                    Message="Settings with a lock can only be changed by your IT admin."
-                    Severity="Informational"
-                    Visibility="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}">
-                    <InfoBar.IconSource>
-                        <FontIconSource FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Organization}" />
-                    </InfoBar.IconSource>
-                </InfoBar>
+                <!--  Margins rather than spacing, so a closed bar leaves no gap behind.  -->
+                <StackPanel>
+                    <common:PageHeader Trail="{x:Bind local:SettingsPage.Trail(ViewModel.TabIndex), Mode=OneWay}" TrailClicked="OnTrailClicked" />
 
-                <!--  The open tab's messages, under the breadcrumb and before the tabs.  -->
-                <InfoBar
-                    Title="Resource limits are not available yet"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 1, ViewModel.LacksResourceLimits), Mode=OneWay}"
-                    Message="This version of the Contr daemon cannot change the WSL virtual machine's limits."
-                    Severity="Informational"
-                    Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 1, ViewModel.LacksResourceLimits), Mode=OneWay}" />
-                <InfoBar
-                    Title="WSL integration is not available yet"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}"
-                    Message="This version of the Contr daemon does not integrate your WSL distributions."
-                    Severity="Informational"
-                    Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}" />
-                <InfoBar
-                    Title="WSL integration didn't change"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}"
-                    Message="{x:Bind ViewModel.WslError, Mode=OneWay}"
-                    Severity="Error"
-                    Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}" />
-                <InfoBar
-                    Title="Proxy and certificate settings are not available yet"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="True"
-                    Message="This version of the Contr daemon cannot change the engine's proxy or certificates."
-                    Severity="Informational"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}" />
-                <InfoBar
-                    Title="Engine configuration is not available yet"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="True"
-                    Message="This version of the Contr daemon cannot edit the engine's daemon.json."
-                    Severity="Informational"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}" />
-                <InfoBar
-                    Title="Updates are not available yet"
-                    Margin="0,16,0,0"
-                    IsClosable="False"
-                    IsOpen="True"
-                    Message="This version of Contr does not check for updates."
-                    Severity="Informational"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}" />
+                    <InfoBar
+                        Title="Some settings are managed by your organization."
+                        Margin="0,16,0,0"
+                        AutomationProperties.AutomationId="ManagedSettings"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}"
+                        Message="Settings with a lock can only be changed by your IT admin."
+                        Severity="Informational"
+                        Visibility="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}">
+                        <InfoBar.IconSource>
+                            <FontIconSource FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Organization}" />
+                        </InfoBar.IconSource>
+                    </InfoBar>
 
-                <SelectorBar
-                    x:Name="Tabs"
-                    Margin="0,8,0,0"
-                    SelectionChanged="OnTabSelectionChanged">
-                    <SelectorBarItem x:Name="GeneralTab" Text="General" />
-                    <SelectorBarItem x:Name="ResourcesTab" Text="Resources" />
-                    <SelectorBarItem x:Name="WslTab" Text="WSL integration" />
-                    <SelectorBarItem x:Name="ProxiesTab" Text="Proxies and certificates" />
-                    <SelectorBarItem x:Name="EngineTab" Text="Engine" />
-                    <SelectorBarItem x:Name="KubernetesTab" Text="Kubernetes" />
-                    <SelectorBarItem x:Name="UpdatesTab" Text="Updates" />
-                </SelectorBar>
+                    <!--  The open tab's messages, under the breadcrumb and before the tabs.  -->
+                    <InfoBar
+                        Title="Resource limits are not available yet"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 1, ViewModel.LacksResourceLimits), Mode=OneWay}"
+                        Message="This version of the Contr daemon cannot change the WSL virtual machine's limits."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 1, ViewModel.LacksResourceLimits), Mode=OneWay}" />
+                    <InfoBar
+                        Title="WSL integration is not available yet"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}"
+                        Message="This version of the Contr daemon does not integrate your WSL distributions."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.LacksWslIntegration), Mode=OneWay}" />
+                    <InfoBar
+                        Title="WSL integration didn't change"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}"
+                        Message="{x:Bind ViewModel.WslError, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.HasWslError), Mode=OneWay}" />
+                    <InfoBar
+                        Title="Proxy and certificate settings aren't available"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This engine doesn't take proxy, certificate or registry mirror settings from Contr."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Proxies.LacksOffer), Mode=OneWay}" />
+                    <InfoBar
+                        Title="Engine configuration is not available yet"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This version of the Contr daemon cannot edit the engine's daemon.json."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}" />
+                    <InfoBar
+                        Title="Updates are not available yet"
+                        Margin="0,16,0,0"
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="This version of Contr does not check for updates."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}" />
 
-                <!--  General  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 0), Mode=OneWay}">
-                    <TextBlock
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Changes on this page apply right away." />
+                    <SelectorBar
+                        x:Name="Tabs"
+                        Margin="0,8,0,0"
+                        SelectionChanged="OnTabSelectionChanged">
+                        <SelectorBarItem x:Name="GeneralTab" Text="General" />
+                        <SelectorBarItem x:Name="ResourcesTab" Text="Resources" />
+                        <SelectorBarItem x:Name="WslTab" Text="WSL integration" />
+                        <SelectorBarItem x:Name="ProxiesTab" Text="Proxies and certificates" />
+                        <SelectorBarItem x:Name="EngineTab" Text="Engine" />
+                        <SelectorBarItem x:Name="KubernetesTab" Text="Kubernetes" />
+                        <SelectorBarItem x:Name="UpdatesTab" Text="Updates" />
+                    </SelectorBar>
 
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="STARTUP AND CLOSING" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Opens in the notification area, not as a window."
-                                Header="Start Contr when I sign in to Windows">
-                                <ToggleSwitch AutomationProperties.AutomationId="StartAtSignInToggle" IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it.">
-                                <controls:SettingsCard.Header>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="Start the engine with Contr" />
-                                        <common:PillView
-                                            Kind="Locked"
-                                            Text="Managed by your organization"
-                                            Visibility="{x:Bind ViewModel.Autostart.IsLocked, Mode=OneWay}" />
-                                    </StackPanel>
-                                </controls:SettingsCard.Header>
-                                <ToggleSwitch
-                                    AutomationProperties.AutomationId="StartsEngineToggle"
-                                    AutomationProperties.Name="Start the engine with Contr"
-                                    IsEnabled="{x:Bind ViewModel.Autostart.CanChange, Mode=OneWay}"
-                                    IsOn="{x:Bind ViewModel.Autostart.IsOn, Mode=TwoWay}" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                HorizontalContentAlignment="Left"
-                                ContentAlignment="Vertical"
-                                Header="When I close the window">
-                                <RadioButtons SelectedIndex="0">
-                                    <RadioButton Content="Keep running in the notification area" />
-                                    <RadioButton Content="Quit Contr and stop the engine" IsEnabled="False" />
-                                </RadioButtons>
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
+                    <!--  General  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 0), Mode=OneWay}">
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Changes on this page apply right away." />
 
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="APPEARANCE" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Choose the colors that appear in the app."
-                                Header="Theme">
-                                <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
-                                    <ComboBoxItem Content="System default" />
-                                    <ComboBoxItem Content="Light" />
-                                    <ComboBoxItem Content="Dark" />
-                                </ComboBox>
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Follow the Windows accent, or use Contr's own."
-                                Header="Accent color"
-                                Visibility="{x:Bind ViewModel.HasAccentChoice}">
-                                <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}">
-                                    <ComboBoxItem Content="Windows" />
-                                    <ComboBoxItem Content="Contr" />
-                                </ComboBox>
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="STARTUP AND CLOSING" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="Opens in the notification area, not as a window."
+                                    Header="Start Contr when I sign in to Windows">
+                                    <ToggleSwitch AutomationProperties.AutomationId="StartAtSignInToggle" IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Start the engine with Contr" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Autostart.IsLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <ToggleSwitch
+                                        AutomationProperties.AutomationId="StartsEngineToggle"
+                                        AutomationProperties.Name="Start the engine with Contr"
+                                        IsEnabled="{x:Bind ViewModel.Autostart.CanChange, Mode=OneWay}"
+                                        IsOn="{x:Bind ViewModel.Autostart.IsOn, Mode=TwoWay}" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    HorizontalContentAlignment="Left"
+                                    ContentAlignment="Vertical"
+                                    Header="When I close the window">
+                                    <RadioButtons SelectedIndex="0">
+                                        <RadioButton Content="Keep running in the notification area" />
+                                        <RadioButton Content="Quit Contr and stop the engine" IsEnabled="False" />
+                                    </RadioButtons>
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
 
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="COMMAND-LINE TOOLS" />
-                            <controls:SettingsExpander
-                                Description="{x:Bind ViewModel.ToolsDetail, Mode=OneWay}"
-                                Header="{x:Bind ViewModel.ToolsTitle, Mode=OneWay}"
-                                IsExpanded="True">
-                                <controls:SettingsExpander.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsExpander.HeaderIcon>
-                                <Button
-                                    AutomationProperties.AutomationId="InstallToolsButton"
-                                    Command="{x:Bind ViewModel.InstallToolsCommand}"
-                                    Content="{x:Bind ViewModel.InstallToolsText, Mode=OneWay}"
-                                    IsEnabled="{x:Bind ViewModel.CanInstallTools, Mode=OneWay}" />
-                                <controls:SettingsExpander.Items>
-                                    <controls:SettingsCard ContentAlignment="Left">
-                                        <ItemsControl ItemTemplate="{StaticResource ToolTemplate}" ItemsSource="{x:Bind ViewModel.Tools}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" Spacing="12" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
-                                    </controls:SettingsCard>
-                                    <controls:SettingsCard ContentAlignment="Left" Visibility="{x:Bind ViewModel.HasToolsNote, Mode=OneWay}">
-                                        <TextBlock
-                                            FontSize="12"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Text="{x:Bind ViewModel.ToolsNote, Mode=OneWay}"
-                                            TextWrapping="Wrap" />
-                                    </controls:SettingsCard>
-                                </controls:SettingsExpander.Items>
-                            </controls:SettingsExpander>
-                        </StackPanel>
-                    </Border>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="APPEARANCE" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="Choose the colors that appear in the app."
+                                    Header="Theme">
+                                    <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="System default" />
+                                        <ComboBoxItem Content="Light" />
+                                        <ComboBoxItem Content="Dark" />
+                                    </ComboBox>
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Follow the Windows accent, or use Contr's own."
+                                    Header="Accent color"
+                                    Visibility="{x:Bind ViewModel.HasAccentChoice}">
+                                    <ComboBox MinWidth="150" SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Windows" />
+                                        <ComboBoxItem Content="Contr" />
+                                    </ComboBox>
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
 
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="HOW TOOLS CONNECT" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="The Docker context Contr made for this engine. Make it current with docker context use."
-                                Header="Docker context">
-                                <TextBlock
-                                    IsTextSelectionEnabled="True"
-                                    Style="{StaticResource IdentifierTextStyle}"
-                                    Text="{x:Bind local:SettingsPage.OrDash(ViewModel.ContextName)}" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
-                                <controls:SettingsCard.Header>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="Also listen on the standard Docker pipe" />
-                                        <common:PillView
-                                            Kind="Locked"
-                                            Text="Managed by your organization"
-                                            Visibility="{x:Bind ViewModel.IsDefaultPipeLocked, Mode=OneWay}" />
-                                    </StackPanel>
-                                </controls:SettingsCard.Header>
-                                <controls:SettingsCard.Description>
-                                    <TextBlock TextWrapping="Wrap">
-                                        <Run Text="For tools that ignore contexts:" />
-                                        <Run FontFamily="Cascadia Mono,Consolas" Text="\\.\pipe\docker_engine" /><Run Text=", while no other program uses it. Applies at the next engine start." />
-                                    </TextBlock>
-                                </controls:SettingsCard.Description>
-                                <ToggleSwitch
-                                    AutomationProperties.AutomationId="DefaultPipeToggle"
-                                    AutomationProperties.Name="Also listen on the standard Docker pipe"
-                                    IsEnabled="{x:Bind ViewModel.CanChangeDefaultPipe, Mode=OneWay}"
-                                    IsOn="{x:Bind ViewModel.ServesDefaultPipe, Mode=TwoWay}" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="DAEMON AND DIAGNOSTICS" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="{x:Bind ViewModel.DaemonDescription}"
-                                Header="Contr daemon">
-                                <TextBlock
-                                    MaxWidth="420"
-                                    FontSize="12"
-                                    IsTextSelectionEnabled="True"
-                                    Style="{StaticResource IdentifierTextStyle}"
-                                    Text="{x:Bind ViewModel.DaemonEndpoint}" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard Description="Errors are written to a log file on this machine. Nothing is sent anywhere." Header="Log files">
-                                <Button
-                                    AutomationProperties.Name="Open the log folder"
-                                    Command="{x:Bind ViewModel.OpenLogFolderCommand}"
-                                    Content="Open log folder" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Returns the engine settings you changed here to their defaults."
-                                Header="Engine settings"
-                                Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
-                                <Button
-                                    AutomationProperties.AutomationId="ResetSettingsButton"
-                                    Click="OnResetSettings"
-                                    Content="Reset to defaults"
-                                    IsEnabled="{x:Bind local:SettingsPage.Not(ViewModel.IsResetting), Mode=OneWay}" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard Description="Checks this PC, sets up the engine and the tools again." Header="Setup">
-                                <Button
-                                    AutomationProperties.AutomationId="RunSetupButton"
-                                    Click="OnRunSetup"
-                                    Content="Run setup again" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!--  Resources  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 1), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="WSL 2 VIRTUAL MACHINE" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Maximum memory for the WSL VM. Containers share it."
-                                Header="Memory"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Memory}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <Slider Width="200" AutomationProperties.Name="Memory" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="{x:Bind local:SettingsPage.ProcessorsText()}"
-                                Header="Processors"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Processor}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <ComboBox MinWidth="120" PlaceholderText="—" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Mirrored works best with VPNs. NAT keeps containers on a private subnet."
-                                Header="Networking mode"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Networks}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <ComboBox MinWidth="150" PlaceholderText="—" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Where the engine keeps images, containers and volumes."
-                                Header="Data disk location"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Disk}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <Button Content="Move…" />
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Shrinks the virtual disk when images and volumes are removed."
-                                Header="Give unused disk space back to Windows"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Sync}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <ToggleSwitch />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!--  WSL integration  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 2), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="WSL INTEGRATION" />
-                            <TextBlock
-                                Margin="0,4,0,6"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                TextWrapping="Wrap">
-                                <Run Text="Make the" />
-                                <Run FontFamily="Cascadia Mono,Consolas" Text="docker" />
-                                <Run Text="command work inside your own distros. Contr shares one engine with all of them." />
-                            </TextBlock>
-                            <!--  Each switch applies when flipped; the daemon keeps the choice across restarts.  -->
-                            <controls:SettingsExpander
-                                AutomationProperties.AutomationId="WslDistributions"
-                                Description="{x:Bind local:SettingsPage.Or(ViewModel.WslSummary, 'docker inside these distros talks to Contr.'), Mode=OneWay}"
-                                Header="Your distros"
-                                IsEnabled="{x:Bind ViewModel.OffersWslIntegration}"
-                                IsExpanded="True"
-                                ItemsSource="{x:Bind ViewModel.Distributions}">
-                                <controls:SettingsExpander.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Distros}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsExpander.HeaderIcon>
-                                <controls:SettingsExpander.ItemTemplate>
-                                    <DataTemplate x:DataType="local:WslDistributionItem">
-                                        <controls:SettingsCard Description="{x:Bind Detail, Mode=OneWay}" IsEnabled="{x:Bind CanChange, Mode=OneWay}">
-                                            <controls:SettingsCard.Header>
-                                                <TextBlock>
-                                                    <Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind Name}" />
-                                                    <Run
-                                                        FontSize="12"
-                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                        Text="{x:Bind DefaultText, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </controls:SettingsCard.Header>
-                                            <ToggleSwitch AutomationProperties.Name="{x:Bind Name}" IsOn="{x:Bind IsOn, Mode=TwoWay}" />
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="COMMAND-LINE TOOLS" />
+                                <controls:SettingsExpander
+                                    Description="{x:Bind ViewModel.ToolsDetail, Mode=OneWay}"
+                                    Header="{x:Bind ViewModel.ToolsTitle, Mode=OneWay}"
+                                    IsExpanded="True">
+                                    <controls:SettingsExpander.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Terminal}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsExpander.HeaderIcon>
+                                    <Button
+                                        AutomationProperties.AutomationId="InstallToolsButton"
+                                        Command="{x:Bind ViewModel.InstallToolsCommand}"
+                                        Content="{x:Bind ViewModel.InstallToolsText, Mode=OneWay}"
+                                        IsEnabled="{x:Bind ViewModel.CanInstallTools, Mode=OneWay}" />
+                                    <controls:SettingsExpander.Items>
+                                        <controls:SettingsCard ContentAlignment="Left">
+                                            <ItemsControl ItemTemplate="{StaticResource ToolTemplate}" ItemsSource="{x:Bind ViewModel.Tools}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="12" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                            </ItemsControl>
                                         </controls:SettingsCard>
-                                    </DataTemplate>
-                                </controls:SettingsExpander.ItemTemplate>
-                            </controls:SettingsExpander>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                                        <controls:SettingsCard ContentAlignment="Left" Visibility="{x:Bind ViewModel.HasToolsNote, Mode=OneWay}">
+                                            <TextBlock
+                                                FontSize="12"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Text="{x:Bind ViewModel.ToolsNote, Mode=OneWay}"
+                                                TextWrapping="Wrap" />
+                                        </controls:SettingsCard>
+                                    </controls:SettingsExpander.Items>
+                                </controls:SettingsExpander>
+                            </StackPanel>
+                        </Border>
 
-                <!--  Proxies and certificates  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="PROXY" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                HorizontalContentAlignment="Left"
-                                ContentAlignment="Vertical"
-                                Description="Used for image pulls and builds."
-                                Header="How the engine finds your proxy"
-                                IsEnabled="False">
-                                <RadioButtons MaxColumns="3">
-                                    <RadioButton Content="Use Windows settings" />
-                                    <RadioButton Content="Manual" />
-                                    <RadioButton Content="No proxy" />
-                                </RadioButtons>
-                            </controls:SettingsCard>
-                            <controls:SettingsCard
-                                Description="Sets HTTP_PROXY, HTTPS_PROXY and NO_PROXY in new containers and builds."
-                                Header="Pass these settings to containers"
-                                IsEnabled="False">
-                                <ToggleSwitch />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="CERTIFICATES" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Copies your organization's root certificates into the engine, so pulls work when your network inspects HTTPS traffic."
-                                Header="Trust certificates from Windows"
-                                IsEnabled="False">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Certificate}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <ToggleSwitch />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="REGISTRY" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Pulls from Docker Hub go through this mirror first."
-                                Header="Registry mirror"
-                                IsEnabled="False">
-                                <TextBox
-                                    MinWidth="260"
-                                    FontFamily="Cascadia Mono,Consolas"
-                                    PlaceholderText="https://" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="HOW TOOLS CONNECT" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="The Docker context Contr made for this engine. Make it current with docker context use."
+                                    Header="Docker context">
+                                    <TextBlock
+                                        IsTextSelectionEnabled="True"
+                                        Style="{StaticResource IdentifierTextStyle}"
+                                        Text="{x:Bind local:SettingsPage.OrDash(ViewModel.ContextName)}" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Also listen on the standard Docker pipe" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.IsDefaultPipeLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <controls:SettingsCard.Description>
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run Text="For tools that ignore contexts:" />
+                                            <Run FontFamily="Cascadia Mono,Consolas" Text="\\.\pipe\docker_engine" /><Run Text=", while no other program uses it. Applies at the next engine start." />
+                                        </TextBlock>
+                                    </controls:SettingsCard.Description>
+                                    <ToggleSwitch
+                                        AutomationProperties.AutomationId="DefaultPipeToggle"
+                                        AutomationProperties.Name="Also listen on the standard Docker pipe"
+                                        IsEnabled="{x:Bind ViewModel.CanChangeDefaultPipe, Mode=OneWay}"
+                                        IsOn="{x:Bind ViewModel.ServesDefaultPipe, Mode=TwoWay}" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
 
-                <!--  Engine  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="ENGINE CONFIGURATION" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="The engine's own configuration file. Contr adds your proxy and certificate settings to it when the engine starts."
-                                Header="daemon.json"
-                                IsEnabled="False">
-                                <Button Content="Reset to defaults" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="DAEMON AND DIAGNOSTICS" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="{x:Bind ViewModel.DaemonDescription}"
+                                    Header="Contr daemon">
+                                    <TextBlock
+                                        MaxWidth="420"
+                                        FontSize="12"
+                                        IsTextSelectionEnabled="True"
+                                        Style="{StaticResource IdentifierTextStyle}"
+                                        Text="{x:Bind ViewModel.DaemonEndpoint}" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard Description="Errors are written to a log file on this machine. Nothing is sent anywhere." Header="Log files">
+                                    <Button
+                                        AutomationProperties.Name="Open the log folder"
+                                        Command="{x:Bind ViewModel.OpenLogFolderCommand}"
+                                        Content="Open log folder" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Returns the engine settings you changed here to their defaults."
+                                    Header="Engine settings"
+                                    Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
+                                    <Button
+                                        AutomationProperties.AutomationId="ResetSettingsButton"
+                                        Click="OnResetSettings"
+                                        Content="Reset to defaults"
+                                        IsEnabled="{x:Bind local:SettingsPage.Not(ViewModel.IsResetting), Mode=OneWay}" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard Description="Checks this PC, sets up the engine and the tools again." Header="Setup">
+                                    <Button
+                                        AutomationProperties.AutomationId="RunSetupButton"
+                                        Click="OnRunSetup"
+                                        Content="Run setup again" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                <!--  Kubernetes  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="KUBERNETES" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="The cluster's settings are on the Kubernetes page."
-                                Header="Kubernetes">
-                                <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Kubernetes}" Style="{StaticResource IconStyle}" />
-                                </controls:SettingsCard.HeaderIcon>
-                                <Button Click="OnOpenKubernetes" Content="Open Kubernetes" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                    <!--  Resources  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 1), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="WSL 2 VIRTUAL MACHINE" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="Maximum memory for the WSL VM. Containers share it."
+                                    Header="Memory"
+                                    IsEnabled="False">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Memory}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <Slider Width="200" AutomationProperties.Name="Memory" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="{x:Bind local:SettingsPage.ProcessorsText()}"
+                                    Header="Processors"
+                                    IsEnabled="False">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Processor}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <ComboBox MinWidth="120" PlaceholderText="—" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Mirrored works best with VPNs. NAT keeps containers on a private subnet."
+                                    Header="Networking mode"
+                                    IsEnabled="False">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Networks}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <ComboBox MinWidth="150" PlaceholderText="—" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Where the engine keeps images, containers and volumes."
+                                    Header="Data disk location"
+                                    IsEnabled="False">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Disk}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <Button Content="Move…" />
+                                </controls:SettingsCard>
+                                <controls:SettingsCard
+                                    Description="Shrinks the virtual disk when images and volumes are removed."
+                                    Header="Give unused disk space back to Windows"
+                                    IsEnabled="False">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Sync}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <ToggleSwitch />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                <!--  Updates  -->
-                <StackPanel
-                    Margin="0,12,0,0"
-                    Spacing="16"
-                    Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}">
-                    <Border Style="{StaticResource SettingsGroupStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="UPDATE SETTINGS" />
-                            <controls:SettingsCard
-                                BorderThickness="0"
-                                Description="Your images, volumes and settings stay through an update."
-                                Header="Check for updates"
-                                IsEnabled="False">
-                                <Button Content="Check now" />
-                            </controls:SettingsCard>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource CaptionedCardStyle}">
-                        <StackPanel Spacing="12">
-                            <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="INSTALLED VERSIONS" />
-                            <Grid ColumnSpacing="16" RowSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Contr app" />
+                    <!--  WSL integration  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 2), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="WSL INTEGRATION" />
                                 <TextBlock
-                                    Grid.Column="1"
-                                    IsTextSelectionEnabled="True"
-                                    Style="{StaticResource IdentifierTextStyle}"
-                                    Text="{x:Bind ViewModel.AppVersion}" />
-                                <TextBlock
-                                    Grid.Row="1"
-                                    Style="{StaticResource FieldLabelStyle}"
-                                    Text="Contr daemon" />
-                                <TextBlock
-                                    Grid.Row="1"
-                                    Grid.Column="1"
-                                    IsTextSelectionEnabled="True"
-                                    Style="{StaticResource IdentifierTextStyle}"
-                                    Text="{x:Bind ViewModel.DaemonVersion}" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                                    Margin="0,4,0,6"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap">
+                                    <Run Text="Make the" />
+                                    <Run FontFamily="Cascadia Mono,Consolas" Text="docker" />
+                                    <Run Text="command work inside your own distros. Contr shares one engine with all of them." />
+                                </TextBlock>
+                                <!--  Each switch applies when flipped; the daemon keeps the choice across restarts.  -->
+                                <controls:SettingsExpander
+                                    AutomationProperties.AutomationId="WslDistributions"
+                                    Description="{x:Bind local:SettingsPage.Or(ViewModel.WslSummary, 'docker inside these distros talks to Contr.'), Mode=OneWay}"
+                                    Header="Your distros"
+                                    IsEnabled="{x:Bind ViewModel.OffersWslIntegration}"
+                                    IsExpanded="True"
+                                    ItemsSource="{x:Bind ViewModel.Distributions}">
+                                    <controls:SettingsExpander.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Distros}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsExpander.HeaderIcon>
+                                    <controls:SettingsExpander.ItemTemplate>
+                                        <DataTemplate x:DataType="local:WslDistributionItem">
+                                            <controls:SettingsCard Description="{x:Bind Detail, Mode=OneWay}" IsEnabled="{x:Bind CanChange, Mode=OneWay}">
+                                                <controls:SettingsCard.Header>
+                                                    <TextBlock>
+                                                        <Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind Name}" />
+                                                        <Run
+                                                            FontSize="12"
+                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                            Text="{x:Bind DefaultText, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </controls:SettingsCard.Header>
+                                                <ToggleSwitch AutomationProperties.Name="{x:Bind Name}" IsOn="{x:Bind IsOn, Mode=TwoWay}" />
+                                            </controls:SettingsCard>
+                                        </DataTemplate>
+                                    </controls:SettingsExpander.ItemTemplate>
+                                </controls:SettingsExpander>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Proxies and certificates  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="PROXY" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    HorizontalContentAlignment="Left"
+                                    ContentAlignment="Vertical"
+                                    Description="Used for image pulls and builds.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="How the engine finds your proxy" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsModeLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <!--  One row at each choice's own width, as the board spaces them.  -->
+                                    <StackPanel
+                                        AutomationProperties.Name="How the engine finds your proxy"
+                                        Orientation="Horizontal"
+                                        Spacing="24"
+                                        XYFocusKeyboardNavigation="Enabled">
+                                        <RadioButton
+                                            MinWidth="0"
+                                            AutomationProperties.AutomationId="ProxyModeSystem"
+                                            Checked="OnProxyModeChecked"
+                                            Content="Use Windows settings"
+                                            GroupName="ProxyMode"
+                                            IsChecked="{x:Bind local:SettingsPage.Is(ViewModel.Proxies.ModeIndex, 0), Mode=OneWay}"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditMode, Mode=OneWay}"
+                                            Tag="0" />
+                                        <RadioButton
+                                            MinWidth="0"
+                                            AutomationProperties.AutomationId="ProxyModeManual"
+                                            Checked="OnProxyModeChecked"
+                                            Content="Manual"
+                                            GroupName="ProxyMode"
+                                            IsChecked="{x:Bind local:SettingsPage.Is(ViewModel.Proxies.ModeIndex, 1), Mode=OneWay}"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditMode, Mode=OneWay}"
+                                            Tag="1" />
+                                        <RadioButton
+                                            MinWidth="0"
+                                            AutomationProperties.AutomationId="ProxyModeNone"
+                                            Checked="OnProxyModeChecked"
+                                            Content="No proxy"
+                                            GroupName="ProxyMode"
+                                            IsChecked="{x:Bind local:SettingsPage.Is(ViewModel.Proxies.ModeIndex, 2), Mode=OneWay}"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditMode, Mode=OneWay}"
+                                            Tag="2" />
+                                    </StackPanel>
+                                </controls:SettingsCard>
+                                <!--  The servers apply in manual mode; they stay visible, disabled, in the others.  -->
+                                <Grid
+                                    Padding="36,12,0,16"
+                                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    ColumnSpacing="16"
+                                    RowSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="HTTP proxy" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsHttpLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                        <TextBox
+                                            AutomationProperties.AutomationId="ProxyHttp"
+                                            AutomationProperties.Name="HTTP proxy"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditHttp, Mode=OneWay}"
+                                            PlaceholderText="http://proxy.example.com:8080"
+                                            Style="{StaticResource ProxyFieldStyle}"
+                                            Text="{x:Bind ViewModel.Proxies.Http, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="HTTPS proxy" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsHttpsLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                        <TextBox
+                                            AutomationProperties.AutomationId="ProxyHttps"
+                                            AutomationProperties.Name="HTTPS proxy"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditHttps, Mode=OneWay}"
+                                            PlaceholderText="http://proxy.example.com:8080"
+                                            Style="{StaticResource ProxyFieldStyle}"
+                                            Text="{x:Bind ViewModel.Proxies.Https, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Don't use the proxy for" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsExcludeLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                        <TextBox
+                                            AutomationProperties.AutomationId="ProxyExclude"
+                                            AutomationProperties.Name="Don't use the proxy for"
+                                            IsEnabled="{x:Bind ViewModel.Proxies.CanEditExclude, Mode=OneWay}"
+                                            PlaceholderText="localhost, 127.0.0.1, .corp.example.com"
+                                            Style="{StaticResource ProxyFieldStyle}"
+                                            Text="{x:Bind ViewModel.Proxies.Exclude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                                <controls:SettingsCard
+                                    Description="Sets HTTP_PROXY, HTTPS_PROXY and NO_PROXY in new containers and builds."
+                                    Header="Pass these settings to containers"
+                                    IsEnabled="False">
+                                    <ToggleSwitch />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="CERTIFICATES" />
+                                <controls:SettingsCard BorderThickness="0" Description="Copies your organization's root certificates into the engine, so pulls work when your network inspects HTTPS traffic.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Trust certificates from Windows" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsTrustLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Certificate}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <ToggleSwitch
+                                        AutomationProperties.AutomationId="TrustSystemCertificates"
+                                        AutomationProperties.Name="Trust certificates from Windows"
+                                        IsEnabled="{x:Bind ViewModel.Proxies.CanEditTrust, Mode=OneWay}"
+                                        IsOn="{x:Bind ViewModel.Proxies.TrustsSystemCertificates, Mode=TwoWay}" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="REGISTRY" />
+                                <controls:SettingsCard BorderThickness="0" Description="Pulls from Docker Hub go through this mirror first.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Registry mirror" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsMirrorLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <TextBox
+                                        MinWidth="260"
+                                        AutomationProperties.AutomationId="RegistryMirror"
+                                        AutomationProperties.Name="Registry mirror"
+                                        FontFamily="Cascadia Mono,Consolas"
+                                        IsEnabled="{x:Bind ViewModel.Proxies.CanEditMirror, Mode=OneWay}"
+                                        PlaceholderText="https://"
+                                        Text="{x:Bind ViewModel.Proxies.Mirror, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Engine  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 4), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="ENGINE CONFIGURATION" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="The engine's own configuration file. Contr adds your proxy and certificate settings to it when the engine starts."
+                                    Header="daemon.json"
+                                    IsEnabled="False">
+                                    <Button Content="Reset to defaults" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Kubernetes  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="KUBERNETES" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="The cluster's settings are on the Kubernetes page."
+                                    Header="Kubernetes">
+                                    <controls:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Kubernetes}" Style="{StaticResource IconStyle}" />
+                                    </controls:SettingsCard.HeaderIcon>
+                                    <Button Click="OnOpenKubernetes" Content="Open Kubernetes" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Updates  -->
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        Spacing="16"
+                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 6), Mode=OneWay}">
+                        <Border Style="{StaticResource SettingsGroupStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="UPDATE SETTINGS" />
+                                <controls:SettingsCard
+                                    BorderThickness="0"
+                                    Description="Your images, volumes and settings stay through an update."
+                                    Header="Check for updates"
+                                    IsEnabled="False">
+                                    <Button Content="Check now" />
+                                </controls:SettingsCard>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CaptionedCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="INSTALLED VERSIONS" />
+                                <Grid ColumnSpacing="16" RowSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{StaticResource FieldLabelWidth}" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Contr app" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        IsTextSelectionEnabled="True"
+                                        Style="{StaticResource IdentifierTextStyle}"
+                                        Text="{x:Bind ViewModel.AppVersion}" />
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Style="{StaticResource FieldLabelStyle}"
+                                        Text="Contr daemon" />
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        IsTextSelectionEnabled="True"
+                                        Style="{StaticResource IdentifierTextStyle}"
+                                        Text="{x:Bind ViewModel.DaemonVersion}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </Grid>
-    </ScrollViewer>
+            </Grid>
+        </ScrollViewer>
+
+        <!--  Pending proxy edits apply together, as the board's footer shows.  -->
+        <Border
+            Grid.Row="1"
+            Padding="24,14"
+            AutomationProperties.AutomationId="ProxyChangesBar"
+            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0"
+            Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Proxies.HasChanges), Mode=OneWay}">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+                    <Run FontWeight="SemiBold" Text="{x:Bind ViewModel.Proxies.ChangesText, Mode=OneWay}" />
+                    <Run Text="{x:Bind ViewModel.Proxies.ApplyHint, Mode=OneWay}" />
+                </TextBlock>
+                <Button
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="DiscardProxyChanges"
+                    Click="OnDiscardProxyChanges"
+                    Content="Discard"
+                    IsEnabled="{x:Bind ViewModel.Proxies.CanApply, Mode=OneWay}" />
+                <Button
+                    Grid.Column="2"
+                    AutomationProperties.AutomationId="ApplyProxyChanges"
+                    Click="OnApplyProxyChanges"
+                    Content="{x:Bind ViewModel.Proxies.ApplyText, Mode=OneWay}"
+                    IsEnabled="{x:Bind ViewModel.Proxies.CanApply, Mode=OneWay}"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </Grid>
+        </Border>
+    </Grid>
 </Page>
