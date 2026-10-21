@@ -183,6 +183,11 @@
                 Style="{StaticResource StatusBarTextStyle}"
                 Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
                 Visibility="{x:Bind ViewModel.HasContext, Mode=OneWay}" />
+            <TextBlock
+                AutomationProperties.AutomationId="StatusBarKubernetes"
+                Style="{StaticResource StatusBarTextStyle}"
+                Text="{x:Bind ViewModel.KubernetesText, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasKubernetes, Mode=OneWay}" />
         </StackPanel>
     </Grid>
 </Page>

@@ -15,6 +15,22 @@ public enum NavigationItemPlacement
     Footer,
 }
 
+/// <summary>What the end of a navigation item shows about its page's subject.</summary>
+public enum NavigationItemState
+{
+    /// <summary>Nothing.</summary>
+    None,
+
+    /// <summary>A spinner, while the subject starts or stops.</summary>
+    Busy,
+
+    /// <summary>A green dot, while the subject runs.</summary>
+    Good,
+
+    /// <summary>A red dot, after the subject failed.</summary>
+    Critical,
+}
+
 /// <summary>A navigation destination a module contributes to the host shell.</summary>
 /// <param name="Title">The label shown in the navigation menu.</param>
 /// <param name="IconGlyph">A Contr Icons glyph, such as <c>ContrIcons.Containers</c>.</param>
@@ -31,6 +47,10 @@ public sealed record NavigationItem(
     /// </summary>
     /// <remarks>The observable may emit on any thread; the shell marshals to the UI thread.</remarks>
     public Func<IServiceProvider, IObservable<string>>? Badge { get; init; }
+
+    /// <summary>Resolves the state shown at the end of the item, such as a running cluster's dot.</summary>
+    /// <remarks>The observable may emit on any thread; the shell marshals to the UI thread.</remarks>
+    public Func<IServiceProvider, IObservable<NavigationItemState>>? State { get; init; }
 
     /// <summary>The item's position within its placement; lower comes first.</summary>
     public int Order { get; init; }

@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Contr.App.UI;
 using Contr.SharedKernel;
+using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml.Controls;
@@ -138,6 +139,23 @@ public sealed class ShellViewModelTests
         await viewModel.StartEngineCommand.ExecuteAsync(null);
 
         _notifications.Received(1).Show("no WSL", InfoBarSeverity.Error, "The engine did not start");
+    }
+
+    [Theory]
+    [InlineData(ClusterState.Starting, "Kubernetes starting", NavigationItemState.Busy)]
+    [InlineData(ClusterState.Ready, "Kubernetes ready", NavigationItemState.Good)]
+    [InlineData(ClusterState.Disabled, "", NavigationItemState.None)]
+    public void ApplyCluster_NamesTheClusterInTheStatusBar(
+        ClusterState state, string text, NavigationItemState item)
+    {
+        var viewModel = CreateViewModel();
+
+        var cluster = new KubernetesCluster(state, string.Empty, string.Empty, string.Empty, "contr", string.Empty);
+
+        viewModel.ApplyCluster(cluster);
+
+        Assert.Equal(text, viewModel.KubernetesText);
+        Assert.Equal(item, HostNavigation.StateOf(state));
     }
 
     private static DaemonStatus Connected(EngineState engine)

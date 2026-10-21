@@ -68,6 +68,11 @@ public sealed partial class ShellViewModel : ViewModel
     [NotifyPropertyChangedFor(nameof(HasDisk))]
     public partial string DiskText { get; set; }
 
+    /// <summary>Such as <c>Kubernetes ready</c>; empty while the cluster is off or unknown.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasKubernetes))]
+    public partial string KubernetesText { get; set; }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartEngineCommand))]
     public partial bool CanStartEngine { get; set; }
@@ -94,6 +99,7 @@ public sealed partial class ShellViewModel : ViewModel
         CpuText = string.Empty;
         MemoryText = string.Empty;
         DiskText = string.Empty;
+        KubernetesText = string.Empty;
         _navigationSubscription = navigationService.OnNavigated.Subscribe(OnNavigated);
         ApplyStatus(daemon.Status);
     }
@@ -109,6 +115,21 @@ public sealed partial class ShellViewModel : ViewModel
     public bool HasUsage => CpuText.Length > 0;
 
     public bool HasDisk => DiskText.Length > 0;
+
+    public bool HasKubernetes => KubernetesText.Length > 0;
+
+    /// <summary>Shows the cluster's state, or hides it while the cluster is off; call it on the UI thread.</summary>
+    public void ApplyCluster(KubernetesCluster? cluster)
+    {
+        KubernetesText = cluster?.State switch {
+            ClusterState.WaitingForEngine => "Kubernetes waiting for engine",
+            ClusterState.Starting => "Kubernetes starting",
+            ClusterState.Ready => "Kubernetes ready",
+            ClusterState.Stopping => "Kubernetes stopping",
+            ClusterState.Failed => "Kubernetes failed",
+            _ => string.Empty,
+        };
+    }
 
     /// <summary>Shows the engine's usage, or hides it when absent; call it on the UI thread.</summary>
     public void ApplyUsage(EngineUsage? usage)

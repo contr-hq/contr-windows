@@ -10,6 +10,7 @@ using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Contr.UI.Contracts.Services.Search;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -100,6 +101,10 @@ public sealed partial class ShellPage : Page
             status => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyStatus(status))));
         _subscription.Add(_daemon.UsageChanges.Subscribe(
             usage => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyUsage(usage))));
+        _subscription.Add(_services
+            .GetRequiredService<IKubernetesCluster>()
+            .Changes
+            .Subscribe(cluster => DispatcherQueue.TryEnqueue(() => ViewModel.ApplyCluster(cluster))));
 
         NavView.SelectedItem = NavView.MenuItems
             .OfType<NavigationViewItem>()
@@ -113,9 +118,10 @@ public sealed partial class ShellPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Style = (Style)Resources["StatusBarTextStyle"],
         };
+        var indicator = new NavItemIndicator();
         var navItem = new NavigationViewItem {
             Tag = pageKey,
-            Content = NavItemContent(item.Title, badge),
+            Content = NavItemContent(item.Title, badge, indicator),
             Icon = Icon(item.IconGlyph),
         };
         _itemsByContainer[navItem] = item;
@@ -128,6 +134,13 @@ public sealed partial class ShellPage : Page
             // Badge sources emit on background threads.
             _subscription.Add(source(_services).Subscribe(
                 text => DispatcherQueue.TryEnqueue(() => badge.Text = text)));
+        }
+
+        if (item.State is { } state)
+        {
+            // State sources emit on background threads.
+            _subscription.Add(state(_services).Subscribe(
+                value => DispatcherQueue.TryEnqueue(() => indicator.Show(value))));
         }
 
         if (item.Placement == NavigationItemPlacement.Footer)
@@ -172,14 +185,17 @@ public sealed partial class ShellPage : Page
         NavView.IsPaneOpen = !NavView.IsPaneOpen;
     }
 
-    private static Grid NavItemContent(string title, TextBlock badge)
+    private static Grid NavItemContent(string title, TextBlock badge, NavItemIndicator indicator)
     {
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis });
         Grid.SetColumn(badge, 1);
         content.Children.Add(badge);
+        Grid.SetColumn(indicator, 2);
+        content.Children.Add(indicator);
 
         return content;
     }
