@@ -1,6 +1,8 @@
 using Contr.Daemon.UI;
 using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using Xunit;
 using Wire = Contr.Sdk.Settings.V1;
 
@@ -114,5 +116,50 @@ public sealed class DaemonSettingsClientTests
             (DaemonSetting.RegistryMirrors, "\"ftp://m\" does not use http, https"),
             DaemonSettingPaths.Refused("registry.mirrors: \"ftp://m\" does not use http, https"));
         Assert.Null(DaemonSettingPaths.Refused("the etag is not one the daemon gave"));
+    }
+
+    [Fact]
+    public void ToSettings_ReadsDaemonJsonAndAnEmptyOneAsNoSettings()
+    {
+        var saved = DaemonSettingsClient.ToSettings(new Wire.SettingsState {
+            Settings = new Wire.Settings {
+                Engine = new Wire.EngineSettings { DaemonJson = "{\n  \"debug\": true\n}" },
+            },
+        });
+        var empty = DaemonSettingsClient.ToSettings(new Wire.SettingsState());
+
+        Assert.Equal("{\n  \"debug\": true\n}", saved.DaemonJson);
+        Assert.Equal("{}", empty.DaemonJson);
+    }
+
+    [Fact]
+    public void ToRequest_SendsDaemonJsonUnderItsPath()
+    {
+        var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit { DaemonJson = "{}" });
+
+        Assert.Equal(["engine.daemon_json"], request.UpdateMask.Paths);
+        Assert.Equal("{}", request.Settings.Engine.DaemonJson);
+    }
+
+    [Fact]
+    public void UnknownKeys_ReadTheRejectionDetail()
+    {
+        var rejection = new Wire.DaemonJsonRejection {
+            UnknownKeys = {
+                new Wire.UnknownDaemonKey { Key = "log-opt", Suggestion = "log-opts" },
+                new Wire.UnknownDaemonKey { Key = "zzz" },
+            },
+        };
+        var status = new Google.Rpc.Status {
+            Code = (int)StatusCode.InvalidArgument,
+            Message = "engine.daemon_json: the engine rejects its configuration: unknown keys",
+            Details = { Any.Pack(rejection) },
+        };
+
+        var keys = DaemonSettingsClient.UnknownKeys(status.ToRpcException());
+
+        Assert.Equal(
+            [new UnknownDaemonKey("log-opt", "log-opts"), new UnknownDaemonKey("zzz", string.Empty)], keys);
+        Assert.Empty(DaemonSettingsClient.UnknownKeys(new RpcException(new Status(StatusCode.InvalidArgument, "x"))));
     }
 }

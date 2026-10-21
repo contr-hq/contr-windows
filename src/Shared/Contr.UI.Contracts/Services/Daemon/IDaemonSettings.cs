@@ -30,6 +30,13 @@ public interface IDaemonSettings
     /// fixes one of them, or <see cref="InvalidValueCode"/> for a value the daemon refuses.</returns>
     Task<Result<DaemonSettingsChange>> UpdateAsync(DaemonSettingsEdit edit, CancellationToken cancellationToken);
 
+    /// <summary>Replaces the engine's <c>daemon.json</c> once the engine accepts it.</summary>
+    /// <param name="text">A JSON object; <c>{}</c> holds no settings.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The settings afterwards, or why the daemon refused the file, with the keys the engine does not know.
+    /// </returns>
+    Task<DaemonJsonUpdate> UpdateDaemonJsonAsync(string text, CancellationToken cancellationToken);
+
     /// <summary>Returns every setting the user changed to its default; settings an administrator fixes stay.</summary>
     Task<Result<DaemonSettingsChange>> ResetAsync(CancellationToken cancellationToken);
 }
@@ -61,6 +68,9 @@ public enum DaemonSetting
 
     /// <summary>The Docker Hub mirrors the engine tries before Docker Hub.</summary>
     RegistryMirrors,
+
+    /// <summary>The engine's own <c>daemon.json</c>, from its next start.</summary>
+    DaemonJson,
 }
 
 /// <summary>How the engine finds its proxy.</summary>
@@ -103,6 +113,9 @@ public sealed record DaemonSettings(
     /// <summary>See <see cref="DaemonSetting.RegistryMirrors"/>, in the order the engine tries them.</summary>
     public IReadOnlyList<string> RegistryMirrors { get; init; } = [];
 
+    /// <summary>See <see cref="DaemonSetting.DaemonJson"/>; <c>{}</c> holds no settings.</summary>
+    public string DaemonJson { get; init; } = "{}";
+
     /// <summary>Whether an administrator fixes <paramref name="setting"/>.</summary>
     public bool IsLocked(DaemonSetting setting)
     {
@@ -137,6 +150,9 @@ public sealed record DaemonSettingsEdit
     /// <summary>See <see cref="DaemonSetting.RegistryMirrors"/>.</summary>
     public IReadOnlyList<string>? RegistryMirrors { get; init; }
 
+    /// <summary>See <see cref="DaemonSetting.DaemonJson"/>.</summary>
+    public string? DaemonJson { get; init; }
+
     /// <summary>The settings this edit changes.</summary>
     public IEnumerable<DaemonSetting> Settings()
     {
@@ -149,6 +165,7 @@ public sealed record DaemonSettingsEdit
             (ProxyExclude is not null, DaemonSetting.ProxyExclude),
             (TrustSystemCertificates is not null, DaemonSetting.TrustSystemCertificates),
             (RegistryMirrors is not null, DaemonSetting.RegistryMirrors),
+            (DaemonJson is not null, DaemonSetting.DaemonJson),
         ];
 
         return fields
@@ -162,6 +179,22 @@ public sealed record DaemonSettingsEdit
 /// <param name="RestartRequired">Changed settings the running engine applies only at its next start.</param>
 public sealed record DaemonSettingsChange(DaemonSettings Settings, IReadOnlySet<DaemonSetting> RestartRequired);
 
+/// <summary>What became of a <c>daemon.json</c> the user saved.</summary>
+/// <param name="Result">The settings afterwards; a failure with code <see cref="IDaemonSettings.InvalidValueCode"/>
+/// whose message reads <c>engine.daemon_json: …</c> where the daemon or the engine refused the file.</param>
+public sealed record DaemonJsonUpdate(Result<DaemonSettingsChange> Result)
+{
+    /// <summary>Top-level keys the engine does not know, sorted; empty unless they are why it refused the file.
+    /// </summary>
+    public IReadOnlyList<UnknownDaemonKey> UnknownKeys { get; init; } = [];
+}
+
+/// <summary>A top-level <c>daemon.json</c> key the engine does not know.</summary>
+/// <param name="Key">The key as written.</param>
+/// <param name="Suggestion">A key the engine takes with the same value, such as <c>log-opts</c> for <c>log-opt</c>;
+/// empty when none is close.</param>
+public sealed record UnknownDaemonKey(string Key, string Suggestion);
+
 /// <summary>The daemon's names for its settings, which its messages and an administrator's policy use.</summary>
 public static class DaemonSettingPaths
 {
@@ -174,6 +207,7 @@ public static class DaemonSettingPaths
         (DaemonSetting.ProxyExclude, "proxy.exclude"),
         (DaemonSetting.TrustSystemCertificates, "certificates.trust_system"),
         (DaemonSetting.RegistryMirrors, "registry.mirrors"),
+        (DaemonSetting.DaemonJson, "engine.daemon_json"),
     ];
 
     /// <summary>Such as <c>proxy.http</c>.</summary>
