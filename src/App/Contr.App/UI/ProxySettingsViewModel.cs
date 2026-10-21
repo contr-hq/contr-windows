@@ -17,6 +17,9 @@ namespace Contr.App.UI;
 /// </summary>
 public sealed partial class ProxySettingsViewModel : ObservableObject
 {
+    /// <summary>The first API revision with <see cref="DaemonSetting.PassProxyToContainers"/>.</summary>
+    private const uint _passToContainersRevision = 14;
+
     private const int _manualIndex = 1;
     private const int _noneIndex = 2;
 
@@ -46,6 +49,10 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ChangeCount), nameof(HasChanges), nameof(ChangesText), nameof(CanApply))]
+    public partial bool PassesToContainers { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChangeCount), nameof(HasChanges), nameof(ChangesText), nameof(CanApply))]
     public partial bool TrustsSystemCertificates { get; set; }
 
     /// <summary>The first of the daemon's registry mirrors, the one the design edits.</summary>
@@ -59,12 +66,14 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanEditExclude), nameof(CanEditTrust), nameof(CanEditMirror))]
     [NotifyPropertyChangedFor(nameof(IsModeLocked), nameof(IsHttpLocked), nameof(IsHttpsLocked))]
     [NotifyPropertyChangedFor(nameof(IsExcludeLocked), nameof(IsTrustLocked), nameof(IsMirrorLocked))]
+    [NotifyPropertyChangedFor(nameof(CanEditPass), nameof(IsPassLocked))]
     [NotifyPropertyChangedFor(nameof(ChangeCount), nameof(HasChanges), nameof(ChangesText), nameof(CanApply))]
     public partial DaemonSettings? Saved { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEdit), nameof(CanEditMode), nameof(CanEditHttp), nameof(CanEditHttps))]
     [NotifyPropertyChangedFor(nameof(CanEditExclude), nameof(CanEditTrust), nameof(CanEditMirror), nameof(CanApply))]
+    [NotifyPropertyChangedFor(nameof(CanEditPass))]
     public partial bool IsApplying { get; set; }
 
     [ObservableProperty]
@@ -82,6 +91,7 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
         _notifications = notifications;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         IsOffered = daemon.Identity?.Capabilities.Contains(DaemonCapability.EngineConfiguration) == true;
+        OffersPassToContainers = IsOffered && daemon.Identity?.ApiRevision >= _passToContainersRevision;
         EngineRuns = daemon.Status.Engine == EngineState.Running;
         Http = string.Empty;
         Https = string.Empty;
@@ -95,6 +105,9 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
 
     public bool LacksOffer => !IsOffered;
 
+    /// <summary>Whether the daemon can give new containers and builds the engine's proxy.</summary>
+    public bool OffersPassToContainers { get; }
+
     public bool IsManual => ModeIndex == _manualIndex;
 
     public bool CanEdit => IsOffered && Saved is not null && !IsApplying;
@@ -107,6 +120,8 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
 
     public bool CanEditExclude => CanEdit && IsManual && !IsExcludeLocked;
 
+    public bool CanEditPass => CanEdit && OffersPassToContainers && !IsPassLocked;
+
     public bool CanEditTrust => CanEdit && !IsTrustLocked;
 
     public bool CanEditMirror => CanEdit && !IsMirrorLocked;
@@ -118,6 +133,8 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
     public bool IsHttpsLocked => Saved?.IsLocked(DaemonSetting.ProxyHttps) == true;
 
     public bool IsExcludeLocked => Saved?.IsLocked(DaemonSetting.ProxyExclude) == true;
+
+    public bool IsPassLocked => Saved?.IsLocked(DaemonSetting.PassProxyToContainers) == true;
 
     public bool IsTrustLocked => Saved?.IsLocked(DaemonSetting.TrustSystemCertificates) == true;
 
@@ -204,6 +221,7 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
             ProxyHttp = Changed(Http, saved.Proxy.Http),
             ProxyHttps = Changed(Https, saved.Proxy.Https),
             ProxyExclude = Changed(Exclude, saved.Proxy.Exclude),
+            PassProxyToContainers = PassesToContainers != saved.Proxy.PassToContainers ? PassesToContainers : null,
             TrustSystemCertificates = TrustsSystemCertificates != saved.TrustSystemCertificates
                 ? TrustsSystemCertificates
                 : null,
@@ -287,6 +305,7 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
             DaemonSetting.ProxyExclude => "Don't use the proxy for",
             DaemonSetting.RegistryMirrors => "Registry mirror",
             DaemonSetting.ProxyMode => "How the engine finds your proxy",
+            DaemonSetting.PassProxyToContainers => "Pass these settings to containers",
             _ => DaemonSettingPaths.Of(refused.Setting),
         };
 
@@ -311,6 +330,7 @@ public sealed partial class ProxySettingsViewModel : ObservableObject
         Http = proxy.Http;
         Https = proxy.Https;
         Exclude = proxy.Exclude;
+        PassesToContainers = proxy.PassToContainers;
         TrustsSystemCertificates = settings?.TrustSystemCertificates ?? true;
         Mirror = settings?.RegistryMirrors.FirstOrDefault() ?? string.Empty;
     }

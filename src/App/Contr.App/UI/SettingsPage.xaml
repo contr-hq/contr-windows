@@ -680,11 +680,21 @@
                                             Text="{x:Bind ViewModel.Proxies.Exclude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
                                 </Grid>
-                                <controls:SettingsCard
-                                    Description="Sets HTTP_PROXY, HTTPS_PROXY and NO_PROXY in new containers and builds."
-                                    Header="Pass these settings to containers"
-                                    IsEnabled="False">
-                                    <ToggleSwitch />
+                                <controls:SettingsCard Description="Sets HTTP_PROXY, HTTPS_PROXY and NO_PROXY in new containers and builds.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Pass these settings to containers" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Proxies.IsPassLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <ToggleSwitch
+                                        AutomationProperties.AutomationId="PassProxyToContainers"
+                                        AutomationProperties.Name="Pass these settings to containers"
+                                        IsEnabled="{x:Bind ViewModel.Proxies.CanEditPass, Mode=OneWay}"
+                                        IsOn="{x:Bind ViewModel.Proxies.PassesToContainers, Mode=TwoWay}" />
                                 </controls:SettingsCard>
                             </StackPanel>
                         </Border>
