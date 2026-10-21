@@ -79,4 +79,20 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
     {
         ViewModel.RunAgain();
     }
+
+    private async void OnFix(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: CheckFix fix })
+        {
+            await ViewModel.FixAsync(fix);
+        }
+    }
+
+    private async void OnFixProblem(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ProblemFix is { } fix)
+        {
+            await ViewModel.FixAsync(fix);
+        }
+    }
 }

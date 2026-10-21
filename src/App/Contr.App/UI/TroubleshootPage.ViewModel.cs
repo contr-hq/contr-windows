@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Common.Formatting;
 using Contr.UI.Contracts;
@@ -22,12 +23,32 @@ namespace Contr.App.UI;
 /// <param name="Requirement">What passes, such as <c>At least 10 GB on C:</c>; empty where the name says it.</param>
 public sealed record CheckRow(StatusKind Kind, string Outcome, string Name, string Detail, string Requirement = "")
 {
+    /// <summary>The fixes the daemon runs for what the check found, in the order to offer them.</summary>
+    public IReadOnlyList<CheckFix> Fixes { get; init; } = [];
+
     public PillKind PillKind => PillView.For(Kind);
 
     public bool IsFailed => Kind == StatusKind.Critical;
+
+    public static CheckRow From(DiagnosticCheck check)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+
+        var row = check.Status switch {
+            DiagnosticStatus.Pass => new CheckRow(StatusKind.Good, "Passed", check.Title, check.Detail),
+            DiagnosticStatus.Warn => new CheckRow(StatusKind.Caution, "Warning", check.Title, check.Detail),
+            DiagnosticStatus.Fail => new CheckRow(StatusKind.Critical, "Failed", check.Title, check.Detail),
+            DiagnosticStatus.Skip => new CheckRow(StatusKind.Neutral, "Skipped", check.Title, check.Detail),
+            _ => new CheckRow(StatusKind.Neutral, "Unknown", check.Title, check.Detail),
+        };
+
+        return row with { Fixes = [.. check.Remediations.Select(fix => new CheckFix(fix))] };
+    }
 }
 
-/// <summary>Backs Troubleshoot: why the engine is down, the checks the client can make, and the client's log.</summary>
+/// <summary>
+/// Backs Troubleshoot: why the engine is down, the daemon's checks and the fixes it offers, and the client's log.
+/// </summary>
 public sealed partial class TroubleshootViewModel : ViewModel
 {
     /// <summary>WSL 2 needs Windows 10 version 2004, build 19041, or later.</summary>
@@ -36,14 +57,27 @@ public sealed partial class TroubleshootViewModel : ViewModel
     private const int _logLines = 80;
 
     private readonly IDaemonConnection _daemon;
+    private readonly IDiagnostics _diagnostics;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly DispatcherQueue? _dispatcher;
     private IDisposable? _subscription;
     private IDisposable? _usage;
+    private int _checkRuns;
+
+    /// <summary>Fixes that finished but wait for a restart or sign-out; offering them again would repeat them.
+    /// </summary>
+    private readonly HashSet<string> _awaitingRestart = [];
+
+    /// <summary>What the last fix that waits for a restart or sign-out asked the user to do.</summary>
+    private FixNotice? _restartNotice;
 
     [ObservableProperty]
     public partial bool HasProblem { get; set; }
+
+    /// <summary>Error for the engine's problem; informational once a fix only waits for a restart.</summary>
+    [ObservableProperty]
+    public partial InfoBarSeverity ProblemSeverity { get; set; }
 
     [ObservableProperty]
     public partial string ProblemTitle { get; set; }
@@ -67,6 +101,30 @@ public sealed partial class TroubleshootViewModel : ViewModel
     [ObservableProperty]
     public partial bool HasLog { get; set; }
 
+    /// <summary>The fix for the problem the engine failed with, offered on the problem bar.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProblemFix), nameof(ProblemFixLabel), nameof(ProblemFixNeedsApproval))]
+    public partial CheckFix? ProblemFix { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanFix), nameof(IsFixingProblem), nameof(IsFixingCheck))]
+    public partial bool IsFixing { get; set; }
+
+    /// <summary>Whether the running fix started from the problem bar, which then follows it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFixingProblem), nameof(IsFixingCheck))]
+    public partial bool IsFixFromProblem { get; set; }
+
+    /// <summary>Why the last fix failed while the problem bar showed; the bar is the page's one error bar.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFixError))]
+    public partial string FixError { get; set; }
+
+    /// <summary>The running fix's latest step, such as <c>Installing WSL; approve the administrator prompt</c>.
+    /// </summary>
+    [ObservableProperty]
+    public partial string FixStatus { get; set; }
+
     /// <summary>Whether the daemon resets the engine; it offers that only where it owns the engine.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanReset))]
@@ -86,12 +144,17 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public partial string DiskText { get; set; }
 
     public TroubleshootViewModel(
-        IDaemonConnection daemon, IDialogService dialogs, INotificationService notifications)
+        IDaemonConnection daemon,
+        IDiagnostics diagnostics,
+        IDialogService dialogs,
+        INotificationService notifications)
     {
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
         _daemon = daemon;
+        _diagnostics = diagnostics;
         _dialogs = dialogs;
         _notifications = notifications;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
@@ -102,6 +165,9 @@ public sealed partial class TroubleshootViewModel : ViewModel
         CheckPills = [];
         ResetStatus = string.Empty;
         DiskText = string.Empty;
+        FixStatus = string.Empty;
+        FixError = string.Empty;
+        ProblemSeverity = InfoBarSeverity.Error;
     }
 
     public ObservableCollection<CheckRow> Checks { get; } = [];
@@ -114,6 +180,20 @@ public sealed partial class TroubleshootViewModel : ViewModel
     public bool CanReset => OffersReset && !IsResetting;
 
     public bool HasDiskText => DiskText.Length > 0;
+
+    public bool HasProblemFix => ProblemFix is not null;
+
+    public string ProblemFixLabel => ProblemFix?.Label ?? string.Empty;
+
+    public bool ProblemFixNeedsApproval => ProblemFix?.RequiresElevation == true;
+
+    public bool CanFix => !IsFixing;
+
+    public bool IsFixingProblem => IsFixing && IsFixFromProblem;
+
+    public bool IsFixingCheck => IsFixing && !IsFixFromProblem;
+
+    public bool HasFixError => FixError.Length > 0;
 
     /// <summary>Follows the daemon and runs the checks; call it from the page's <c>Loaded</c>.</summary>
     public void Activate()
@@ -198,7 +278,64 @@ public sealed partial class TroubleshootViewModel : ViewModel
         Run(_daemon.Status);
     }
 
-    /// <summary>The checks the client can make itself from the daemon's status and this PC.</summary>
+    /// <summary>Runs a fix a check offered, following it in <see cref="FixStatus"/>, then checks again.</summary>
+    /// <remarks>While the problem bar shows, the bar tells how the fix ended; otherwise a notification does.
+    /// </remarks>
+    public async Task FixAsync(CheckFix fix)
+    {
+        ArgumentNullException.ThrowIfNull(fix);
+
+        if (IsFixing)
+        {
+            return;
+        }
+
+        IsFixFromProblem = fix == ProblemFix;
+        IsFixing = true;
+        FixStatus = fix.Running;
+        FixError = string.Empty;
+        Result<RemediationOutcome> result;
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => FixStatus = step.Message);
+            result = await _diagnostics.RunRemediationAsync(fix.ActionId, progress, CancellationToken.None);
+        }
+        finally
+        {
+            IsFixing = false;
+        }
+
+        var notice = fix.Notice(result);
+        var waitsForRestart = result.IsSuccess && (result.Value.RestartRequired || result.Value.SignOutRequired);
+
+        if (waitsForRestart)
+        {
+            _awaitingRestart.Add(fix.ActionId);
+            _restartNotice = notice;
+        }
+
+        if (!HasProblem || (result.IsSuccess && !waitsForRestart))
+        {
+            _notifications.Show(notice.Message, notice.Severity, notice.Title);
+        }
+        else if (result.IsFailure)
+        {
+            FixError = $"{notice.Title}. {notice.Message}";
+        }
+
+        RunAgain();
+    }
+
+    /// <summary>The daemon's checks after the one only the client makes: the Windows build.</summary>
+    public static CheckRow[] Combine(int windowsBuild, IReadOnlyList<DiagnosticCheck> checks)
+    {
+        ArgumentNullException.ThrowIfNull(checks);
+
+        return [WindowsCheck(windowsBuild), .. checks.Select(CheckRow.From)];
+    }
+
+    /// <summary>The checks the client makes itself where the daemon makes none: it is unreachable, or older than
+    /// API revision 8.</summary>
     public static CheckRow[] Evaluate(DaemonStatus status, DaemonIdentity? identity, int windowsBuild)
     {
         ArgumentNullException.ThrowIfNull(status);
@@ -314,13 +451,77 @@ public sealed partial class TroubleshootViewModel : ViewModel
     private void Run(DaemonStatus status)
     {
         OffersReset = _daemon.Identity?.Capabilities.Contains(DaemonCapability.Reset) == true;
-        var checks = Evaluate(status, _daemon.Identity, Environment.OSVersion.Version.Build);
-        Checks.Clear();
-        foreach (var check in checks)
+        HasProblem = status.Connection == DaemonConnectionState.Unavailable || status.Engine == EngineState.Failed;
+        ProblemTitle = status.Connection == DaemonConnectionState.Unavailable
+            ? "Contr's background service isn't reachable"
+            : "The engine couldn't start";
+        ProblemMessage = status.Problem;
+        ProblemCode = status.Engine == EngineState.Failed ? status.ProblemCode : string.Empty;
+        ProblemSeverity = InfoBarSeverity.Error;
+
+        if (HasProblem && _restartNotice is { } restart)
         {
-            Checks.Add(check);
+            ProblemSeverity = restart.Severity;
+            ProblemTitle = restart.Title ?? string.Empty;
+            ProblemMessage = restart.Message;
+            ProblemCode = string.Empty;
         }
 
+        LogLines.Clear();
+
+        foreach (var line in ReadLog())
+        {
+            LogLines.Add(ComponentLogLine.Parse(line));
+        }
+
+        HasLog = LogLines.Count > 0;
+        _ = CheckAsync(status);
+    }
+
+    /// <summary>Shows the daemon's checks, or the client's own where the daemon makes none.</summary>
+    /// <remarks>Of overlapping runs, only the latest shows.</remarks>
+    private async Task CheckAsync(DaemonStatus status)
+    {
+        var run = ++_checkRuns;
+        var build = Environment.OSVersion.Version.Build;
+        var checks = Evaluate(status, _daemon.Identity, build);
+
+        if (status.Connection == DaemonConnectionState.Connected)
+        {
+            ChecksSummary = "checking…";
+            var daemonChecks = await _diagnostics.RunChecksAsync(CancellationToken.None);
+
+            if (run != _checkRuns)
+            {
+                return;
+            }
+
+            if (daemonChecks.IsSuccess)
+            {
+                checks = Combine(build, daemonChecks.Value);
+            }
+        }
+
+        Show(checks);
+    }
+
+    /// <summary>Lists the checks; the engine's failure offers its fix on the problem bar instead of its row.</summary>
+    private void Show(CheckRow[] checks)
+    {
+        checks = [.. checks.Select(check => check with {
+            Fixes = [.. check.Fixes.Where(fix => !_awaitingRestart.Contains(fix.ActionId))],
+        })];
+        var problemFix = HasProblem
+            ? checks.FirstOrDefault(check => check.IsFailed && check.Fixes.Count > 0)?.Fixes[0]
+            : null;
+        Checks.Clear();
+
+        foreach (var check in checks)
+        {
+            Checks.Add(check with { Fixes = [.. check.Fixes.Where(fix => fix != problemFix)] });
+        }
+
+        ProblemFix = problemFix;
         var problems = checks.Count(check => check.Kind == StatusKind.Critical);
         var warnings = checks.Count(check => check.Kind == StatusKind.Caution);
         var ranAt = DateTimeOffset.Now.ToString("t", CultureInfo.CurrentCulture);
@@ -338,21 +539,6 @@ public sealed partial class TroubleshootViewModel : ViewModel
         }
 
         CheckPills = pills;
-
-        HasProblem = status.Connection == DaemonConnectionState.Unavailable || status.Engine == EngineState.Failed;
-        ProblemTitle = status.Connection == DaemonConnectionState.Unavailable
-            ? "Contr's background service isn't reachable"
-            : "The engine couldn't start";
-        ProblemMessage = status.Problem;
-        ProblemCode = status.Engine == EngineState.Failed ? status.ProblemCode : string.Empty;
-        LogLines.Clear();
-
-        foreach (var line in ReadLog())
-        {
-            LogLines.Add(ComponentLogLine.Parse(line));
-        }
-
-        HasLog = LogLines.Count > 0;
     }
 
     private static string Plural(int count, string noun)
