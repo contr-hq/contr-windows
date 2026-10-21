@@ -122,9 +122,10 @@
             </TitleBar.LeftHeader>
         </TitleBar>
 
+        <!--  A fixed column: one sized by its content shifts sideways on short steps. MinWidth leaves room for it.  -->
         <ScrollViewer Grid.Row="1">
             <StackPanel
-                MaxWidth="728"
+                Width="728"
                 Padding="24,8,24,32"
                 Spacing="16">
                 <StackPanel Spacing="8">
