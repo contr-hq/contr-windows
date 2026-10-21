@@ -1,21 +1,22 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.Storage.Pickers;
 using Windows.System;
 using Windows.UI;
+using WinRT.Interop;
 
 namespace Contr.Modules.Containers.UI.Views;
 
-/// <summary>Compose projects as the containers' labels describe them, with their services and merged logs.</summary>
+/// <summary>The engine's Compose projects, with their services, the Compose commands and the merged logs.</summary>
 public sealed partial class ComposePage : Page, IHasViewModel
 {
     /// <summary>Service colours readable on both the light and the dark log background.</summary>
@@ -28,12 +29,16 @@ public sealed partial class ComposePage : Page, IHasViewModel
         new(Color.FromArgb(255, 0x39, 0xC5, 0xCF)),
     ];
 
+    private readonly IMainWindowProvider _mainWindow;
     private bool _isShowingFilters;
+    private bool _isShowingSelection;
 
-    public ComposePage(ComposeViewModel viewModel)
+    public ComposePage(ComposeViewModel viewModel, IMainWindowProvider mainWindow)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(mainWindow);
         ViewModel = viewModel;
+        _mainWindow = mainWindow;
 
         InitializeComponent();
 
@@ -50,22 +55,20 @@ public sealed partial class ComposePage : Page, IHasViewModel
         return _serviceBrushes[Math.Abs(color) % _serviceBrushes.Length];
     }
 
-    public static string Prefix(string service)
+    public static string AddedText(bool isAdded)
     {
-        return $"{service} |";
+        return isAdded ? " · added by you" : string.Empty;
     }
 
-    public static string ServiceName(string service, string name)
+    /// <summary>The port of an address such as <c>localhost:8080</c>.</summary>
+    public static string PortNumber(string address)
     {
-        return service.Length > 0 ? service : name;
+        return address[(address.LastIndexOf(':') + 1)..];
     }
 
-    /// <summary>The published host ports, such as <c>8080, 8443</c>; a dash without any.</summary>
-    public static string PortsText(IReadOnlyList<PortLink> ports)
+    public static string RestartName(string service)
     {
-        return ports.Count == 0
-            ? "—"
-            : string.Join(", ", ports.Select(port => port.Address[(port.Address.LastIndexOf(':') + 1)..]));
+        return $"Restart {service}";
     }
 
     public static Visibility WhenNone(int count)
@@ -94,15 +97,18 @@ public sealed partial class ComposePage : Page, IHasViewModel
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.LineAdded += OnLineAdded;
+        ViewModel.OutputAdded += OnOutputAdded;
         ViewModel.Filters.CollectionChanged += OnFiltersChanged;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         ViewModel.Activate();
         ShowFilters();
+        ShowSelection();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.LineAdded -= OnLineAdded;
+        ViewModel.OutputAdded -= OnOutputAdded;
         ViewModel.Filters.CollectionChanged -= OnFiltersChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.Deactivate();
@@ -118,6 +124,37 @@ public sealed partial class ComposePage : Page, IHasViewModel
         if (e.PropertyName == nameof(ComposeViewModel.FilterIndex))
         {
             SelectFilter();
+        }
+        else if (e.PropertyName == nameof(ComposeViewModel.Selected))
+        {
+            ShowSelection();
+        }
+    }
+
+    /// <summary>Selects the view model's project; each change to the list replaces the items the list selected.
+    /// </summary>
+    private void ShowSelection()
+    {
+        _isShowingSelection = true;
+        ProjectList.SelectedItem = ViewModel.Selected;
+        _isShowingSelection = false;
+    }
+
+    private void OnProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isShowingSelection)
+        {
+            return;
+        }
+
+        if (ProjectList.SelectedItem is ComposeProjectItem project)
+        {
+            ViewModel.Select(project);
+        }
+        else
+        {
+            // The list dropped its selection when the selected item was replaced.
+            ShowSelection();
         }
     }
 
@@ -158,34 +195,106 @@ public sealed partial class ComposePage : Page, IHasViewModel
         LogList.ScrollIntoView(line);
     }
 
-    private void OnProjectTapped(object sender, TappedRoutedEventArgs e)
+    private void OnOutputAdded(object? sender, string line)
+    {
+        OutputList.ScrollIntoView(line);
+    }
+
+    private async void OnRemoveProject(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is ComposeProjectItem project)
         {
-            ViewModel.Select(project);
+            await ViewModel.RemoveProjectAsync(project);
+        }
+    }
+
+    private async void OnAddProject(object sender, RoutedEventArgs e)
+    {
+        if (_mainWindow.MainWindow is not { } window)
+        {
+            return;
+        }
+
+        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add(".yaml");
+        picker.FileTypeFilter.Add(".yml");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+
+        if (await picker.PickSingleFileAsync() is { } file)
+        {
+            await ViewModel.AddProjectAsync(file.Path);
         }
     }
 
     private async void OnOpenFolder(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.Selected is { Location: var location } && Directory.Exists(location))
+        if (ViewModel.WorkingDir is { Length: > 0 } folder && Directory.Exists(folder))
         {
-            await Launcher.LaunchFolderPathAsync(location);
+            await Launcher.LaunchFolderPathAsync(folder);
         }
     }
 
-    private async void OnStart(object sender, RoutedEventArgs e)
+    private async void OnUp(object sender, RoutedEventArgs e)
     {
-        await ViewModel.StartAllAsync();
+        await ViewModel.UpAsync();
     }
 
-    private async void OnStop(object sender, RoutedEventArgs e)
+    private async void OnPull(object sender, RoutedEventArgs e)
     {
-        await ViewModel.StopAllAsync();
+        await ViewModel.PullAsync();
     }
 
     private async void OnRestart(object sender, RoutedEventArgs e)
     {
-        await ViewModel.RestartAllAsync();
+        await ViewModel.RestartAsync();
+    }
+
+    private async void OnStop(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.StopAsync();
+    }
+
+    private async void OnRestartService(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is ComposeServiceRow service)
+        {
+            await ViewModel.RestartServiceAsync(service);
+        }
+    }
+
+    /// <summary>Asks before Down, whose safe answer is the default, and offers to delete the volumes too.</summary>
+    private async void OnDown(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Selected is not { } project)
+        {
+            return;
+        }
+
+        var resources = Microsoft.UI.Xaml.Application.Current.Resources;
+        var removeVolumes = new CheckBox { Content = "Also delete its volumes and the data in them" };
+        AutomationProperties.SetAutomationId(removeVolumes, "ComposeDownVolumes");
+        var message = new TextBlock {
+            Text = "Compose stops and removes the project's containers and networks. Its images stay, and Up "
+                + "creates the containers again.",
+            TextWrapping = TextWrapping.Wrap,
+        };
+
+        // A dialog's popup does not inherit the theme the window content requests.
+        var dialog = new ContentDialog {
+            Title = $"Take down {project.Name}?",
+            Content = new StackPanel { Spacing = 12, Children = { message, removeVolumes } },
+            PrimaryButtonText = "Take down",
+            PrimaryButtonStyle = (Style)resources["DestructiveButtonStyle"],
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+            RequestedTheme = ActualTheme,
+            Style = (Style)resources["DefaultContentDialogStyle"],
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await ViewModel.DownAsync(removeVolumes.IsChecked == true);
+        }
     }
 }

@@ -27,16 +27,34 @@
             <GridLength x:Key="ImageColumnWidth">1.4*</GridLength>
             <GridLength x:Key="StateColumnWidth">1.2*</GridLength>
             <GridLength x:Key="PortsColumnWidth">100</GridLength>
+            <GridLength x:Key="ActionColumnWidth">32</GridLength>
+
+            <Style x:Key="LogTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <Style x:Key="LogListItemStyle" TargetType="ListViewItem">
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+
+            <!--  ListView draws the selection: the subtle fill and the accent marker the board shows.  -->
+            <x:Boolean x:Key="ListViewItemSelectionIndicatorVisualEnabled">True</x:Boolean>
+            <Style
+                x:Key="ProjectItemStyle"
+                BasedOn="{StaticResource DefaultListViewItemStyle}"
+                TargetType="ListViewItem">
+                <Setter Property="Padding" Value="16,10,12,10" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
 
             <DataTemplate x:Key="ProjectTemplate" x:DataType="vm:ComposeProjectItem">
                 <Grid
-                    Padding="16,10,12,10"
                     AutomationProperties.Name="{x:Bind Name}"
                     Background="Transparent"
-                    ColumnSpacing="8"
-                    CornerRadius="4"
-                    Tag="{x:Bind}"
-                    Tapped="OnProjectTapped">
+                    ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -45,17 +63,15 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Border
-                        Grid.RowSpan="2"
-                        Grid.ColumnSpan="2"
-                        Margin="-16,-10,-12,-10"
-                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                        CornerRadius="4"
-                        Visibility="{x:Bind IsSelected}" />
-                    <Border
-                        Grid.RowSpan="2"
-                        Style="{StaticResource SelectionMarkerStyle}"
-                        Visibility="{x:Bind IsSelected}" />
+                    <Grid.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem
+                                Click="OnRemoveProject"
+                                IsEnabled="{x:Bind IsAdded}"
+                                Tag="{x:Bind}"
+                                Text="Remove from Contr" />
+                        </MenuFlyout>
+                    </Grid.ContextFlyout>
                     <TextBlock
                         FontWeight="SemiBold"
                         Style="{StaticResource CellTextStyle}"
@@ -67,60 +83,124 @@
                     <TextBlock
                         Grid.Row="1"
                         Grid.ColumnSpan="2"
-                        FontSize="12"
-                        Style="{StaticResource IdentifierTextStyle}"
-                        Text="{x:Bind Location}"
-                        Visibility="{x:Bind HasLocation}" />
+                        TextTrimming="CharacterEllipsis"
+                        Visibility="{x:Bind HasLocation}">
+                        <Run
+                            FontFamily="Cascadia Mono,Consolas"
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind Location}" />
+                        <Run
+                            FontSize="11"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Text="{x:Bind views:ComposePage.AddedText(IsAdded)}" />
+                    </TextBlock>
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="ServiceTemplate" x:DataType="vm:ContainerRow">
-                <Grid Style="{StaticResource CardTableRowStyle}">
+            <!--  The board shows the host port alone; the link opens it on localhost.  -->
+            <DataTemplate x:Key="PortTemplate" x:DataType="vm:PortLink">
+                <Grid>
+                    <TextBlock Style="{StaticResource LogTextStyle}" Visibility="{x:Bind IsLink}">
+                        <Hyperlink NavigateUri="{x:Bind Uri}" UnderlineStyle="None">
+                            <Run Text="{x:Bind views:ComposePage.PortNumber(Address)}" />
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock
+                        Style="{StaticResource LogTextStyle}"
+                        Text="{x:Bind views:ComposePage.PortNumber(Address)}"
+                        Visibility="{x:Bind IsText}" />
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ServiceTemplate" x:DataType="vm:ComposeServiceRow">
+                <Grid AutomationProperties.Name="{x:Bind Name}" Style="{StaticResource CardTableRowStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="{StaticResource ServiceColumnWidth}" MinWidth="110" />
                         <ColumnDefinition Width="{StaticResource ImageColumnWidth}" MinWidth="150" />
                         <ColumnDefinition Width="{StaticResource StateColumnWidth}" MinWidth="140" />
                         <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
+                        <ColumnDefinition Width="{StaticResource ActionColumnWidth}" />
                     </Grid.ColumnDefinitions>
                     <TextBlock
                         FontWeight="SemiBold"
                         Style="{StaticResource CellTextStyle}"
-                        Text="{x:Bind views:ComposePage.ServiceName(Service, Name)}" />
+                        Text="{x:Bind Name}" />
                     <TextBlock
                         Grid.Column="1"
                         Style="{StaticResource IdentifierTextStyle}"
-                        Text="{x:Bind Image}" />
+                        Text="{x:Bind Image}"
+                        Visibility="{x:Bind IsPulled}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="{x:Bind BuildText}"
+                        Visibility="{x:Bind IsBuilt}" />
                     <common:PillView
                         Grid.Column="2"
                         HorizontalAlignment="Left"
                         Kind="{x:Bind PillKind}"
                         Text="{x:Bind StatusText}" />
+                    <ItemsRepeater
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        ItemTemplate="{StaticResource PortTemplate}"
+                        ItemsSource="{x:Bind Ports}"
+                        Visibility="{x:Bind HasPorts}" />
                     <TextBlock
                         Grid.Column="3"
-                        Style="{StaticResource IdentifierTextStyle}"
-                        Text="{x:Bind views:ComposePage.PortsText(Ports)}" />
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CellTextStyle}"
+                        Text="—"
+                        Visibility="{x:Bind HasNoPorts}" />
+                    <Button
+                        Grid.Column="4"
+                        AutomationProperties.Name="{x:Bind views:ComposePage.RestartName(Name)}"
+                        Click="OnRestartService"
+                        IsEnabled="{x:Bind CanRestart}"
+                        Style="{StaticResource RowActionButtonStyle}"
+                        Tag="{x:Bind}"
+                        ToolTipService.ToolTip="{x:Bind views:ComposePage.RestartName(Name)}">
+                        <FontIcon
+                            FontSize="16"
+                            Glyph="{x:Bind icons:ContrIcons.Restart}"
+                            Style="{StaticResource IconStyle}" />
+                    </Button>
                 </Grid>
             </DataTemplate>
 
             <DataTemplate x:Key="LogTemplate" x:DataType="vm:ComposeLogLine">
                 <Grid Padding="14,1" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" MinWidth="72" />
+                        <ColumnDefinition Width="Auto" MinWidth="48" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock
-                        FontFamily="Cascadia Mono,Consolas"
-                        FontSize="13"
                         Foreground="{x:Bind views:ComposePage.ServiceBrush(Color)}"
-                        Text="{x:Bind views:ComposePage.Prefix(Service)}" />
+                        Style="{StaticResource LogTextStyle}"
+                        Text="{x:Bind Service}" />
                     <TextBlock
                         Grid.Column="1"
-                        FontFamily="Cascadia Mono,Consolas"
-                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource LogTextStyle}"
+                        Text="|" />
+                    <TextBlock
+                        Grid.Column="2"
                         IsTextSelectionEnabled="True"
+                        Style="{StaticResource LogTextStyle}"
                         Text="{x:Bind Text}"
                         TextWrapping="Wrap" />
                 </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="OutputTemplate" x:DataType="x:String">
+                <TextBlock
+                    Padding="14,1"
+                    IsTextSelectionEnabled="True"
+                    Style="{StaticResource LogTextStyle}"
+                    Text="{x:Bind}"
+                    TextWrapping="Wrap" />
             </DataTemplate>
         </ResourceDictionary>
     </Page.Resources>
@@ -136,14 +216,24 @@
                     <Button
                         AutomationProperties.AutomationId="AddComposeProjectButton"
                         AutomationProperties.Name="Add project"
-                        IsEnabled="False"
-                        Visibility="{x:Bind ViewModel.Engine.IsOpen, Mode=OneWay}">
+                        Click="OnAddProject"
+                        Visibility="{x:Bind views:ComposePage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.IsOffered), Mode=OneWay}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="{x:Bind icons:ContrIcons.Add}" Style="{StaticResource IconStyle}" />
                             <TextBlock Text="Add project…" />
                         </StackPanel>
                     </Button>
                 </common:PageHeader>
+
+                <InfoBar
+                    Title="Compose can't read this project's files"
+                    Margin="0,16,0,0"
+                    AutomationProperties.AutomationId="ComposeConfigError"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.HasConfigError, Mode=OneWay}"
+                    Message="{x:Bind ViewModel.ConfigError, Mode=OneWay}"
+                    Severity="Warning"
+                    Visibility="{x:Bind views:ComposePage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasConfigError), Mode=OneWay}" />
 
                 <!--  Counted over every project.  -->
                 <common:PillRow
@@ -163,18 +253,20 @@
                     <Border VerticalAlignment="Top" Style="{StaticResource CaptionedCardStyle}">
                         <StackPanel Spacing="12">
                             <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="PROJECTS" />
-                            <ItemsRepeater
+                            <ListView
+                                x:Name="ProjectList"
+                                Margin="-4,0"
                                 AutomationProperties.AutomationId="ComposeProjects"
+                                AutomationProperties.Name="Projects"
+                                ItemContainerStyle="{StaticResource ProjectItemStyle}"
                                 ItemTemplate="{StaticResource ProjectTemplate}"
-                                ItemsSource="{x:Bind ViewModel.Projects}">
-                                <ItemsRepeater.Layout>
-                                    <StackLayout Spacing="4" />
-                                </ItemsRepeater.Layout>
-                            </ItemsRepeater>
+                                ItemsSource="{x:Bind ViewModel.Projects}"
+                                SelectionChanged="OnProjectSelectionChanged"
+                                SelectionMode="Single" />
                             <TextBlock
                                 FontSize="12"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Projects appear when you run docker compose up."
+                                Text="Projects appear when you run docker compose up, or you can add one."
                                 TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
@@ -187,55 +279,111 @@
                                         Style="{StaticResource SubtitleTextBlockStyle}"
                                         Text="{x:Bind ViewModel.Selected.Name, Mode=OneWay}"
                                         TextWrapping="Wrap" />
-                                    <StackPanel
-                                        Orientation="Horizontal"
-                                        Spacing="6"
-                                        Visibility="{x:Bind ViewModel.HasConfigFile, Mode=OneWay}">
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="Contr doesn't know this project's Compose files, so Up and Pull are off. Add the project by its compose.yaml to use them."
+                                        TextWrapping="Wrap"
+                                        Visibility="{x:Bind ViewModel.LacksConfigFiles, Mode=OneWay}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
                                         <TextBlock
                                             FontSize="12"
                                             Style="{StaticResource IdentifierTextStyle}"
-                                            Text="{x:Bind ViewModel.ConfigFile, Mode=OneWay}" />
+                                            Text="{x:Bind ViewModel.ConfigFiles, Mode=OneWay}"
+                                            Visibility="{x:Bind ViewModel.HasConfigFiles, Mode=OneWay}" />
                                         <HyperlinkButton
                                             Padding="2,0"
+                                            AutomationProperties.AutomationId="ComposeOpenFolder"
                                             Click="OnOpenFolder"
                                             Content="Open folder"
                                             FontSize="12"
-                                            Visibility="{x:Bind views:ComposePage.IsWindowsPath(ViewModel.Selected.Location), Mode=OneWay}" />
+                                            Visibility="{x:Bind views:ComposePage.IsWindowsPath(ViewModel.WorkingDir), Mode=OneWay}" />
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button
-                                        AutomationProperties.AutomationId="ComposeStartButton"
-                                        Click="OnStart"
-                                        Style="{StaticResource AccentButtonStyle}">
+                                        AutomationProperties.AutomationId="ComposeUpButton"
+                                        Click="OnUp"
+                                        IsEnabled="{x:Bind ViewModel.CanUp, Mode=OneWay}"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        ToolTipService.ToolTip="Creates and starts every service, pulling or building the images they lack">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="{x:Bind icons:ContrIcons.Play}" Style="{StaticResource IconStyle}" />
-                                            <TextBlock Text="Start" />
+                                            <TextBlock Text="Up" />
                                         </StackPanel>
                                     </Button>
-                                    <Button IsEnabled="False">
+                                    <Button
+                                        AutomationProperties.AutomationId="ComposePullButton"
+                                        Click="OnPull"
+                                        IsEnabled="{x:Bind ViewModel.CanUp, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="{x:Bind icons:ContrIcons.Download}" Style="{StaticResource IconStyle}" />
                                             <TextBlock Text="Pull" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Click="OnRestart">
+                                    <Button
+                                        AutomationProperties.AutomationId="ComposeRestartButton"
+                                        Click="OnRestart"
+                                        IsEnabled="{x:Bind ViewModel.CanAct, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="{x:Bind icons:ContrIcons.Restart}" Style="{StaticResource IconStyle}" />
                                             <TextBlock Text="Restart" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Click="OnStop">
+                                    <Button
+                                        AutomationProperties.AutomationId="ComposeStopButton"
+                                        Click="OnStop"
+                                        IsEnabled="{x:Bind ViewModel.CanAct, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="{x:Bind icons:ContrIcons.Stop}" Style="{StaticResource IconStyle}" />
                                             <TextBlock Text="Stop" />
                                         </StackPanel>
                                     </Button>
                                     <Button
+                                        AutomationProperties.AutomationId="ComposeDownButton"
+                                        Click="OnDown"
                                         Content="Down…"
-                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        IsEnabled="False" />
+                                        IsEnabled="{x:Bind ViewModel.CanAct, Mode=OneWay}"
+                                        Style="{StaticResource DestructiveButtonStyle}" />
                                 </StackPanel>
+
+                                <!--  The last command's output stays under the commands until another runs.  -->
+                                <Grid
+                                    Margin="-20,4,-20,-20"
+                                    AutomationProperties.AutomationId="ComposeRun"
+                                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    Visibility="{x:Bind ViewModel.ShowsRun, Mode=OneWay}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel
+                                        Padding="20,10"
+                                        Orientation="Horizontal"
+                                        Spacing="12">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource CaptionLabelStyle}"
+                                            Text="OUTPUT" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontWeight="SemiBold"
+                                            Text="{x:Bind ViewModel.Run.Title, Mode=OneWay}" />
+                                        <common:PillView Kind="{x:Bind ViewModel.Run.PillKind, Mode=OneWay}" Text="{x:Bind ViewModel.Run.StatusText, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <ListView
+                                        x:Name="OutputList"
+                                        Grid.Row="1"
+                                        MaxHeight="220"
+                                        Padding="0,8"
+                                        Background="{ThemeResource ComposeLogBackgroundBrush}"
+                                        CornerRadius="0,0,8,8"
+                                        ItemContainerStyle="{StaticResource LogListItemStyle}"
+                                        ItemTemplate="{StaticResource OutputTemplate}"
+                                        ItemsSource="{x:Bind ViewModel.Output}"
+                                        SelectionMode="None" />
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -249,6 +397,7 @@
                                             <ColumnDefinition Width="{StaticResource ImageColumnWidth}" MinWidth="150" />
                                             <ColumnDefinition Width="{StaticResource StateColumnWidth}" MinWidth="140" />
                                             <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
+                                            <ColumnDefinition Width="{StaticResource ActionColumnWidth}" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Service" />
                                         <TextBlock
@@ -264,7 +413,10 @@
                                             Style="{StaticResource ColumnHeadStyle}"
                                             Text="Ports" />
                                     </Grid>
-                                    <ItemsRepeater ItemTemplate="{StaticResource ServiceTemplate}" ItemsSource="{x:Bind ViewModel.Services}" />
+                                    <ItemsRepeater
+                                        AutomationProperties.AutomationId="ComposeServices"
+                                        ItemTemplate="{StaticResource ServiceTemplate}"
+                                        ItemsSource="{x:Bind ViewModel.Services}" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -285,7 +437,10 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="LOGS" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource CaptionLabelStyle}"
+                                        Text="LOGS" />
                                     <!--  Its tokens follow ViewModel.Filters in code; a SelectorBar takes no ItemsSource.  -->
                                     <SelectorBar
                                         x:Name="ServiceFilter"
@@ -298,9 +453,13 @@
                                         Grid.Column="2"
                                         Orientation="Horizontal"
                                         Spacing="8">
-                                        <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Follow" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource ColumnHeadStyle}"
+                                            Text="Follow" />
                                         <ToggleSwitch
                                             MinWidth="0"
+                                            AutomationProperties.AutomationId="ComposeFollow"
                                             AutomationProperties.Name="Follow"
                                             IsOn="{x:Bind ViewModel.IsFollowing, Mode=TwoWay}"
                                             OffContent=""
@@ -313,25 +472,20 @@
                                     Canvas.ZIndex="1"
                                     FontSize="12"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="No log lines yet. They appear here as the services write them."
+                                    Text="{x:Bind ViewModel.LogsNote, Mode=OneWay}"
+                                    TextWrapping="Wrap"
                                     Visibility="{x:Bind views:ComposePage.WhenNone(ViewModel.Lines.Count), Mode=OneWay}" />
                                 <ListView
                                     x:Name="LogList"
                                     Grid.Row="1"
                                     Padding="0,10"
+                                    AutomationProperties.AutomationId="ComposeLogs"
                                     Background="{ThemeResource ComposeLogBackgroundBrush}"
                                     CornerRadius="0,0,8,8"
+                                    ItemContainerStyle="{StaticResource LogListItemStyle}"
                                     ItemTemplate="{StaticResource LogTemplate}"
                                     ItemsSource="{x:Bind ViewModel.Lines}"
-                                    SelectionMode="None">
-                                    <ListView.ItemContainerStyle>
-                                        <Style TargetType="ListViewItem">
-                                            <Setter Property="MinHeight" Value="0" />
-                                            <Setter Property="Padding" Value="0" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                        </Style>
-                                    </ListView.ItemContainerStyle>
-                                </ListView>
+                                    SelectionMode="None" />
                             </Grid>
                         </Border>
                     </StackPanel>
@@ -343,10 +497,17 @@
                     Visibility="{x:Bind ViewModel.Engine.IsClosed, Mode=OneWay}" />
 
                 <common:EmptyState
-                    Title="No Compose projects running"
+                    Title="Compose isn't available"
                     Margin="0,16,0,0"
                     Glyph="{x:Bind icons:ContrIcons.Compose}"
-                    Message="Run docker compose up in a project's folder. Its services show up here, grouped by project."
+                    Message="This version of the Contr service doesn't run Compose projects."
+                    Visibility="{x:Bind views:ComposePage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.LacksOffer), Mode=OneWay}" />
+
+                <common:EmptyState
+                    Title="No Compose projects yet"
+                    Margin="0,16,0,0"
+                    Glyph="{x:Bind icons:ContrIcons.Compose}"
+                    Message="Run docker compose up in a project's folder, or add a project by its compose.yaml. Its services show up here."
                     Visibility="{x:Bind views:ComposePage.ShowsEmpty(ViewModel.Engine.IsOpen, ViewModel.IsLoaded, ViewModel.HasProjects), Mode=OneWay}" />
             </StackPanel>
         </Grid>
