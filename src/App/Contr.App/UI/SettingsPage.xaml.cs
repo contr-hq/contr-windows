@@ -34,6 +34,7 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         InitializeComponent();
 
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public SettingsViewModel ViewModel { get; }
@@ -83,11 +84,27 @@ public sealed partial class SettingsPage : Page, IHasViewModel
         return $"This PC has {Environment.ProcessorCount.ToString(CultureInfo.CurrentCulture)} logical processors.";
     }
 
+    public static bool Not(bool value)
+    {
+        return !value;
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Tabs.SelectedItem ??= GeneralTab;
+        ViewModel.Activate();
         await ViewModel.LoadToolsAsync();
         await ViewModel.LoadWslAsync();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Deactivate();
+    }
+
+    private async void OnResetSettings(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.ResetSettingsAsync();
     }
 
     private void OnTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)

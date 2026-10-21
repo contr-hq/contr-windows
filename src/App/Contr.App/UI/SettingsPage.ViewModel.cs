@@ -10,16 +10,20 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Contr.App.Services.Platform;
+using Contr.SharedKernel;
+using Contr.UI.Common.Engine;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.App.UI;
 
 /// <summary>
-/// Backs Settings: startup and closing, the command-line tools, appearance and the daemon; the tabs whose settings
-/// the daemon cannot change yet show their layout only.
+/// Backs Settings: startup and closing, the command-line tools, appearance, the daemon and its settings; the tabs
+/// whose settings the daemon cannot change yet show their layout only.
 /// </summary>
 public sealed partial class SettingsViewModel : ViewModel
 {
@@ -32,6 +36,12 @@ public sealed partial class SettingsViewModel : ViewModel
     private readonly ICliTools _cliTools;
     private readonly INavigationService _navigation;
     private readonly IWslDistributions _wsl;
+    private readonly IDaemonSettings _settings;
+    private readonly IDialogService _dialogs;
+    private readonly INotificationService _notifications;
+    private readonly DispatcherQueue? _dispatcher;
+    private IDisposable? _subscription;
+    private bool _isShowing;
 
     [ObservableProperty]
     public partial int ThemeIndex { get; set; }
@@ -46,8 +56,23 @@ public sealed partial class SettingsViewModel : ViewModel
     [ObservableProperty]
     public partial bool StartAtSignIn { get; set; }
 
+    /// <summary>Whether the daemon keeps settings: it is connected and at API revision 11 or later.</summary>
     [ObservableProperty]
-    public partial bool StartsEngine { get; set; }
+    public partial bool HasDaemonSettings { get; set; }
+
+    /// <summary>Whether an administrator fixes any of the daemon's settings.</summary>
+    [ObservableProperty]
+    public partial bool HasLockedSettings { get; set; }
+
+    [ObservableProperty]
+    public partial bool ServesDefaultPipe { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanChangeDefaultPipe))]
+    public partial bool IsDefaultPipeLocked { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsResetting { get; set; }
 
     /// <summary>Such as <c>Installed for your account</c>; empty until the daemon answered.</summary>
     [ObservableProperty]
@@ -86,7 +111,10 @@ public sealed partial class SettingsViewModel : ViewModel
         ISignInStartup signIn,
         ICliTools cliTools,
         INavigationService navigation,
-        IWslDistributions wsl)
+        IWslDistributions wsl,
+        IDaemonSettings settings,
+        IDialogService dialogs,
+        INotificationService notifications)
     {
         ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(accentService);
@@ -95,6 +123,9 @@ public sealed partial class SettingsViewModel : ViewModel
         ArgumentNullException.ThrowIfNull(cliTools);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(wsl);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(dialogs);
+        ArgumentNullException.ThrowIfNull(notifications);
         _themeService = themeService;
         _accentService = accentService;
         _daemon = daemon;
@@ -102,6 +133,11 @@ public sealed partial class SettingsViewModel : ViewModel
         _cliTools = cliTools;
         _navigation = navigation;
         _wsl = wsl;
+        _settings = settings;
+        _dialogs = dialogs;
+        _notifications = notifications;
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
+        Autostart = new EngineAutostartViewModel(daemon, settings, notifications);
         ThemeIndex = themeService.Theme switch {
             ElementTheme.Light => 1,
             ElementTheme.Dark => 2,
@@ -112,7 +148,6 @@ public sealed partial class SettingsViewModel : ViewModel
         DaemonDescription = Describe(daemon.Identity);
         DaemonEndpoint = daemon.Identity?.Endpoint ?? string.Empty;
         StartAtSignIn = signIn.IsEnabled;
-        StartsEngine = daemon.StartsEngineOnConnect;
         ToolsTitle = string.Empty;
         ToolsDetail = string.Empty;
         ToolsNote = string.Empty;
@@ -129,6 +164,11 @@ public sealed partial class SettingsViewModel : ViewModel
     }
 
     public bool HasAccentChoice { get; }
+
+    /// <summary>Whether the engine starts with Contr.</summary>
+    public EngineAutostartViewModel Autostart { get; }
+
+    public bool CanChangeDefaultPipe => !IsDefaultPipeLocked;
 
     public string DaemonDescription { get; }
 
@@ -167,6 +207,97 @@ public sealed partial class SettingsViewModel : ViewModel
         return daemon is null
             ? "Not connected."
             : $"Version {daemon.Version}, API revision {daemon.ApiRevision}, {daemon.Backend} backend";
+    }
+
+    /// <summary>Follows the daemon's settings; call it when the page loads.</summary>
+    public void Activate()
+    {
+        Autostart.Start();
+        _subscription ??= _settings.Changes.Subscribe(settings => {
+            // Changes emits on a background thread.
+            if (_dispatcher is null)
+            {
+                Show(settings);
+            }
+            else
+            {
+                _dispatcher.TryEnqueue(() => Show(settings));
+            }
+        });
+    }
+
+    public void Deactivate()
+    {
+        Autostart.Stop();
+        _subscription?.Dispose();
+        _subscription = null;
+    }
+
+    /// <summary>Shows the daemon's settings; absent ones hide the rows only the daemon backs.</summary>
+    public void Show(DaemonSettings? settings)
+    {
+        _isShowing = true;
+        HasDaemonSettings = settings is not null;
+        HasLockedSettings = settings?.Locked.Count > 0;
+        ServesDefaultPipe = settings?.ServeDefaultPipe == true;
+        IsDefaultPipeLocked = settings?.IsLocked(DaemonSetting.ServeDefaultPipe) == true;
+        _isShowing = false;
+    }
+
+    /// <summary>Asks the daemon for <paramref name="value"/>; a refusal turns the switch back and says why.</summary>
+    public async Task ApplyDefaultPipeAsync(bool value)
+    {
+        var result = await _settings.SetAsync(DaemonSetting.ServeDefaultPipe, value, CancellationToken.None);
+
+        if (result.IsFailure)
+        {
+            _isShowing = true;
+            ServesDefaultPipe = !value;
+            _isShowing = false;
+            _notifications.Show(Reason(result.Error), InfoBarSeverity.Error, "The standard Docker pipe didn't change");
+
+            return;
+        }
+
+        Show(result.Value.Settings);
+        NotifyRestart(result.Value);
+    }
+
+    /// <summary>Asks first, then returns the daemon's settings the user changed to their defaults.</summary>
+    public async Task ResetSettingsAsync()
+    {
+        const string message = "Contr returns the engine settings you changed to their defaults. Settings your "
+            + "organization manages stay as they are.";
+
+        if (!await _dialogs.ShowConfirmAsync("Reset the engine settings", message, "Reset", "Cancel"))
+        {
+            return;
+        }
+
+        IsResetting = true;
+        try
+        {
+            var result = await _settings.ResetAsync(CancellationToken.None);
+
+            if (result.IsFailure)
+            {
+                _notifications.Show(Reason(result.Error), InfoBarSeverity.Error, "The engine settings didn't change");
+
+                return;
+            }
+
+            Show(result.Value.Settings);
+            Autostart.Show(result.Value.Settings);
+
+            if (!NotifyRestart(result.Value))
+            {
+                _notifications.Show("The engine settings are back to their defaults.", InfoBarSeverity.Success);
+            }
+        }
+        finally
+        {
+            IsResetting = false;
+        }
     }
 
     /// <summary>Reads the command-line tools' state; call it when the page loads.</summary>
@@ -293,12 +424,50 @@ public sealed partial class SettingsViewModel : ViewModel
         }
     }
 
-    partial void OnStartsEngineChanged(bool value)
+    partial void OnServesDefaultPipeChanged(bool value)
     {
-        if (_daemon.StartsEngineOnConnect != value)
+        if (!_isShowing)
         {
-            _daemon.StartsEngineOnConnect = value;
+            _ = ApplyDefaultPipeAsync(value);
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Deactivate();
+        }
+    }
+
+    private static string Reason(Error error)
+    {
+        return error.Code == IDaemonSettings.SettingLockedCode
+            ? "Your organization manages this setting."
+            : error.Message;
+    }
+
+    /// <summary>Says when changed settings wait for the engine's next start.</summary>
+    /// <returns>Whether anything waits.</returns>
+    private bool NotifyRestart(DaemonSettingsChange change)
+    {
+        if (change.RestartRequired.Count == 0)
+        {
+            return false;
+        }
+
+        var names = change.RestartRequired
+            .Order()
+            .Select(setting => setting switch {
+                DaemonSetting.ServeDefaultPipe => "the standard Docker pipe setting",
+                _ => "starting the engine with Contr",
+            });
+        _notifications.Show(
+            $"Restart the engine to apply {string.Join(" and ", names)} now.",
+            InfoBarSeverity.Informational,
+            "Applies at the next engine start");
+
+        return true;
     }
 
     private void OnDistributionSwitched(object? sender, EventArgs e)
