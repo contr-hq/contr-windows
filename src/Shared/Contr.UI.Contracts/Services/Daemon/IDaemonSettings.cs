@@ -75,6 +75,15 @@ public enum DaemonSetting
     /// <summary>New containers and builds also receive the engine's proxy as <c>HTTP_PROXY</c>, <c>HTTPS_PROXY</c>
     /// and <c>NO_PROXY</c>, unless they set the variable themselves; from the engine's next start.</summary>
     PassProxyToContainers,
+
+    /// <summary>The daemon runs the Kubernetes cluster whenever the engine runs.</summary>
+    KubernetesEnabled,
+
+    /// <summary>The cluster's Kubernetes version; changing it deletes the cluster's data.</summary>
+    KubernetesVersion,
+
+    /// <summary>The cluster runs the Traefik ingress controller.</summary>
+    KubernetesTraefik,
 }
 
 /// <summary>How the engine finds its proxy.</summary>
@@ -104,6 +113,17 @@ public sealed record ProxySettings(ProxyMode Mode, string Http, string Https, st
     public static ProxySettings Default { get; } = new(ProxyMode.System, string.Empty, string.Empty, string.Empty);
 }
 
+/// <summary>The cluster <see cref="IKubernetesCluster"/> reports.</summary>
+/// <param name="Enabled">See <see cref="DaemonSetting.KubernetesEnabled"/>.</param>
+/// <param name="Version">One of <see cref="KubernetesCluster.AvailableVersions"/>, such as <c>v1.37.1</c>; empty
+/// runs the default.</param>
+/// <param name="Traefik">See <see cref="DaemonSetting.KubernetesTraefik"/>.</param>
+public sealed record KubernetesSettings(bool Enabled, string Version, bool Traefik)
+{
+    /// <summary>The daemon's defaults.</summary>
+    public static KubernetesSettings Default { get; } = new(false, string.Empty, false);
+}
+
 /// <summary>The daemon's settings in effect.</summary>
 /// <param name="StartEngineWithDaemon">See <see cref="DaemonSetting.StartEngineWithDaemon"/>.</param>
 /// <param name="ServeDefaultPipe">See <see cref="DaemonSetting.ServeDefaultPipe"/>.</param>
@@ -122,6 +142,13 @@ public sealed record DaemonSettings(
 
     /// <summary>See <see cref="DaemonSetting.DaemonJson"/>; <c>{}</c> holds no settings.</summary>
     public string DaemonJson { get; init; } = "{}";
+
+    /// <summary>Applies where the daemon reports <see cref="DaemonCapability.Kubernetes"/>.</summary>
+    public KubernetesSettings Kubernetes { get; init; } = KubernetesSettings.Default;
+
+    /// <summary>Grows with every change; a <see cref="KubernetesCluster"/> whose
+    /// <see cref="KubernetesCluster.SettingsRevision"/> is at least this reflects these settings.</summary>
+    public ulong Revision { get; init; }
 
     /// <summary>Whether an administrator fixes <paramref name="setting"/>.</summary>
     public bool IsLocked(DaemonSetting setting)
@@ -163,6 +190,15 @@ public sealed record DaemonSettingsEdit
     /// <summary>See <see cref="DaemonSetting.DaemonJson"/>.</summary>
     public string? DaemonJson { get; init; }
 
+    /// <summary>See <see cref="DaemonSetting.KubernetesEnabled"/>.</summary>
+    public bool? KubernetesEnabled { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.KubernetesVersion"/>; empty runs the default.</summary>
+    public string? KubernetesVersion { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.KubernetesTraefik"/>.</summary>
+    public bool? KubernetesTraefik { get; init; }
+
     /// <summary>The settings this edit changes.</summary>
     public IEnumerable<DaemonSetting> Settings()
     {
@@ -177,6 +213,9 @@ public sealed record DaemonSettingsEdit
             (TrustSystemCertificates is not null, DaemonSetting.TrustSystemCertificates),
             (RegistryMirrors is not null, DaemonSetting.RegistryMirrors),
             (DaemonJson is not null, DaemonSetting.DaemonJson),
+            (KubernetesEnabled is not null, DaemonSetting.KubernetesEnabled),
+            (KubernetesVersion is not null, DaemonSetting.KubernetesVersion),
+            (KubernetesTraefik is not null, DaemonSetting.KubernetesTraefik),
         ];
 
         return fields
@@ -220,6 +259,9 @@ public static class DaemonSettingPaths
         (DaemonSetting.RegistryMirrors, "registry.mirrors"),
         (DaemonSetting.DaemonJson, "engine.daemon_json"),
         (DaemonSetting.PassProxyToContainers, "proxy.pass_to_containers"),
+        (DaemonSetting.KubernetesEnabled, "kubernetes.enabled"),
+        (DaemonSetting.KubernetesVersion, "kubernetes.version"),
+        (DaemonSetting.KubernetesTraefik, "kubernetes.traefik"),
     ];
 
     /// <summary>Such as <c>proxy.http</c>.</summary>
