@@ -1,6 +1,7 @@
 using Contr.Application.Abstractions.Daemon;
 using Contr.Daemon.UI;
 using Contr.Sdk;
+using Contr.UI.Contracts.Services.Daemon;
 using Grpc.Core;
 using Xunit;
 
@@ -21,6 +22,14 @@ public sealed class DaemonErrorMappingTests
 
         Assert.Equal(DaemonErrors.NotFoundCode, error.Code);
         Assert.Equal("No such container: web", error.Message);
+    }
+
+    [Fact]
+    public void SettingLocked_MapsToItsOwnCode()
+    {
+        var error = new SettingLockedException("engine.start_with_daemon is locked", null).ToError();
+
+        Assert.Equal(IDaemonSettings.SettingLockedCode, error.Code);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using Contr.Application.Abstractions.Daemon;
 using Contr.Sdk;
 using Contr.Sdk.Common.V1;
 using Contr.SharedKernel;
+using Contr.UI.Contracts.Services.Daemon;
 using Grpc.Core;
 
 namespace Contr.Daemon.UI;
@@ -22,6 +23,7 @@ public static class DaemonErrorMapping
             PermissionDeniedException => new Error(DaemonErrors.PermissionDeniedCode, exception.Message),
             FeatureUnavailableException => new Error(DaemonErrors.FeatureUnavailableCode, exception.Message),
             VersionMismatchException => new Error(DaemonErrors.VersionMismatchCode, exception.Message),
+            SettingLockedException => new Error(IDaemonSettings.SettingLockedCode, exception.Message),
 
             // A channel disposed under an open call cancels it; the connection is what failed.
             { InnerException: RpcException { StatusCode: StatusCode.Cancelled or StatusCode.Unavailable } } =>
