@@ -16,6 +16,19 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ms-appx:///Styles/SettingsGroups.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#0C0C0C" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#FBFBFB" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <Style x:Key="EngineFileTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
 
             <!--  A row of the installed versions; the columns line up with the header in ItemsHeader.  -->
             <DataTemplate x:Key="ComponentTemplate" x:DataType="local:InstalledComponent">
@@ -181,13 +194,35 @@
                         Severity="Informational"
                         Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 2, ViewModel.Proxies.LacksOffer), Mode=OneWay}" />
                     <InfoBar
-                        Title="Engine configuration is not available yet"
+                        Title="Engine configuration isn't available"
                         Margin="0,16,0,0"
                         IsClosable="False"
                         IsOpen="True"
-                        Message="This version of the Contr daemon cannot edit the engine's daemon.json."
+                        Message="This engine doesn't take a daemon.json from Contr."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Engine.LacksOffer), Mode=OneWay}" />
+                    <InfoBar
+                        Title="{x:Bind ViewModel.Engine.ErrorTitle, Mode=OneWay}"
+                        Margin="0,16,0,0"
+                        AutomationProperties.AutomationId="EngineFileError"
+                        IsClosable="False"
+                        IsOpen="{x:Bind local:SettingsPage.Shows(ViewModel.TabIndex, 3, ViewModel.Engine.HasError), Mode=OneWay}"
+                        Message="{x:Bind ViewModel.Engine.ErrorMessage, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Engine.HasError), Mode=OneWay}">
+                        <InfoBar.ActionButton>
+                            <Button
+                                AutomationProperties.AutomationId="ChangeToSuggestion"
+                                AutomationProperties.Name="{x:Bind ViewModel.Engine.SuggestionText, Mode=OneWay}"
+                                Click="OnChangeToSuggestion"
+                                Visibility="{x:Bind ViewModel.Engine.HasSuggestion, Mode=OneWay}">
+                                <TextBlock>
+                                    <Run Text="Change to" />
+                                    <Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind local:SettingsPage.SuggestedKey(ViewModel.Engine.Suggestion), Mode=OneWay}" />
+                                </TextBlock>
+                            </Button>
+                        </InfoBar.ActionButton>
+                    </InfoBar>
                     <InfoBar
                         Title="Updates are not available yet"
                         Margin="0,16,0,0"
@@ -704,23 +739,161 @@
                     </StackPanel>
 
                     <!--  Engine  -->
-                    <StackPanel
+                    <Grid
                         Margin="0,12,0,0"
-                        Spacing="16"
+                        ColumnSpacing="16"
                         Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 3), Mode=OneWay}">
-                        <Border Style="{StaticResource SettingsGroupStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="400" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Padding="0"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="ENGINE CONFIGURATION" />
-                                <controls:SettingsCard
-                                    BorderThickness="0"
-                                    Description="The engine's own configuration file. Contr adds your proxy and certificate settings to it when the engine starts."
-                                    Header="daemon.json"
-                                    IsEnabled="False">
-                                    <Button Content="Reset to defaults" />
-                                </controls:SettingsCard>
+                                <Grid Padding="20,12,16,12" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel
+                                        VerticalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="8">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource CaptionLabelStyle}"
+                                            Text="ENGINE CONFIGURATION" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource EngineFileTextStyle}"
+                                            Text="daemon.json" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource TimeTextStyle}"
+                                            Text="{x:Bind ViewModel.Engine.EditedText, Mode=OneWay}" />
+                                        <common:PillView
+                                            Kind="Locked"
+                                            Text="Managed by your organization"
+                                            Visibility="{x:Bind ViewModel.Engine.IsLocked, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        AutomationProperties.AutomationId="FormatEngineFile"
+                                        Click="OnFormatEngineFile"
+                                        Content="Format"
+                                        IsEnabled="{x:Bind ViewModel.Engine.CanEdit, Mode=OneWay}"
+                                        Style="{StaticResource SubtleButtonStyle}" />
+                                    <Button
+                                        Grid.Column="2"
+                                        AutomationProperties.AutomationId="ResetEngineFile"
+                                        Click="OnResetEngineFile"
+                                        Content="Reset to defaults"
+                                        IsEnabled="{x:Bind ViewModel.Engine.CanEdit, Mode=OneWay}"
+                                        Style="{StaticResource SubtleButtonStyle}" />
+                                </Grid>
+                                <!--  The text grows to its lines inside one scroller, so the numbers scroll with it.  -->
+                                <ScrollViewer
+                                    MaxHeight="420"
+                                    Background="{ThemeResource EngineFileBackgroundBrush}"
+                                    HorizontalScrollBarVisibility="Auto"
+                                    HorizontalScrollMode="Auto"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <Grid MinHeight="160">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            x:Name="EngineFileLines"
+                                            MinWidth="28"
+                                            Padding="16,9,8,9"
+                                            AutomationProperties.AccessibilityView="Raw"
+                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                            Style="{StaticResource EngineFileTextStyle}"
+                                            Text="{x:Bind ViewModel.Engine.LineNumbers, Mode=OneWay}"
+                                            TextAlignment="Right" />
+                                        <TextBox
+                                            x:Name="EngineFileEditor"
+                                            Grid.Column="1"
+                                            Padding="8,8,16,8"
+                                            AcceptsReturn="True"
+                                            AutomationProperties.AutomationId="EngineFile"
+                                            AutomationProperties.Name="daemon.json"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontFamily="Cascadia Mono,Consolas"
+                                            FontSize="13"
+                                            IsReadOnly="{x:Bind local:SettingsPage.Not(ViewModel.Engine.CanEdit), Mode=OneWay}"
+                                            IsSpellCheckEnabled="False"
+                                            IsTextPredictionEnabled="False"
+                                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                            ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                            Text="{x:Bind ViewModel.Engine.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            TextWrapping="NoWrap" />
+                                    </Grid>
+                                </ScrollViewer>
+                                <ItemsRepeater
+                                    Margin="20,10,16,12"
+                                    AutomationProperties.AutomationId="EngineFileProblems"
+                                    ItemsSource="{x:Bind ViewModel.Engine.Problems}"
+                                    Visibility="{x:Bind ViewModel.Engine.HasProblems, Mode=OneWay}">
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Spacing="6" />
+                                    </ItemsRepeater.Layout>
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="local:EngineFileProblem">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon
+                                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                    Glyph="{x:Bind icons:ContrIcons.Error}"
+                                                    Style="{StaticResource IconStyle}" />
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Text="{x:Bind Display}"
+                                                    TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="16">
+                            <Border Style="{StaticResource CaptionedCardStyle}">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="ABOUT THIS FILE" />
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="This is the engine's own configuration. Contr adds your proxy and certificate settings to it when the engine starts, so you don't need to put them here."
+                                        TextWrapping="Wrap" />
+                                    <HyperlinkButton
+                                        Padding="0"
+                                        Content="Engine configuration reference"
+                                        NavigateUri="https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CaptionedCardStyle}">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="KEYS CONTR SETS" />
+                                    <TextBlock
+                                        IsTextSelectionEnabled="True"
+                                        LineHeight="20"
+                                        Style="{StaticResource EngineFileTextStyle}"
+                                        Text="{x:Bind local:SettingsPage.ContrKeys}" />
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="Contr writes these itself, so it refuses them here. Proxies and registry mirrors are on Proxies and certificates."
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
 
                     <!--  Kubernetes  -->
                     <StackPanel
@@ -839,6 +1012,41 @@
                 </StackPanel>
             </Grid>
         </ScrollViewer>
+
+        <!--  A pending daemon.json applies from the footer, as the board shows.  -->
+        <Border
+            Grid.Row="1"
+            Padding="24,14"
+            AutomationProperties.AutomationId="EngineChangesBar"
+            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0"
+            Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 3, ViewModel.Engine.HasChanges), Mode=OneWay}">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+                    <Run Text="{x:Bind ViewModel.Engine.FooterText, Mode=OneWay}" />
+                    <Run Text="{x:Bind ViewModel.Engine.ApplyHint, Mode=OneWay}" />
+                </TextBlock>
+                <Button
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="DiscardEngineChanges"
+                    Click="OnDiscardEngineChanges"
+                    Content="Discard"
+                    IsEnabled="{x:Bind local:SettingsPage.Not(ViewModel.Engine.IsApplying), Mode=OneWay}" />
+                <Button
+                    Grid.Column="2"
+                    AutomationProperties.AutomationId="ApplyEngineChanges"
+                    Click="OnApplyEngineChanges"
+                    Content="{x:Bind ViewModel.Engine.ApplyText, Mode=OneWay}"
+                    IsEnabled="{x:Bind ViewModel.Engine.CanApply, Mode=OneWay}"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </Grid>
+        </Border>
 
         <!--  Pending proxy edits apply together, as the board's footer shows.  -->
         <Border

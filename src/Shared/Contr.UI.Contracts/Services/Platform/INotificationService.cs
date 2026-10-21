@@ -13,4 +13,7 @@ public interface INotificationService : IUiContractService, ISingletonDependency
         string message,
         InfoBarSeverity severity = InfoBarSeverity.Informational,
         string? title = null);
+
+    /// <summary>Closes the notification showing, if any.</summary>
+    void Close();
 }
