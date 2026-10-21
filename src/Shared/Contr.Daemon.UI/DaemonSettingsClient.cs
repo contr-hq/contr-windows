@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
@@ -13,9 +14,11 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using DaemonJsonRejection = Contr.Sdk.Settings.V1.DaemonJsonRejection;
+using KubernetesSettings = Contr.UI.Contracts.Services.Daemon.KubernetesSettings;
 using ProxyMode = Contr.UI.Contracts.Services.Daemon.ProxyMode;
 using ProxySettings = Contr.UI.Contracts.Services.Daemon.ProxySettings;
 using UnknownDaemonKey = Contr.UI.Contracts.Services.Daemon.UnknownDaemonKey;
+using WireKubernetes = Contr.Sdk.Settings.V1.KubernetesSettings;
 using WireMode = Contr.Sdk.Settings.V1.ProxyMode;
 using WireProxy = Contr.Sdk.Settings.V1.ProxySettings;
 using WireSettings = Contr.Sdk.Settings.V1.Settings;
@@ -140,6 +143,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
 
         var engine = state.Settings?.Engine ?? new EngineSettings();
         var proxy = state.Settings?.Proxy;
+        var kubernetes = state.Settings?.Kubernetes;
 
         return new DaemonSettings(engine.StartWithDaemon, engine.ServeDefaultPipe, Known(state.LockedPaths)) {
             Proxy = proxy is null
@@ -150,6 +154,12 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
             TrustSystemCertificates = state.Settings?.Certificates?.TrustSystem ?? true,
             RegistryMirrors = state.Settings?.Registry is { } registry ? [.. registry.Mirrors] : [],
             DaemonJson = engine.DaemonJson.Length > 0 ? engine.DaemonJson : "{}",
+            Kubernetes = kubernetes is null
+                ? KubernetesSettings.Default
+                : new KubernetesSettings(kubernetes.Enabled, kubernetes.Version, kubernetes.Traefik),
+            Revision = ulong.TryParse(state.Etag, NumberStyles.None, CultureInfo.InvariantCulture, out var revision)
+                ? revision
+                : 0,
         };
     }
 
@@ -177,6 +187,11 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
                 PassToContainers = edit.PassProxyToContainers ?? false,
             },
             Certificates = new CertificateSettings { TrustSystem = edit.TrustSystemCertificates ?? false },
+            Kubernetes = new WireKubernetes {
+                Enabled = edit.KubernetesEnabled ?? false,
+                Version = edit.KubernetesVersion ?? string.Empty,
+                Traefik = edit.KubernetesTraefik ?? false,
+            },
             Registry = new RegistrySettings { Mirrors = { edit.RegistryMirrors ?? [] } },
         };
         var mask = new FieldMask();
