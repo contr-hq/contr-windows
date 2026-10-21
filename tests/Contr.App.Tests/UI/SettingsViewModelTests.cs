@@ -8,6 +8,7 @@ using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using NSubstitute;
 using Xunit;
 
@@ -22,6 +23,9 @@ public sealed class SettingsViewModelTests
     private readonly ICliTools _cliTools = Substitute.For<ICliTools>();
     private readonly INavigationService _navigation = Substitute.For<INavigationService>();
     private readonly IWslDistributions _wsl = Substitute.For<IWslDistributions>();
+    private readonly IDaemonSettings _settings = Substitute.For<IDaemonSettings>();
+    private readonly IDialogService _dialogs = Substitute.For<IDialogService>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
 
     public SettingsViewModelTests()
     {
@@ -39,6 +43,63 @@ public sealed class SettingsViewModelTests
 
         _theme.Theme.Returns(ElementTheme.Default);
         Assert.Equal(0, CreateViewModel().ThemeIndex);
+    }
+
+    [Fact]
+    public void DaemonSettings_ShowTheRowsTheyBackAndTheirLocks()
+    {
+        var viewModel = CreateViewModel();
+
+        Assert.False(viewModel.HasDaemonSettings);
+
+        viewModel.Show(SettingsOf(servesDefaultPipe: true, DaemonSetting.ServeDefaultPipe));
+
+        Assert.True(viewModel.HasDaemonSettings);
+        Assert.True(viewModel.HasLockedSettings);
+        Assert.True(viewModel.ServesDefaultPipe);
+        Assert.False(viewModel.CanChangeDefaultPipe);
+        _settings.DidNotReceiveWithAnyArgs().SetAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task DefaultPipe_SaysWhenItWaitsForTheEngine()
+    {
+        _settings
+            .SetAsync(DaemonSetting.ServeDefaultPipe, false, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new DaemonSettingsChange(
+                SettingsOf(servesDefaultPipe: false),
+                new HashSet<DaemonSetting> { DaemonSetting.ServeDefaultPipe })));
+        var viewModel = CreateViewModel();
+        viewModel.Show(SettingsOf(servesDefaultPipe: true));
+
+        await viewModel.ApplyDefaultPipeAsync(false);
+
+        Assert.False(viewModel.ServesDefaultPipe);
+        _notifications.Received(1).Show(
+            "Restart the engine to apply the standard Docker pipe setting now.",
+            InfoBarSeverity.Informational,
+            "Applies at the next engine start");
+    }
+
+    [Fact]
+    public async Task Reset_AsksFirstThenReturnsTheDefaults()
+    {
+        _dialogs
+            .ShowConfirmAsync(default!, default!, default!, default!)
+            .ReturnsForAnyArgs(true);
+        _settings
+            .ResetAsync(Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new DaemonSettingsChange(
+                SettingsOf(servesDefaultPipe: true), new HashSet<DaemonSetting>())));
+        var viewModel = CreateViewModel();
+        viewModel.Show(SettingsOf(servesDefaultPipe: false));
+
+        await viewModel.ResetSettingsAsync();
+
+        Assert.True(viewModel.ServesDefaultPipe);
+        Assert.False(viewModel.IsResetting);
+        _notifications.Received(1).Show(
+            "The engine settings are back to their defaults.", InfoBarSeverity.Success, Arg.Any<string?>());
     }
 
     [Fact]
@@ -195,8 +256,15 @@ public sealed class SettingsViewModelTests
             .Returns(Result.Success<IReadOnlyList<WslDistribution>>(distributions));
     }
 
+    private static DaemonSettings SettingsOf(bool servesDefaultPipe, params DaemonSetting[] locked)
+    {
+        return new DaemonSettings(
+            StartEngineWithDaemon: false, servesDefaultPipe, new HashSet<DaemonSetting>(locked));
+    }
+
     private SettingsViewModel CreateViewModel()
     {
-        return new SettingsViewModel(_theme, _accent, _daemon, _signIn, _cliTools, _navigation, _wsl);
+        return new SettingsViewModel(
+            _theme, _accent, _daemon, _signIn, _cliTools, _navigation, _wsl, _settings, _dialogs, _notifications);
     }
 }

@@ -43,6 +43,20 @@
             <StackPanel>
                 <common:PageHeader Trail="{x:Bind local:SettingsPage.Trail(ViewModel.TabIndex), Mode=OneWay}" TrailClicked="OnTrailClicked" />
 
+                <InfoBar
+                    Title="Some settings are managed by your organization."
+                    Margin="0,16,0,0"
+                    AutomationProperties.AutomationId="ManagedSettings"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}"
+                    Message="Settings with a lock can only be changed by your IT admin."
+                    Severity="Informational"
+                    Visibility="{x:Bind ViewModel.HasLockedSettings, Mode=OneWay}">
+                    <InfoBar.IconSource>
+                        <FontIconSource FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Organization}" />
+                    </InfoBar.IconSource>
+                </InfoBar>
+
                 <!--  The open tab's messages, under the breadcrumb and before the tabs.  -->
                 <InfoBar
                     Title="Resource limits are not available yet"
@@ -125,8 +139,21 @@
                                 Header="Start Contr when I sign in to Windows">
                                 <ToggleSwitch AutomationProperties.AutomationId="StartAtSignInToggle" IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
                             </controls:SettingsCard>
-                            <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it." Header="Start the engine with Contr">
-                                <ToggleSwitch AutomationProperties.AutomationId="StartsEngineToggle" IsOn="{x:Bind ViewModel.StartsEngine, Mode=TwoWay}" />
+                            <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it.">
+                                <controls:SettingsCard.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Start the engine with Contr" />
+                                        <common:PillView
+                                            Kind="Locked"
+                                            Text="Managed by your organization"
+                                            Visibility="{x:Bind ViewModel.Autostart.IsLocked, Mode=OneWay}" />
+                                    </StackPanel>
+                                </controls:SettingsCard.Header>
+                                <ToggleSwitch
+                                    AutomationProperties.AutomationId="StartsEngineToggle"
+                                    AutomationProperties.Name="Start the engine with Contr"
+                                    IsEnabled="{x:Bind ViewModel.Autostart.CanChange, Mode=OneWay}"
+                                    IsOn="{x:Bind ViewModel.Autostart.IsOn, Mode=TwoWay}" />
                             </controls:SettingsCard>
                             <controls:SettingsCard
                                 HorizontalContentAlignment="Left"
@@ -214,6 +241,28 @@
                                     Style="{StaticResource IdentifierTextStyle}"
                                     Text="{x:Bind local:SettingsPage.OrDash(ViewModel.ContextName)}" />
                             </controls:SettingsCard>
+                            <controls:SettingsCard Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
+                                <controls:SettingsCard.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Also listen on the standard Docker pipe" />
+                                        <common:PillView
+                                            Kind="Locked"
+                                            Text="Managed by your organization"
+                                            Visibility="{x:Bind ViewModel.IsDefaultPipeLocked, Mode=OneWay}" />
+                                    </StackPanel>
+                                </controls:SettingsCard.Header>
+                                <controls:SettingsCard.Description>
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="For tools that ignore contexts:" />
+                                        <Run FontFamily="Cascadia Mono,Consolas" Text="\\.\pipe\docker_engine" /><Run Text=", while no other program uses it. Applies at the next engine start." />
+                                    </TextBlock>
+                                </controls:SettingsCard.Description>
+                                <ToggleSwitch
+                                    AutomationProperties.AutomationId="DefaultPipeToggle"
+                                    AutomationProperties.Name="Also listen on the standard Docker pipe"
+                                    IsEnabled="{x:Bind ViewModel.CanChangeDefaultPipe, Mode=OneWay}"
+                                    IsOn="{x:Bind ViewModel.ServesDefaultPipe, Mode=TwoWay}" />
+                            </controls:SettingsCard>
                         </StackPanel>
                     </Border>
 
@@ -236,6 +285,16 @@
                                     AutomationProperties.Name="Open the log folder"
                                     Command="{x:Bind ViewModel.OpenLogFolderCommand}"
                                     Content="Open log folder" />
+                            </controls:SettingsCard>
+                            <controls:SettingsCard
+                                Description="Returns the engine settings you changed here to their defaults."
+                                Header="Engine settings"
+                                Visibility="{x:Bind ViewModel.HasDaemonSettings, Mode=OneWay}">
+                                <Button
+                                    AutomationProperties.AutomationId="ResetSettingsButton"
+                                    Click="OnResetSettings"
+                                    Content="Reset to defaults"
+                                    IsEnabled="{x:Bind local:SettingsPage.Not(ViewModel.IsResetting), Mode=OneWay}" />
                             </controls:SettingsCard>
                             <controls:SettingsCard Description="Checks this PC, sets up the engine and the tools again." Header="Setup">
                                 <Button
