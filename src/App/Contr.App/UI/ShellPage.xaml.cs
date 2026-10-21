@@ -22,6 +22,7 @@ public sealed partial class ShellPage : Page
     private readonly Dictionary<string, NavigationViewItem> _navItemsByKey = new(StringComparer.Ordinal);
     private bool _isSyncingSelection;
     private string? _currentPageKey;
+    private NavigationViewItemSeparator? _toolsSeparator;
 
     public ShellPage(
         ShellViewModel viewModel,
@@ -67,7 +68,14 @@ public sealed partial class ShellPage : Page
         _navigationService.Register([.. HostNavigation.ShellPages]);
         _notificationService.Initialize(AppNotificationBar);
 
-        foreach (var item in _modules.SelectMany(module => module.GetNavigationItems()))
+        var items = _modules
+            .SelectMany(module => module.GetNavigationItems())
+            .Concat(HostNavigation.Items)
+            .OrderBy(item => item.Placement)
+            .ThenBy(item => item.Order)
+            .ToList();
+
+        foreach (var item in items)
         {
             AddNavItem(item);
         }
@@ -109,11 +117,17 @@ public sealed partial class ShellPage : Page
         if (item.Placement == NavigationItemPlacement.Footer)
         {
             NavView.FooterMenuItems.Add(navItem);
+
+            return;
         }
-        else
+
+        if (item.Placement == NavigationItemPlacement.Tools && _toolsSeparator is null)
         {
-            NavView.MenuItems.Add(navItem);
+            _toolsSeparator = new NavigationViewItemSeparator();
+            NavView.MenuItems.Add(_toolsSeparator);
         }
+
+        NavView.MenuItems.Add(navItem);
     }
 
     private static Grid NavItemContent(string title, TextBlock badge)
@@ -209,6 +223,8 @@ public sealed partial class ShellPage : Page
             NavView.FooterMenuItems.Remove(navItem);
         }
 
+        NavView.MenuItems.Remove(_toolsSeparator);
+        _toolsSeparator = null;
         _navItemsByKey.Clear();
     }
 }

@@ -24,17 +24,17 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
         Minimum = minimum;
 
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Contr",
-            "logs");
-        Directory.CreateDirectory(directory);
-        _path = Path.Combine(directory, $"app-{DateTime.Now:yyyy-MM-dd}.log");
+        Directory.CreateDirectory(LogDirectory);
+        _path = Path.Combine(LogDirectory, $"app-{DateTime.Now:yyyy-MM-dd}.log");
 
         // IsBackground: the writer never keeps a closing app alive, so lines queued at exit are lost.
         _writer = new Thread(Drain) { IsBackground = true, Name = "Contr.FileLog" };
         _writer.Start();
     }
+
+    /// <summary>Where the client writes its logs, one <c>app-yyyy-MM-dd.log</c> per day it starts.</summary>
+    public static string LogDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Contr", "logs");
 
     /// <summary>The lowest level written. Everything below it is dropped before it is formatted.</summary>
     public LogLevel Minimum { get; }

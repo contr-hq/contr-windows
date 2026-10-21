@@ -16,6 +16,8 @@ internal static class ContainerMapping
     private const string _composeProjectLabel = "com.docker.compose.project";
 
     private const string _composeFilesLabel = "com.docker.compose.project.config_files";
+    private const string _composeServiceLabel = "com.docker.compose.service";
+    private const string _composeFolderLabel = "com.docker.compose.project.working_dir";
 
     /// <summary>Returns <see langword="null"/> for an event kind this client does not know.</summary>
     public static ListChange<ContainerDto>? ToChange(ContainersV1.WatchContainersResponse response)
@@ -45,7 +47,9 @@ internal static class ContainerMapping
             container.CreatedAt?.ToDateTimeOffset() ?? DateTimeOffset.UnixEpoch,
             [.. container.Ports.Select(ToPort)],
             project,
-            files);
+            files,
+            container.Labels.GetValueOrDefault(_composeServiceLabel, string.Empty),
+            container.Labels.GetValueOrDefault(_composeFolderLabel, string.Empty));
     }
 
     /// <summary>Returns <see langword="null"/> for a response without a sample.</summary>

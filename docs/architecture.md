@@ -68,7 +68,7 @@ instance, which brings its window back. The host then runs the startup orchestra
 | 15 | DaemonConnection | connect or start, then handshake; waits at most five seconds and never fails startup |
 | 20 | Shell | main window, navigation pane, status bar |
 | 30 | Theme | |
-| 35 | Tray | WinUIEx `TrayIcon`: left click opens the window, the menu opens or quits |
+| 35 | Tray | WinUIEx `TrayIcon`: a click opens the flyout, a double click the window |
 | 40 | Activation | |
 
 Closing the main window hides it; only **Quit Contr** in the tray ends the process. The daemon keeps
@@ -94,7 +94,14 @@ converters, because a function is compile-checked against its arguments. Brushes
 `{ThemeResource}` in XAML, or `ThemeResources.Brush` in code: `Application.Current.Resources` answers for
 the theme the app started in.
 
-A `NavigationItem` can carry a `Badge`, such as the Containers count. The status bar spans the window
+A `NavigationItem` can carry a `Badge`, such as the Containers count, and an `Order` that places it among every
+module's items; `Tools` items, such as Troubleshoot, sit below a separator. The shell's own Kubernetes and
+Troubleshoot pages are items like the modules'.
+
+A surface outside a module reaches the module's data through a contract in `Contr.UI.Contracts`, never the module:
+the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements.
+Compose projects are read from the labels Compose puts on containers, so the Compose page lives in the Containers
+module. The status bar spans the window
 under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the
 backend, the engine version and the Docker context.
 

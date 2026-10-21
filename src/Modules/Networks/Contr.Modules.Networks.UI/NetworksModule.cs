@@ -28,6 +28,6 @@ public sealed class NetworksModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Networks", "\uE968", typeof(NetworksPage))];
+        return [new NavigationItem("Networks", "\uE968", typeof(NetworksPage)) { Order = 40 }];
     }
 }

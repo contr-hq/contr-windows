@@ -8,6 +8,9 @@ public enum NavigationItemPlacement
     /// <summary>The main menu area of the navigation pane.</summary>
     Menu,
 
+    /// <summary>Below a separator after the main menu, for tools such as Troubleshoot.</summary>
+    Tools,
+
     /// <summary>The footer area of the navigation pane, next to the built-in Settings item.</summary>
     Footer,
 }
@@ -28,4 +31,7 @@ public sealed record NavigationItem(
     /// </summary>
     /// <remarks>The observable may emit on any thread; the shell marshals to the UI thread.</remarks>
     public Func<IServiceProvider, IObservable<string>>? Badge { get; init; }
+
+    /// <summary>The item's position within its placement; lower comes first.</summary>
+    public int Order { get; init; }
 }

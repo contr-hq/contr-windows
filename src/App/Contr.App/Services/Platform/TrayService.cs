@@ -2,26 +2,39 @@ using System;
 using Contr.App.UI;
 using Contr.UI.Common.Helpers;
 using Contr.UI.Contracts.Services.Daemon;
+using Contr.UI.Contracts.Services.Platform;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using WinUIEx;
 
 namespace Contr.App.Services.Platform;
 
-/// <summary>The notification-area icon: it opens the window, shows the engine status, and quits the app.</summary>
+/// <summary>
+/// The notification-area icon: a click opens the flyout with the engine and the running containers, a double click
+/// opens the window.
+/// </summary>
 /// <remarks>Create and dispose it on the UI thread; the icon's message window belongs to that thread.</remarks>
 public sealed class TrayService : IDisposable
 {
     private const uint _iconId = 1;
 
     private readonly IDaemonConnection _daemon;
+    private readonly INavigationService _navigation;
+    private readonly Func<TrayViewModel> _createViewModel;
     private TrayIcon? _icon;
+    private Flyout? _flyout;
     private IDisposable? _statusSubscription;
 
-    public TrayService(IDaemonConnection daemon)
+    public TrayService(IDaemonConnection daemon, INavigationService navigation, Func<TrayViewModel> createViewModel)
     {
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(createViewModel);
         _daemon = daemon;
+        _navigation = navigation;
+        _createViewModel = createViewModel;
     }
 
     public void Show()
@@ -32,8 +45,9 @@ public sealed class TrayService : IDisposable
         }
 
         _icon = new TrayIcon(_iconId, WindowHelper.AppIconPath, Tooltip(_daemon.Status));
-        _icon.Selected += (_, _) => App.Current.ShowMainWindow();
-        _icon.ContextMenu += (_, args) => args.Flyout = BuildMenu();
+        _icon.Selected += (_, args) => args.Flyout = Flyout();
+        _icon.ContextMenu += (_, args) => args.Flyout = Flyout();
+        _icon.LeftDoubleClick += (_, _) => App.Current.ShowMainWindow();
         _icon.IsVisible = true;
 
         var dispatcher = DispatcherQueue.GetForCurrentThread();
@@ -54,20 +68,50 @@ public sealed class TrayService : IDisposable
         return $"Contr: {StatusSummary.From(status).Text}";
     }
 
-    private static MenuFlyout BuildMenu()
+    /// <summary>The flyout, built once; its panel follows the engine and containers only while open.</summary>
+    private Flyout Flyout()
     {
-        var open = new MenuFlyoutItem { Text = "Open Contr" };
-        open.Click += (_, _) => App.Current.ShowMainWindow();
+        if (_flyout is not null)
+        {
+            return _flyout;
+        }
 
-        var quit = new MenuFlyoutItem { Text = "Quit Contr" };
-        quit.Click += async (_, _) => await App.Current.QuitAsync();
+        var panel = new TrayPanel(_createViewModel());
+        panel.OpenRequested += OnOpenRequested;
+        panel.QuitRequested += async (_, _) => await App.Current.QuitAsync();
 
-        var menu = new MenuFlyout();
-        menu.Items.Add(open);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(quit);
+        _flyout = new Flyout { Content = panel, Placement = FlyoutPlacementMode.Top };
+        _flyout.Opened += (_, _) => {
+            ApplyWindowTheme(panel);
+            panel.ViewModel.Start();
+        };
+        _flyout.Closed += (_, _) => panel.ViewModel.Stop();
 
-        return menu;
+        return _flyout;
+    }
+
+    /// <summary>The flyout lives in its own window, which does not follow the theme the main window requests.</summary>
+    private static void ApplyWindowTheme(TrayPanel panel)
+    {
+        var theme = (App.MainWindow.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default;
+
+        if (panel.XamlRoot?.Content is FrameworkElement root)
+        {
+            root.RequestedTheme = theme;
+        }
+
+        panel.RequestedTheme = theme;
+    }
+
+    private void OnOpenRequested(object? sender, string pageKey)
+    {
+        _icon?.CloseFlyout();
+        App.Current.ShowMainWindow();
+
+        if (pageKey.Length > 0)
+        {
+            _navigation.NavigateTo(pageKey);
+        }
     }
 
     private void UpdateTooltip(DaemonStatus status)

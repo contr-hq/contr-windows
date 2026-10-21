@@ -73,6 +73,8 @@ internal static class AppHost
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IMainWindowProvider, MainWindowProvider>();
         services.AddSingleton<TrayService>();
+        services.AddTransient<TrayViewModel>();
+        services.AddSingleton<Func<TrayViewModel>>(provider => provider.GetRequiredService<TrayViewModel>);
     }
 
     private static void AddViewsAndViewModels(IServiceCollection services)
@@ -81,10 +83,14 @@ internal static class AppHost
         services.AddTransient<SplashWindow>();
         services.AddTransient<ShellPage>();
         services.AddTransient<SettingsPage>();
+        services.AddTransient<KubernetesPage>();
+        services.AddTransient<TroubleshootPage>();
 
         services.AddTransient<ShellViewModel>();
         services.AddTransient<SplashViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<KubernetesViewModel>();
+        services.AddTransient<TroubleshootViewModel>();
     }
 
     private static void AddOrchestrators(IServiceCollection services)

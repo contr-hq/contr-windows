@@ -28,6 +28,6 @@ public sealed class VolumesModule : IModule
 
     public IReadOnlyList<NavigationItem> GetNavigationItems()
     {
-        return [new NavigationItem("Volumes", "\uEDA2", typeof(VolumesPage))];
+        return [new NavigationItem("Volumes", "\uEDA2", typeof(VolumesPage)) { Order = 30 }];
     }
 }

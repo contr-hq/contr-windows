@@ -10,8 +10,12 @@ stats), Images (pull with per-layer progress, prune), Volumes and Networks, all 
 The status bar shows the engine state and starts or stops the engine; the tray keeps Contr reachable while its window is
 closed. Until the core's WSL backend lands, run it against `contrd --backend fake`.
 
-Next: the tray flyout, Troubleshoot, Compose, Kubernetes, onboarding, settings, and a Velopack installer that bundles a
-pinned core release. Screens whose daemon API does not exist yet show their layout with the actions disabled.
+Also: Compose projects from the containers' Compose labels, Troubleshoot (the engine's failure, the checks the client
+can make, its own log), the tray flyout with the running containers, and the Kubernetes page's layout.
+
+Next: onboarding, the remaining settings, and a Velopack installer that bundles a pinned core release. Screens and
+actions whose daemon API does not exist yet (Run, factory reset, diagnostics, Kubernetes, Compose up and down) show
+their layout with the actions disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
