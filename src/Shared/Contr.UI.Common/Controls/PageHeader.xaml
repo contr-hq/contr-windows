@@ -13,33 +13,63 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel VerticalAlignment="Top" Spacing="2">
+        <StackPanel VerticalAlignment="Center">
             <TextBlock
                 Style="{StaticResource TitleTextBlockStyle}"
                 Text="{x:Bind Title, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis"
                 Visibility="{x:Bind controls:PageHeader.WhenEmpty(Trail), Mode=OneWay}" />
+
+            <!--  Earlier crumbs are muted; the current page keeps the primary colour on hover.  -->
             <BreadcrumbBar
                 ItemClicked="OnTrailItemClicked"
                 ItemsSource="{x:Bind Trail, Mode=OneWay}"
                 Visibility="{x:Bind controls:PageHeader.WhenAny(Trail), Mode=OneWay}">
                 <BreadcrumbBar.Resources>
-                    <x:Double x:Key="BreadcrumbBarItemThemeFontSize">28</x:Double>
-                    <x:Double x:Key="BreadcrumbBarChevronFontSize">16</x:Double>
-                    <FontWeight x:Key="BreadcrumbBarItemFontWeight">SemiBold</FontWeight>
+                    <ResourceDictionary>
+                        <ResourceDictionary.ThemeDictionaries>
+                            <ResourceDictionary x:Key="Default">
+                                <StaticResource x:Key="BreadcrumbBarNormalForegroundBrush" ResourceKey="TextFillColorSecondaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarHoverForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarPressedForegroundBrush" ResourceKey="TextFillColorTertiaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarCurrentHoverForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarCurrentPressedForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                            </ResourceDictionary>
+                            <ResourceDictionary x:Key="Light">
+                                <StaticResource x:Key="BreadcrumbBarNormalForegroundBrush" ResourceKey="TextFillColorSecondaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarHoverForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarPressedForegroundBrush" ResourceKey="TextFillColorTertiaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarCurrentHoverForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                                <StaticResource x:Key="BreadcrumbBarCurrentPressedForegroundBrush" ResourceKey="TextFillColorPrimaryBrush" />
+                            </ResourceDictionary>
+                        </ResourceDictionary.ThemeDictionaries>
+                        <x:Double x:Key="BreadcrumbBarItemThemeFontSize">28</x:Double>
+                        <x:Double x:Key="BreadcrumbBarChevronFontSize">14</x:Double>
+                        <Thickness x:Key="BreadcrumbBarChevronPadding">10,4,10,0</Thickness>
+                        <FontWeight x:Key="BreadcrumbBarItemFontWeight">SemiBold</FontWeight>
+                    </ResourceDictionary>
                 </BreadcrumbBar.Resources>
             </BreadcrumbBar>
+
             <ContentPresenter
+                Margin="0,4,0,0"
                 Content="{x:Bind Subtitle, Mode=OneWay}"
+                FontSize="12"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Visibility="{x:Bind controls:PageHeader.WhenPresent(Subtitle), Mode=OneWay}" />
         </StackPanel>
 
-        <ContentPresenter
+        <!--
+            One bordered group rather than loose buttons, so a page's actions read as a set and the
+            primary one sits inside it. Bottom-aligned, so it lines up with the subtitle or status line.
+        -->
+        <Border
+            x:Name="CommandGroup"
             Grid.Column="1"
-            Margin="0,6,0,0"
-            VerticalAlignment="Top"
-            Content="{x:Bind Commands, Mode=OneWay}"
-            Visibility="{x:Bind controls:PageHeader.WhenPresent(Commands), Mode=OneWay}" />
+            VerticalAlignment="Bottom"
+            Style="{StaticResource CommandGroupStyle}"
+            Visibility="Collapsed">
+            <ContentPresenter Content="{x:Bind Commands, Mode=OneWay}" />
+        </Border>
     </Grid>
 </UserControl>

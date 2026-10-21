@@ -95,6 +95,16 @@ public sealed partial class ContainerDetailPage : Page, IHasViewModel
         return ports is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    public static string StatsWaitTitle(bool isRunning, string? error)
+    {
+        if (!string.IsNullOrEmpty(error))
+        {
+            return "Couldn't read usage";
+        }
+
+        return isRunning ? "Waiting for the first sample" : "Not running";
+    }
+
     public static string StatsWaitText(bool isRunning, string? error)
     {
         if (!string.IsNullOrEmpty(error))

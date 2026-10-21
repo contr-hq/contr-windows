@@ -15,6 +15,7 @@ using Contr.Modules.Volumes.Application.Volumes.Commands.PruneVolumes;
 using Contr.Modules.Volumes.Application.Volumes.Commands.RemoveVolume;
 using Contr.Modules.Volumes.Application.Volumes.Queries.GetVolumeUsage;
 using Contr.Modules.Volumes.Application.Volumes.Queries.WatchVolumes;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Common.Formatting;
 using Contr.UI.Common.Lists;
@@ -38,13 +39,16 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
     private bool _isRefreshing;
     private bool _refreshAgain;
 
+    /// <summary>The name a search asked for, until that volume is listed.</summary>
+    private string? _requested;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     public partial VolumeItem? Selected { get; set; }
 
-    /// <summary>Such as <c>6 volumes · 1 not used by any container</c>.</summary>
+    /// <summary>Counted over every volume.</summary>
     [ObservableProperty]
-    public partial string Subtitle { get; set; }
+    public partial IReadOnlyList<StatCard> StatCards { get; set; }
 
     [ObservableProperty]
     public partial bool HasUnused { get; set; }
@@ -68,7 +72,7 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         _notifications = notifications;
         _clipboard = clipboard;
         Engine = new EngineGateViewModel(daemon);
-        Subtitle = string.Empty;
+        StatCards = [];
         Rows.CollectionChanged += OnRowsChanged;
     }
 
@@ -197,7 +201,7 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
                 _usage = result.IsSuccess
                     ? result.Value.ToLookup(mount => mount.Volume, StringComparer.Ordinal)
                     : null;
-                Show(Selected?.Name);
+                Show(Wanted());
             }
             while (_refreshAgain);
         }
@@ -205,6 +209,12 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
         {
             _isRefreshing = false;
         }
+    }
+
+    /// <summary>Selects the volume whose name is the first argument, once it is listed.</summary>
+    public override void OnNavigatedTo(params ReadOnlySpan<object> args)
+    {
+        _requested = args.Length > 0 ? args[0] as string : null;
     }
 
     protected override Task<IAsyncEnumerable<ListChange<VolumeDto>>> OpenAsync(CancellationToken cancellationToken)
@@ -230,8 +240,20 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
 
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Show(Selected?.Name);
+        Show(Wanted());
         _ = RefreshUsageAsync();
+    }
+
+    private string? Wanted()
+    {
+        var wanted = _requested ?? Selected?.Name;
+
+        if (_requested is { } requested && Rows.Any(row => row.Name == requested))
+        {
+            _requested = null;
+        }
+
+        return wanted;
     }
 
     /// <summary>Rebuilds the items with <paramref name="selectedName"/> selected, or the first volume.</summary>
@@ -247,12 +269,47 @@ public sealed partial class VolumesViewModel : LiveListViewModel<VolumeDto, Volu
 
         var unused = items.Count(item => item.IsUnused);
         HasUnused = _usage is null || unused > 0;
-        var volumes = items.Count == 1 ? "1 volume" : $"{Count(items.Count)} volumes";
-        Subtitle = items.Count == 0
-            ? string.Empty
-            : _usage is null
-                ? volumes
-                : $"{volumes} · {Count(unused)} not used by any container";
+        var cards = Summarize(items, _usage is not null);
+
+        if (!cards.SequenceEqual(StatCards))
+        {
+            StatCards = cards;
+        }
+    }
+
+    private static List<StatCard> Summarize(List<VolumeItem> items, bool isUsageKnown)
+    {
+        var inUse = items.Count(item => item.InUse);
+        var unused = items.Count(item => item.IsUnused);
+        var projects = items.Count(item => item.Row.HasProject);
+        var anonymous = items.Count(item => item.Row.IsAnonymous);
+
+        return [
+            new StatCard(
+                "VOLUMES",
+                Count(items.Count),
+                $"{Count(projects)} from Compose projects",
+                "\uEDA2",
+                StatKind.Accent),
+            new StatCard(
+                "IN USE",
+                isUsageKnown ? Count(inUse) : "—",
+                isUsageKnown ? "mounted by a container" : "not known",
+                "\uE8CE",
+                isUsageKnown && inUse > 0 ? StatKind.Positive : StatKind.Muted),
+            new StatCard(
+                "NOT USED",
+                isUsageKnown ? Count(unused) : "—",
+                isUsageKnown ? "no container mounts them" : "not known",
+                "\uE74D",
+                isUsageKnown && unused > 0 ? StatKind.Warning : StatKind.Muted),
+            new StatCard(
+                "ANONYMOUS",
+                Count(anonymous),
+                "created without a name",
+                "\uE9CE",
+                StatKind.Muted),
+        ];
     }
 
     private IReadOnlyList<VolumeMountDto>? Mounts(string name)

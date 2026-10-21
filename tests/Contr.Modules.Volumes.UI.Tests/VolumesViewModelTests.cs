@@ -82,8 +82,27 @@ public sealed class VolumesViewModelTests
             .Order();
 
         Assert.Equal(["Not used", "db"], usedBy);
-        Assert.Equal("2 volumes · 1 not used by any container", viewModel.Subtitle);
+        Assert.Equal(["2", "1", "1", "0"], viewModel.StatCards.Select(card => card.Value));
         Assert.NotNull(viewModel.Selected);
+    }
+
+    [Fact]
+    public void Activate_SelectsTheVolumeASearchAskedFor()
+    {
+        IAsyncEnumerable<ListChange<VolumeDto>> volumes = TestStreams.Of<ListChange<VolumeDto>>(
+            new ListChange<VolumeDto>.Snapshot([Dto("cache", string.Empty), Dto("shop_pgdata", "shop")]));
+        _sender
+            .Send(Arg.Any<WatchVolumesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(volumes));
+        _sender
+            .Send(Arg.Any<GetVolumeUsageQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success<IReadOnlyList<VolumeMountDto>>([]));
+        var viewModel = CreateViewModel();
+
+        viewModel.OnNavigatedTo("cache");
+        viewModel.Activate();
+
+        Assert.Equal("cache", viewModel.Selected?.Name);
     }
 
     [Fact]

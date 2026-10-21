@@ -6,6 +6,7 @@ using Contr.Modules.Volumes.UI.Infrastructure;
 using Contr.Modules.Volumes.UI.ViewModels;
 using Contr.Modules.Volumes.UI.Views;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -22,6 +23,7 @@ public sealed class VolumesModule : IModule
 
         services.AddVolumesApplication();
         services.TryAddSingleton<IVolumesGateway, VolumesGateway>();
+        services.AddSingleton<ISearchSource, VolumeSearch>();
         services.AddTransient<VolumesViewModel>();
         services.AddTransient<VolumesPage>();
     }

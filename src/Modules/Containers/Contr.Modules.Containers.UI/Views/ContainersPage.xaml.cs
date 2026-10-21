@@ -62,6 +62,11 @@ public sealed partial class ContainersPage : Page, IHasViewModel
         return first && second ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    public static Visibility ErrorVisibility(bool hasError, bool engineOpen)
+    {
+        return ShowsError(hasError, engineOpen) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public static bool ShowsError(bool hasError, bool engineOpen)
     {
         return hasError && engineOpen;

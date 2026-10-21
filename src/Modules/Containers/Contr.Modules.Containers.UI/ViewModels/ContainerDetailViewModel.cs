@@ -106,12 +106,13 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
     public StatusKind StatusKind => Row?.StatusKind ?? StatusKind.Neutral;
 
-    /// <summary>Such as <c>Exited with code 1, 14 minutes ago</c> or <c>Up 2 hours</c>.</summary>
-    public string StatusLine => Row is not { } row
-        ? string.Empty
-        : row.State == ContainerState.Exited && row.ExitCode is { } code
-            ? $"Exited with code {code}{Since(_details?.FinishedAt)}"
-            : row.Status;
+    /// <summary>Such as <c>Exited with code 1, 14 minutes ago</c> or <c>Running for 2 h · healthy</c>.</summary>
+    public string StatusLine => Row switch {
+        null => string.Empty,
+        { State: ContainerState.Exited, ExitCode: { } code } => $"Exited with code {code}{Since(_details?.FinishedAt)}",
+        { State: ContainerState.Running } row => RunningLine(row),
+        { } row => row.StatusText,
+    };
 
     public string Image => Row?.Image ?? string.Empty;
 
@@ -272,6 +273,18 @@ public sealed partial class ContainerDetailViewModel : ViewModel
 
         _ = LoadAsync(id, openLogs: !oldValue.IsRunning && newValue.IsRunning);
         FollowStats();
+    }
+
+    private static string RunningLine(ContainerRow row)
+    {
+        var running = row.Elapsed.Length > 0 ? $"Running for {row.Elapsed}" : "Running";
+
+        return ContainerStatusText.Health(row.Status) switch {
+            ContainerHealth.Healthy => $"{running} · healthy",
+            ContainerHealth.Unhealthy => $"{running} · unhealthy",
+            ContainerHealth.Starting => $"{running} · health check starting",
+            _ => running,
+        };
     }
 
     private static string Since(DateTimeOffset? finishedAt)

@@ -20,6 +20,12 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
+            <Style x:Key="ComponentLogTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Cascadia Mono,Consolas" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="LineHeight" Value="17" />
+            </Style>
+
             <DataTemplate x:Key="CheckTemplate" x:DataType="local:CheckRow">
                 <Grid
                     MinHeight="40"
@@ -87,7 +93,7 @@
                 <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
 
-            <Border VerticalAlignment="Top" Style="{StaticResource ListCardStyle}">
+            <Border VerticalAlignment="Top" Style="{StaticResource CardStyle}">
                 <StackPanel>
                     <Grid Padding="16,10,12,10" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
@@ -120,7 +126,7 @@
 
             <ScrollViewer Grid.Column="1">
                 <StackPanel Spacing="10">
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock FontWeight="SemiBold" Text="Diagnostics bundle" />
                             <TextBlock
@@ -132,7 +138,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="8">
                             <Grid>
                                 <TextBlock
@@ -148,21 +154,39 @@
                                 </ComboBox>
                             </Grid>
                             <ScrollViewer
+                                x:Name="LogScroller"
                                 MaxHeight="220"
                                 Padding="10,8"
+                                AutomationProperties.AutomationId="ComponentLog"
                                 Background="{ThemeResource TroubleshootLogBackgroundBrush}"
-                                CornerRadius="4"
-                                HorizontalScrollBarVisibility="Auto">
-                                <TextBlock
-                                    FontFamily="Cascadia Mono,Consolas"
-                                    FontSize="11"
-                                    IsTextSelectionEnabled="True"
-                                    Text="{x:Bind local:TroubleshootPage.OrEmpty(ViewModel.LogText), Mode=OneWay}" />
+                                CornerRadius="4">
+                                <Grid>
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="The client hasn't written to its log yet."
+                                        TextWrapping="Wrap"
+                                        Visibility="{x:Bind local:TroubleshootPage.Not(ViewModel.HasLog), Mode=OneWay}" />
+                                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.LogLines}">
+                                        <ItemsRepeater.ItemTemplate>
+                                            <DataTemplate x:DataType="local:ComponentLogLine">
+                                                <!--  One wrapping block, so a long line continues under its time.  -->
+                                                <TextBlock
+                                                    IsTextSelectionEnabled="True"
+                                                    Opacity="{x:Bind local:TroubleshootPage.LineOpacity(Level)}"
+                                                    Style="{StaticResource ComponentLogTextStyle}"
+                                                    TextWrapping="Wrap">
+                                                    <Run Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="{x:Bind Stamp}" /><Run Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind OtherLevel}" /><Run Foreground="{ThemeResource SystemFillColorCautionBrush}" Text="{x:Bind WarningLevel}" /><Run Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{x:Bind ErrorLevel}" /><Run Text="{x:Bind Text}" />
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsRepeater.ItemTemplate>
+                                    </ItemsRepeater>
+                                </Grid>
                             </ScrollViewer>
                         </StackPanel>
                     </Border>
 
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="12">
                             <TextBlock FontWeight="SemiBold" Text="Reset" />
                             <Grid ColumnSpacing="8">
@@ -201,6 +225,7 @@
                                     Grid.Column="1"
                                     VerticalAlignment="Center"
                                     Content="Factory reset…"
+                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                     IsEnabled="False" />
                             </Grid>
                         </StackPanel>

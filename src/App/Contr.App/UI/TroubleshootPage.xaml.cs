@@ -15,6 +15,8 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
 
         InitializeComponent();
 
+        // The newest lines are the ones worth reading, so the log opens scrolled to its end.
+        LogScroller.RegisterPropertyChangedCallback(ScrollViewer.ExtentHeightProperty, (_, _) => ScrollLogToEnd());
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -28,9 +30,20 @@ public sealed partial class TroubleshootPage : Page, IHasViewModel
         return summary.Length > 0 ? $"· {summary}" : string.Empty;
     }
 
-    public static string OrEmpty(string log)
+    /// <summary>Continuation lines, such as stack frames, recede behind the entries they belong to.</summary>
+    public static double LineOpacity(string level)
     {
-        return log.Length > 0 ? log : "The client has written no log yet.";
+        return level.Length > 0 ? 1 : 0.6;
+    }
+
+    public static Visibility Not(bool value)
+    {
+        return value ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ScrollLogToEnd()
+    {
+        LogScroller.ChangeView(null, LogScroller.ScrollableHeight, null, disableAnimation: true);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

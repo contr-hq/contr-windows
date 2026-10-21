@@ -173,7 +173,7 @@
                     <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.IsChecking, Mode=OneWay}">
                         <TextBlock Style="{StaticResource StepTitleStyle}" Text="Welcome to Contr" />
                         <TextBlock Style="{StaticResource StepTextStyle}" Text="Contr runs containers on this PC with a Docker-compatible engine. First, a check that this PC is ready." />
-                        <Border Style="{StaticResource ListCardStyle}">
+                        <Border Style="{StaticResource CardStyle}">
                             <ItemsRepeater ItemTemplate="{StaticResource CheckTemplate}" ItemsSource="{x:Bind ViewModel.Checks}" />
                         </Border>
                     </StackPanel>
@@ -223,7 +223,7 @@
                                 <Button Click="OnRetryEngine" Content="Try again" />
                             </InfoBar.ActionButton>
                         </InfoBar>
-                        <Border Style="{StaticResource ListCardStyle}">
+                        <Border Style="{StaticResource CardStyle}">
                             <ItemsRepeater ItemTemplate="{StaticResource EngineStepTemplate}" ItemsSource="{x:Bind ViewModel.EngineSteps}" />
                         </Border>
                         <Expander
@@ -238,7 +238,7 @@
                     <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.IsTools, Mode=OneWay}">
                         <TextBlock Style="{StaticResource StepTitleStyle}" Text="How should your tools reach the engine?" />
                         <TextBlock Style="{StaticResource StepTextStyle}" Text="You can change these later in Settings." />
-                        <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                        <Border Padding="16" Style="{StaticResource CardStyle}">
                             <StackPanel Spacing="8">
                                 <CheckBox
                                     AutomationProperties.AutomationId="InstallToolsCheck"
@@ -258,7 +258,7 @@
                                     Severity="Informational" />
                             </StackPanel>
                         </Border>
-                        <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                        <Border Padding="16" Style="{StaticResource CardStyle}">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Docker context" />
                                 <TextBlock
@@ -267,7 +267,7 @@
                                     TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
-                        <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                        <Border Padding="16" Style="{StaticResource CardStyle}">
                             <CheckBox
                                 AutomationProperties.AutomationId="StartAtSignInCheck"
                                 Content="Start Contr in the notification area when I sign in"
@@ -277,10 +277,56 @@
 
                     <!--  5. Ready  -->
                     <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.IsReady, Mode=OneWay}">
-                        <TextBlock Style="{StaticResource StepTitleStyle}" Text="Contr is ready" />
+                        <Border
+                            Width="56"
+                            Height="56"
+                            HorizontalAlignment="Left"
+                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                            CornerRadius="28">
+                            <FontIcon
+                                FontSize="24"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                Glyph="&#xE73E;" />
+                        </Border>
+                        <TextBlock Style="{StaticResource StepTitleStyle}" Text="You're all set" />
                         <TextBlock Style="{StaticResource StepTextStyle}" Text="Contr stays in the notification area when you close its window." />
-                        <Border Style="{StaticResource ListCardStyle}">
+                        <Border Style="{StaticResource CardStyle}">
                             <ItemsRepeater ItemTemplate="{StaticResource CheckTemplate}" ItemsSource="{x:Bind ViewModel.Summary}" />
+                        </Border>
+                        <Border Padding="16" Style="{StaticResource CardStyle}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Try it in a new terminal" />
+                                <Grid
+                                    Padding="12,6,6,6"
+                                    Background="{ThemeResource SolidBackgroundFillColorBaseAltBrush}"
+                                    CornerRadius="4">
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontFamily="Cascadia Mono,Consolas"
+                                        IsTextSelectionEnabled="True"
+                                        Text="{x:Bind local:OnboardingWindow.TryCommand}" />
+                                    <Button
+                                        HorizontalAlignment="Right"
+                                        Click="OnCopyTryCommand"
+                                        Content="Copy"
+                                        Style="{StaticResource ToolbarButtonStyle}" />
+                                </Grid>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Open a new terminal so it picks up the updated PATH. Terminals that were already open won't find the docker command yet."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border Padding="16" Style="{StaticResource CardStyle}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Find Contr later" />
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Click the Contr icon in the notification area, next to the clock."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </StackPanel>

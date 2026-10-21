@@ -26,6 +26,9 @@ public sealed partial class OnboardingViewModel : ViewModel
     /// <summary>The command Microsoft documents for installing WSL without a Linux distribution.</summary>
     public const string InstallWslCommand = "wsl --install --no-distribution";
 
+    /// <summary>A first command to try once setup is done.</summary>
+    public const string TryCommand = "docker run --rm hello-world";
+
     private const string _wslMissing = "WSL_NOT_INSTALLED";
     private const long _lowDiskBytes = 10_000_000_000;
 
@@ -206,6 +209,11 @@ public sealed partial class OnboardingViewModel : ViewModel
         _clipboard.SetText(InstallWslCommand);
     }
 
+    public void CopyTryCommand()
+    {
+        _clipboard.SetText(TryCommand);
+    }
+
     /// <summary>The checks the client makes itself: the Windows build, virtualization and free disk space.</summary>
     public static CheckRow[] CheckThisPc(int windowsBuild, bool? virtualization, long freeBytes, string drive)
     {
@@ -259,6 +267,9 @@ public sealed partial class OnboardingViewModel : ViewModel
             IsEngineRunning = true;
             Steps[1].Detail = "Nothing to install";
             Steps[2].Detail = "The engine was already running";
+            EngineSteps.Clear();
+            EngineSteps.Add(new EngineSetupStep("The engine is already running") { IsDone = true });
+            EngineProgress = 100;
 
             return;
         }

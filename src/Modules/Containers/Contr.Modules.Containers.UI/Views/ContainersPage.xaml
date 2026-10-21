@@ -283,32 +283,37 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,0" RowSpacing="16">
+    <Grid Padding="36,24,36,0">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Containers" Subtitle="{x:Bind views:ContainersPage.Shown(ViewModel.Subtitle, ViewModel.Engine.IsOpen), Mode=OneWay}">
+        <common:PageHeader Title="Containers">
             <StackPanel
                 Orientation="Horizontal"
-                Spacing="8"
+                Spacing="2"
                 Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
                 <Button
                     AutomationProperties.AutomationId="RunContainerButton"
+                    AutomationProperties.Name="Run container"
                     IsEnabled="False"
-                    Style="{StaticResource AccentButtonStyle}">
+                    Style="{StaticResource AccentToolbarButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE768;" />
                         <TextBlock Text="Run container" />
                     </StackPanel>
                 </Button>
+                <Border Style="{StaticResource CommandBarDividerStyle}" />
                 <Button
                     AutomationProperties.AutomationId="PruneStoppedButton"
+                    AutomationProperties.Name="Prune stopped"
                     Click="OnPruneStopped"
-                    IsEnabled="{x:Bind ViewModel.CanPrune, Mode=OneWay}">
+                    IsEnabled="{x:Bind ViewModel.CanPrune, Mode=OneWay}"
+                    Style="{StaticResource ToolbarButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE74D;" />
                         <TextBlock Text="Prune stopped" />
@@ -317,13 +322,24 @@
             </StackPanel>
         </common:PageHeader>
 
-        <StackPanel Grid.Row="1" Spacing="8">
+        <!--  Counted over every container, never the filtered set.  -->
+        <common:StatStrip
+            Grid.Row="1"
+            Margin="0,16,0,0"
+            AutomationProperties.AutomationId="ContainerStats"
+            Cards="{x:Bind ViewModel.StatCards, Mode=OneWay}"
+            Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}" />
+
+        <!--  Margins rather than row spacing, so a closed bar leaves no gap behind.  -->
+        <StackPanel Grid.Row="2">
             <InfoBar
                 Title="Container stopped"
+                Margin="0,16,0,0"
                 AutomationProperties.AutomationId="ExitNotice"
                 IsOpen="{x:Bind ViewModel.IsExitNoticeOpen, Mode=TwoWay}"
                 Message="{x:Bind ViewModel.ExitNotice, Mode=OneWay}"
-                Severity="Error">
+                Severity="Error"
+                Visibility="{x:Bind ViewModel.IsExitNoticeOpen, Mode=OneWay}">
                 <InfoBar.Content>
                     <StackPanel
                         Margin="0,0,0,12"
@@ -335,14 +351,18 @@
                 </InfoBar.Content>
             </InfoBar>
             <InfoBar
+                Title="Couldn't list containers"
+                Margin="0,16,0,0"
                 IsClosable="False"
                 IsOpen="{x:Bind views:ContainersPage.ShowsError(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}"
                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-                Severity="Error" />
+                Severity="Error"
+                Visibility="{x:Bind views:ContainersPage.ErrorVisibility(ViewModel.HasError, ViewModel.Engine.IsOpen), Mode=OneWay}" />
         </StackPanel>
 
         <Grid
-            Grid.Row="2"
+            Grid.Row="3"
+            Margin="0,16,0,0"
             ColumnSpacing="12"
             Visibility="{x:Bind views:ContainersPage.ShowsBoth(ViewModel.Engine.IsOpen, ViewModel.HasRows), Mode=OneWay}">
             <Grid.ColumnDefinitions>
@@ -352,25 +372,31 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBox
+            <AutoSuggestBox
+                VerticalAlignment="Center"
                 AutomationProperties.AutomationId="ContainersFilter"
                 AutomationProperties.Name="Filter containers"
                 PlaceholderText="Filter by name, image or port"
+                QueryIcon="Filter"
                 Text="{x:Bind ViewModel.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <toolkit:Segmented
                 Grid.Column="1"
+                VerticalAlignment="Center"
                 AutomationProperties.Name="Grouping"
-                SelectedIndex="{x:Bind ViewModel.ViewIndex, Mode=TwoWay}">
+                SelectedIndex="{x:Bind ViewModel.ViewIndex, Mode=TwoWay}"
+                Style="{StaticResource ButtonSegmentedStyle}">
                 <toolkit:SegmentedItem Content="By project" />
                 <toolkit:SegmentedItem Content="Flat list" />
             </toolkit:Segmented>
             <StackPanel
                 Grid.Column="3"
+                VerticalAlignment="Center"
                 Orientation="Horizontal"
                 Spacing="12">
                 <TextBlock VerticalAlignment="Center" Text="Show stopped" />
                 <ToggleSwitch
                     MinWidth="0"
+                    VerticalAlignment="Center"
                     AutomationProperties.AutomationId="ShowStoppedToggle"
                     AutomationProperties.Name="Show stopped"
                     IsOn="{x:Bind ViewModel.ShowStopped, Mode=TwoWay}"
@@ -379,7 +405,7 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4" Margin="0,16,0,0">
             <common:EngineGate
                 Margin="0,0,0,48"
                 ViewModel="{x:Bind ViewModel.Engine}"
@@ -407,7 +433,7 @@
                     <Border
                         Margin="0,24,0,0"
                         Padding="16"
-                        Style="{StaticResource ListCardStyle}">
+                        Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="10">
                             <TextBlock FontWeight="SemiBold" Text="Try it from a terminal" />
                             <Grid
@@ -456,29 +482,29 @@
                         <ColumnDefinition Width="{StaticResource MemoryColumnWidth}" />
                         <ColumnDefinition Width="{StaticResource ActionsColumnWidth}" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Name" />
+                    <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Name" />
                     <TextBlock
                         Grid.Column="1"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
+                        Style="{StaticResource ColumnHeadStyle}"
                         Text="Status" />
                     <TextBlock
                         Grid.Column="2"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
+                        Style="{StaticResource ColumnHeadStyle}"
                         Text="Ports" />
                     <TextBlock
                         Grid.Column="3"
                         HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
+                        Style="{StaticResource ColumnHeadStyle}"
                         Text="CPU" />
                     <TextBlock
                         Grid.Column="4"
                         HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
+                        Style="{StaticResource ColumnHeadStyle}"
                         Text="Memory" />
                     <TextBlock
                         Grid.Column="5"
                         HorizontalAlignment="Right"
-                        Style="{StaticResource ColumnHeaderTextStyle}"
+                        Style="{StaticResource ColumnHeadStyle}"
                         Text="Actions" />
                 </Grid>
 

@@ -6,6 +6,7 @@ using Contr.Modules.Images.UI.Infrastructure;
 using Contr.Modules.Images.UI.ViewModels;
 using Contr.Modules.Images.UI.Views;
 using Contr.UI.Contracts;
+using Contr.UI.Contracts.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -22,6 +23,7 @@ public sealed class ImagesModule : IModule
 
         services.AddImagesApplication();
         services.TryAddSingleton<IImagesGateway, ImagesGateway>();
+        services.AddSingleton<ISearchSource, ImageSearch>();
         services.AddTransient<ImagesViewModel>();
         services.AddTransient<ImagesPage>();
     }

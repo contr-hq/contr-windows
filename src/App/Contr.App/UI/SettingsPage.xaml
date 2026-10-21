@@ -13,12 +13,6 @@
     mc:Ignorable="d">
 
     <Page.Resources>
-        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,20,0,4" />
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-
         <DataTemplate x:Key="ToolTemplate" x:DataType="contracts:CliTool">
             <StackPanel Width="140">
                 <TextBlock FontSize="12" Text="{x:Bind Name}" />
@@ -65,21 +59,21 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Text="Changes on this page apply right away." />
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Startup and closing" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Startup and closing" />
                     <controls:SettingsCard Description="Opens in the notification area, not as a window." Header="Start Contr when I sign in to Windows">
                         <ToggleSwitch AutomationProperties.AutomationId="StartAtSignInToggle" IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
                     </controls:SettingsCard>
                     <controls:SettingsCard Description="Turn off to start it yourself from the tray when you need it." Header="Start the engine with Contr">
                         <ToggleSwitch AutomationProperties.AutomationId="StartsEngineToggle" IsOn="{x:Bind ViewModel.StartsEngine, Mode=TwoWay}" />
                     </controls:SettingsCard>
-                    <controls:SettingsCard Header="When I close the window">
+                    <controls:SettingsCard ContentAlignment="Vertical" Header="When I close the window">
                         <RadioButtons SelectedIndex="0">
                             <RadioButton Content="Keep running in the notification area" />
                             <RadioButton Content="Quit Contr and stop the engine" IsEnabled="False" />
                         </RadioButtons>
                     </controls:SettingsCard>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Command-line tools" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Command-line tools" />
                     <controls:SettingsExpander
                         Description="{x:Bind ViewModel.ToolsDetail, Mode=OneWay}"
                         Header="{x:Bind ViewModel.ToolsTitle, Mode=OneWay}"
@@ -112,7 +106,7 @@
                         </controls:SettingsExpander.Items>
                     </controls:SettingsExpander>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="How tools connect" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="How tools connect" />
                     <controls:SettingsCard Description="The Docker context Contr made for this engine. Make it current with docker context use." Header="Docker context">
                         <TextBlock
                             FontFamily="Cascadia Mono,Consolas"
@@ -120,7 +114,7 @@
                             Text="{x:Bind local:SettingsPage.OrDash(ViewModel.ContextName)}" />
                     </controls:SettingsCard>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Appearance" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Appearance" />
                     <controls:SettingsCard
                         Description="Choose the colors that appear in the app."
                         Header="Theme"
@@ -142,7 +136,7 @@
                         </ComboBox>
                     </controls:SettingsCard>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Daemon and diagnostics" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Daemon and diagnostics" />
                     <controls:SettingsCard
                         Description="{x:Bind ViewModel.DaemonDescription}"
                         Header="Contr daemon"
@@ -187,7 +181,7 @@
                         IsOpen="{x:Bind ViewModel.LacksResourceLimits}"
                         Message="This version of the Contr daemon cannot change the WSL virtual machine's limits."
                         Severity="Informational" />
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="WSL 2 virtual machine" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="WSL 2 virtual machine" />
                     <controls:SettingsCard
                         Description="Maximum memory for the WSL VM. Containers share it."
                         Header="Memory"
@@ -253,7 +247,7 @@
                         IsOpen="True"
                         Message="This version of the Contr daemon cannot change the engine's proxy or certificates."
                         Severity="Informational" />
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Proxy" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Proxy" />
                     <controls:SettingsCard
                         Description="Used for image pulls and builds."
                         Header="How the engine finds your proxy"
@@ -266,14 +260,14 @@
                         IsEnabled="False">
                         <ToggleSwitch />
                     </controls:SettingsCard>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Certificates" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Certificates" />
                     <controls:SettingsCard
                         Description="Copies your organization's root certificates into the engine, so pulls work when your network inspects HTTPS traffic."
                         Header="Trust certificates from Windows"
                         IsEnabled="False">
                         <ToggleSwitch />
                     </controls:SettingsCard>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Registry" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Registry" />
                     <controls:SettingsCard
                         Description="Pulls from Docker Hub go through this mirror first."
                         Header="Registry mirror"
@@ -323,7 +317,7 @@
                         IsEnabled="False">
                         <Button Content="Check now" />
                     </controls:SettingsCard>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Installed versions" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Installed versions" />
                     <controls:SettingsCard Header="Contr">
                         <TextBlock Text="{x:Bind ViewModel.VersionText}" />
                     </controls:SettingsCard>

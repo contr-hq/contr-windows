@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Contr.App.UI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:search="using:Contr.UI.Contracts.Services.Search"
     Loaded="OnShellPageLoaded"
     Unloaded="OnShellPageUnloaded"
     mc:Ignorable="d">
@@ -39,6 +40,42 @@
                     Margin="8,0"
                     Source="ms-appx:///Assets/ContrLogo.png" />
             </TitleBar.LeftHeader>
+            <AutoSuggestBox
+                x:Name="SearchBox"
+                Width="420"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="GlobalSearch"
+                AutomationProperties.Name="Search containers, images, volumes and networks"
+                PlaceholderText="Search containers, images, volumes"
+                QueryIcon="Find"
+                QuerySubmitted="OnSearchSubmitted"
+                TextChanged="OnSearchTextChanged"
+                UpdateTextOnSelect="False">
+                <AutoSuggestBox.ItemTemplate>
+                    <DataTemplate x:DataType="search:SearchHit">
+                        <Grid Padding="0,6" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Glyph="{x:Bind Glyph}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="{x:Bind Detail}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </AutoSuggestBox.ItemTemplate>
+            </AutoSuggestBox>
         </TitleBar>
 
         <NavigationView

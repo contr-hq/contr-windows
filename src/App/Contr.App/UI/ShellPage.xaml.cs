@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
+using Contr.UI.Contracts.Services.Search;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -13,16 +16,20 @@ namespace Contr.App.UI;
 /// <summary>The main window's content: the navigation pane, the page frame and the status bar.</summary>
 public sealed partial class ShellPage : Page
 {
+    private static readonly TimeSpan _searchPause = TimeSpan.FromMilliseconds(200);
+
     private readonly INavigationService _navigationService;
     private readonly INotificationService _notificationService;
     private readonly IReadOnlyList<IModule> _modules;
     private readonly IDaemonConnection _daemon;
     private readonly IServiceProvider _services;
     private readonly ISubscription _subscription;
+    private readonly GlobalSearch _search;
     private readonly Dictionary<string, NavigationViewItem> _navItemsByKey = new(StringComparer.Ordinal);
     private bool _isSyncingSelection;
     private string? _currentPageKey;
     private NavigationViewItemSeparator? _toolsSeparator;
+    private CancellationTokenSource? _searching;
 
     public ShellPage(
         ShellViewModel viewModel,
@@ -31,7 +38,8 @@ public sealed partial class ShellPage : Page
         IEnumerable<IModule> modules,
         IDaemonConnection daemon,
         IServiceProvider services,
-        ISubscription subscription)
+        ISubscription subscription,
+        GlobalSearch search)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(navigationService);
@@ -40,6 +48,7 @@ public sealed partial class ShellPage : Page
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(subscription);
+        ArgumentNullException.ThrowIfNull(search);
 
         ViewModel = viewModel;
         _navigationService = navigationService;
@@ -48,6 +57,7 @@ public sealed partial class ShellPage : Page
         _daemon = daemon;
         _services = services;
         _subscription = subscription;
+        _search = search;
 
         InitializeComponent();
     }
@@ -204,6 +214,62 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    private async void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+
+        if (_searching is { } previous)
+        {
+            await previous.CancelAsync();
+            previous.Dispose();
+        }
+
+        var searching = new CancellationTokenSource();
+        _searching = searching;
+
+        try
+        {
+            // Waits for a pause in typing, so each keystroke does not ask the engine again.
+            await Task.Delay(_searchPause, searching.Token);
+            var hits = await _search.SearchAsync(sender.Text, searching.Token);
+            sender.ItemsSource = hits.Count > 0 || sender.Text.Trim().Length == 0
+                ? hits
+                : new[] { NoMatches(sender.Text) };
+        }
+        catch (OperationCanceledException)
+        {
+            // Typing again replaced this search.
+        }
+    }
+
+    private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        var hit = args.ChosenSuggestion as SearchHit
+            ?? (sender.ItemsSource as IReadOnlyList<SearchHit>)?.FirstOrDefault();
+
+        if (hit is null || hit.PageKey.Length == 0)
+        {
+            return;
+        }
+
+        _search.Open(hit);
+        sender.Text = string.Empty;
+        sender.ItemsSource = null;
+    }
+
+    private static SearchHit NoMatches(string text)
+    {
+        return new SearchHit(
+            $"Nothing matches \u201C{text.Trim()}\u201D",
+            "Containers, images, volumes and networks",
+            "\uE721",
+            string.Empty,
+            []);
+    }
+
     private void OnTitleBarBackRequested(TitleBar sender, object args)
     {
         _navigationService.GoBack();
@@ -216,6 +282,10 @@ public sealed partial class ShellPage : Page
         {
             _subscription.Unsubscribe();
         }
+
+        _searching?.Cancel();
+        _searching?.Dispose();
+        _searching = null;
 
         foreach (var navItem in _navItemsByKey.Values)
         {

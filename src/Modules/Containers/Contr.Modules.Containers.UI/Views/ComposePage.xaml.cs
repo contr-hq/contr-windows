@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using Contr.Modules.Containers.UI.ViewModels;
@@ -25,6 +27,8 @@ public sealed partial class ComposePage : Page, IHasViewModel
         new(Color.FromArgb(255, 0xBC, 0x8C, 0xFF)),
         new(Color.FromArgb(255, 0x39, 0xC5, 0xCF)),
     ];
+
+    private bool _isShowingFilters;
 
     public ComposePage(ComposeViewModel viewModel)
     {
@@ -64,6 +68,11 @@ public sealed partial class ComposePage : Page, IHasViewModel
             : string.Join(", ", ports.Select(port => port.Address[(port.Address.LastIndexOf(':') + 1)..]));
     }
 
+    public static Visibility WhenNone(int count)
+    {
+        return count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public static Visibility ShowsBoth(bool first, bool second)
     {
         return first && second ? Visibility.Visible : Visibility.Collapsed;
@@ -85,13 +94,63 @@ public sealed partial class ComposePage : Page, IHasViewModel
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.LineAdded += OnLineAdded;
+        ViewModel.Filters.CollectionChanged += OnFiltersChanged;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         ViewModel.Activate();
+        ShowFilters();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.LineAdded -= OnLineAdded;
+        ViewModel.Filters.CollectionChanged -= OnFiltersChanged;
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.Deactivate();
+    }
+
+    private void OnFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        ShowFilters();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ComposeViewModel.FilterIndex))
+        {
+            SelectFilter();
+        }
+    }
+
+    /// <summary>One token per entry of <see cref="ComposeViewModel.Filters"/>: everything, then each service.</summary>
+    private void ShowFilters()
+    {
+        var style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TokenViewSelectorBarItemStyle"];
+        _isShowingFilters = true;
+        ServiceFilter.Items.Clear();
+
+        foreach (var filter in ViewModel.Filters)
+        {
+            ServiceFilter.Items.Add(new SelectorBarItem { Text = filter, Style = style });
+        }
+
+        _isShowingFilters = false;
+        SelectFilter();
+    }
+
+    private void SelectFilter()
+    {
+        var index = ViewModel.FilterIndex;
+        ServiceFilter.SelectedItem = index >= 0 && index < ServiceFilter.Items.Count
+            ? ServiceFilter.Items[index]
+            : null;
+    }
+
+    private void OnServiceFilterChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (!_isShowingFilters && sender.SelectedItem is { } item)
+        {
+            ViewModel.FilterIndex = sender.Items.IndexOf(item);
+        }
     }
 
     private void OnLineAdded(object? sender, ComposeLogLine line)

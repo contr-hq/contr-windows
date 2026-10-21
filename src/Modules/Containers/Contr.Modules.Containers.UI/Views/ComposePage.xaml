@@ -6,7 +6,6 @@
     xmlns:common="using:Contr.UI.Common.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:views="using:Contr.Modules.Containers.UI.Views"
     xmlns:vm="using:Contr.Modules.Containers.UI.ViewModels"
     mc:Ignorable="d">
@@ -138,8 +137,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <common:PageHeader Title="Compose" Subtitle="Projects appear here when you run docker compose up.">
-            <Button AutomationProperties.AutomationId="AddComposeProjectButton" IsEnabled="False">
+        <common:PageHeader Title="Compose" Subtitle="Projects appear here when you run docker compose up, grouped from their containers' labels.">
+            <Button
+                AutomationProperties.AutomationId="AddComposeProjectButton"
+                AutomationProperties.Name="Add project"
+                IsEnabled="False"
+                Style="{StaticResource ToolbarButtonStyle}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon FontSize="14" Glyph="&#xE710;" />
                     <TextBlock Text="Add project…" />
@@ -200,42 +203,49 @@
                                     Visibility="{x:Bind views:ComposePage.IsWindowsPath(ViewModel.Selected.Location), Mode=OneWay}" />
                             </StackPanel>
                         </StackPanel>
-                        <StackPanel
+                        <Border
                             Grid.Column="1"
-                            Orientation="Horizontal"
-                            Spacing="8">
-                            <Button
-                                AutomationProperties.AutomationId="ComposeStartButton"
-                                Click="OnStart"
-                                Style="{StaticResource AccentButtonStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontSize="14" Glyph="&#xE768;" />
-                                    <TextBlock Text="Start" />
-                                </StackPanel>
-                            </Button>
-                            <Button IsEnabled="False">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontSize="14" Glyph="&#xE896;" />
-                                    <TextBlock Text="Pull" />
-                                </StackPanel>
-                            </Button>
-                            <Button Click="OnRestart">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                                    <TextBlock Text="Restart" />
-                                </StackPanel>
-                            </Button>
-                            <Button Click="OnStop">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontSize="14" Glyph="&#xE71A;" />
-                                    <TextBlock Text="Stop" />
-                                </StackPanel>
-                            </Button>
-                            <Button Content="Down" IsEnabled="False" />
-                        </StackPanel>
+                            VerticalAlignment="Bottom"
+                            Style="{StaticResource CommandGroupStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button
+                                    AutomationProperties.AutomationId="ComposeStartButton"
+                                    Click="OnStart"
+                                    Style="{StaticResource AccentToolbarButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="14" Glyph="&#xE768;" />
+                                        <TextBlock Text="Start" />
+                                    </StackPanel>
+                                </Button>
+                                <Border Style="{StaticResource CommandBarDividerStyle}" />
+                                <Button IsEnabled="False" Style="{StaticResource ToolbarButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="14" Glyph="&#xE896;" />
+                                        <TextBlock Text="Pull" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Click="OnRestart" Style="{StaticResource ToolbarButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                                        <TextBlock Text="Restart" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Click="OnStop" Style="{StaticResource ToolbarButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="14" Glyph="&#xE71A;" />
+                                        <TextBlock Text="Stop" />
+                                    </StackPanel>
+                                </Button>
+                                <Border Style="{StaticResource CommandBarDividerStyle}" />
+                                <Button
+                                    Content="Down"
+                                    IsEnabled="False"
+                                    Style="{StaticResource DangerToolbarButtonStyle}" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
 
-                    <Border Grid.Row="1" Style="{StaticResource ListCardStyle}">
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <Grid Padding="16,10,12,8" ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
@@ -244,25 +254,25 @@
                                     <ColumnDefinition Width="{StaticResource StateColumnWidth}" />
                                     <ColumnDefinition Width="{StaticResource PortsColumnWidth}" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="Service" />
+                                <TextBlock Style="{StaticResource ColumnHeadStyle}" Text="Service" />
                                 <TextBlock
                                     Grid.Column="1"
-                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Style="{StaticResource ColumnHeadStyle}"
                                     Text="Image" />
                                 <TextBlock
                                     Grid.Column="2"
-                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Style="{StaticResource ColumnHeadStyle}"
                                     Text="State" />
                                 <TextBlock
                                     Grid.Column="3"
-                                    Style="{StaticResource ColumnHeaderTextStyle}"
+                                    Style="{StaticResource ColumnHeadStyle}"
                                     Text="Ports" />
                             </Grid>
                             <ItemsRepeater ItemTemplate="{StaticResource ServiceTemplate}" ItemsSource="{x:Bind ViewModel.Services}" />
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
+                    <Border Grid.Row="2" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -278,11 +288,14 @@
                                     VerticalAlignment="Center"
                                     FontWeight="SemiBold"
                                     Text="Logs" />
-                                <toolkit:Segmented
+                                <!--  Its tokens follow ViewModel.Filters in code; a SelectorBar takes no ItemsSource.  -->
+                                <SelectorBar
+                                    x:Name="ServiceFilter"
                                     Grid.Column="1"
+                                    VerticalAlignment="Center"
                                     AutomationProperties.Name="Service"
-                                    ItemsSource="{x:Bind ViewModel.Filters}"
-                                    SelectedIndex="{x:Bind ViewModel.FilterIndex, Mode=TwoWay}" />
+                                    SelectionChanged="OnServiceFilterChanged"
+                                    Style="{StaticResource TokenViewSelectorBarStyle}" />
                                 <StackPanel
                                     Grid.Column="2"
                                     Orientation="Horizontal"
@@ -296,6 +309,14 @@
                                         OnContent="" />
                                 </StackPanel>
                             </Grid>
+                            <TextBlock
+                                Grid.Row="1"
+                                Margin="14,16"
+                                Canvas.ZIndex="1"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="No log lines yet. They appear here as the services write them."
+                                Visibility="{x:Bind views:ComposePage.WhenNone(ViewModel.Lines.Count), Mode=OneWay}" />
                             <ListView
                                 x:Name="LogList"
                                 Grid.Row="1"

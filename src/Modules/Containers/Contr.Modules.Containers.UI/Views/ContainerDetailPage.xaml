@@ -26,12 +26,8 @@
 
             <FontFamily x:Key="LogFontFamily">Cascadia Mono,Consolas</FontFamily>
 
-            <Style x:Key="CardTitleTextStyle" TargetType="TextBlock">
-                <Setter Property="FontWeight" Value="SemiBold" />
-            </Style>
-
             <DataTemplate x:Key="FactTemplate" x:DataType="vm:InspectFact">
-                <Grid ColumnSpacing="12">
+                <Grid Padding="0,3" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="*" />
@@ -48,7 +44,7 @@
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid Padding="36,24,36,16" RowSpacing="12">
+    <Grid Padding="36,24,36,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -59,12 +55,16 @@
         <common:PageHeader Trail="{x:Bind ViewModel.Trail, Mode=OneWay}" TrailClicked="OnTrailClicked">
             <common:PageHeader.Subtitle>
                 <StackPanel
-                    Margin="0,6,0,0"
+                    Margin="0,4,0,0"
                     Orientation="Horizontal"
                     Spacing="16">
-                    <common:StatusLabel Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}" Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
+                    <common:StatusLabel
+                        FontSize="14"
+                        Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}"
+                        Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
                     <TextBlock
                         VerticalAlignment="Center"
+                        FontSize="14"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Text="{x:Bind ViewModel.Image, Mode=OneWay}" />
                     <StackPanel Orientation="Horizontal" Spacing="2">
@@ -82,14 +82,11 @@
                     </StackPanel>
                 </StackPanel>
             </common:PageHeader.Subtitle>
-            <StackPanel
-                Margin="0,40,0,0"
-                Orientation="Horizontal"
-                Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button
                     AutomationProperties.AutomationId="DetailStartButton"
                     Click="OnStart"
-                    Style="{StaticResource AccentButtonStyle}"
+                    Style="{StaticResource AccentToolbarButtonStyle}"
                     Visibility="{x:Bind ViewModel.CanStart, Mode=OneWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE768;" />
@@ -99,6 +96,7 @@
                 <Button
                     AutomationProperties.AutomationId="DetailStopButton"
                     Click="OnStop"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE71A;" />
@@ -108,6 +106,7 @@
                 <Button
                     AutomationProperties.AutomationId="DetailRestartButton"
                     Click="OnRestart"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     Visibility="{x:Bind ViewModel.CanStop, Mode=OneWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE72C;" />
@@ -117,16 +116,19 @@
                 <Button
                     AutomationProperties.AutomationId="DetailOpenPortButton"
                     Click="OnOpenPort"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     Visibility="{x:Bind views:ContainerDetailPage.WhenPort(ViewModel.HasPort, ViewModel.IsRunning), Mode=OneWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE8A7;" />
                         <TextBlock Text="{x:Bind views:ContainerDetailPage.OpenText(ViewModel.FirstPort), Mode=OneWay}" />
                     </StackPanel>
                 </Button>
+                <Border Style="{StaticResource CommandBarDividerStyle}" />
                 <Button
                     AutomationProperties.AutomationId="DetailDeleteButton"
                     Click="OnRemove"
-                    IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}">
+                    IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}"
+                    Style="{StaticResource DangerToolbarButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE74D;" />
                         <TextBlock Text="Delete" />
@@ -135,61 +137,85 @@
             </StackPanel>
         </common:PageHeader>
 
-        <SelectorBar
-            x:Name="Tabs"
+        <Grid
             Grid.Row="1"
-            SelectionChanged="OnTabSelectionChanged">
-            <SelectorBarItem
-                x:Name="LogsTab"
-                AutomationProperties.AutomationId="LogsTab"
-                Text="Logs">
-                <SelectorBarItem.Icon>
-                    <FontIcon Glyph="&#xE8A5;" />
-                </SelectorBarItem.Icon>
-            </SelectorBarItem>
-            <SelectorBarItem
-                x:Name="InspectTab"
-                AutomationProperties.AutomationId="InspectTab"
-                Text="Inspect">
-                <SelectorBarItem.Icon>
-                    <FontIcon Glyph="&#xE943;" />
-                </SelectorBarItem.Icon>
-            </SelectorBarItem>
-            <SelectorBarItem
-                x:Name="ExecTab"
-                AutomationProperties.AutomationId="ExecTab"
-                Text="Exec">
-                <SelectorBarItem.Icon>
-                    <FontIcon Glyph="&#xE756;" />
-                </SelectorBarItem.Icon>
-            </SelectorBarItem>
-            <SelectorBarItem
-                x:Name="StatsTab"
-                AutomationProperties.AutomationId="StatsTab"
-                Text="Stats">
-                <SelectorBarItem.Icon>
-                    <FontIcon Glyph="&#xE9D9;" />
-                </SelectorBarItem.Icon>
-            </SelectorBarItem>
-        </SelectorBar>
+            Margin="0,12,0,0"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+            <SelectorBar x:Name="Tabs" SelectionChanged="OnTabSelectionChanged">
+                <SelectorBarItem
+                    x:Name="LogsTab"
+                    AutomationProperties.AutomationId="LogsTab"
+                    Text="Logs">
+                    <SelectorBarItem.Icon>
+                        <FontIcon Glyph="&#xE8A5;" />
+                    </SelectorBarItem.Icon>
+                </SelectorBarItem>
+                <SelectorBarItem
+                    x:Name="InspectTab"
+                    AutomationProperties.AutomationId="InspectTab"
+                    Text="Inspect">
+                    <SelectorBarItem.Icon>
+                        <FontIcon Glyph="&#xE943;" />
+                    </SelectorBarItem.Icon>
+                </SelectorBarItem>
+                <SelectorBarItem
+                    x:Name="ExecTab"
+                    AutomationProperties.AutomationId="ExecTab"
+                    Text="Exec">
+                    <SelectorBarItem.Icon>
+                        <FontIcon Glyph="&#xE756;" />
+                    </SelectorBarItem.Icon>
+                </SelectorBarItem>
+                <SelectorBarItem
+                    x:Name="StatsTab"
+                    AutomationProperties.AutomationId="StatsTab"
+                    Text="Stats">
+                    <SelectorBarItem.Icon>
+                        <FontIcon Glyph="&#xE9D9;" />
+                    </SelectorBarItem.Icon>
+                </SelectorBarItem>
+            </SelectorBar>
+            <StackPanel
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="8"
+                Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Stats'), Mode=OneWay}">
+                <TextBlock VerticalAlignment="Center" Text="Show" />
+                <ComboBox AutomationProperties.Name="Show" SelectedIndex="{x:Bind ViewModel.Stats.WindowIndex, Mode=TwoWay}">
+                    <x:String>Last minute</x:String>
+                    <x:String>Last 5 minutes</x:String>
+                    <x:String>Last 15 minutes</x:String>
+                </ComboBox>
+            </StackPanel>
+        </Grid>
 
-        <StackPanel Grid.Row="2" Spacing="8">
+        <!--  Margins rather than row spacing, so a closed bar leaves no gap behind.  -->
+        <StackPanel Grid.Row="2">
             <InfoBar
+                Title="This container no longer exists"
+                Margin="0,16,0,0"
                 IsClosable="False"
                 IsOpen="{x:Bind ViewModel.IsGone, Mode=OneWay}"
-                Message="This container no longer exists."
-                Severity="Warning" />
+                Message="It was removed outside this page. Its logs and settings went with it."
+                Severity="Warning"
+                Visibility="{x:Bind ViewModel.IsGone, Mode=OneWay}" />
             <InfoBar
+                Title="The engine refused"
+                Margin="0,16,0,0"
                 IsClosable="False"
                 IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
                 Message="{x:Bind ViewModel.Error, Mode=OneWay}"
-                Severity="Error" />
+                Severity="Error"
+                Visibility="{x:Bind ViewModel.HasError, Mode=OneWay}" />
         </StackPanel>
 
         <!--  Logs  -->
         <Border
             Grid.Row="3"
-            Style="{StaticResource ListCardStyle}"
+            Margin="0,16,0,0"
+            Style="{StaticResource CardStyle}"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Logs'), Mode=OneWay}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -208,12 +234,14 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBox
+                    <AutoSuggestBox
                         x:Name="LogSearch"
+                        VerticalAlignment="Center"
                         AutomationProperties.AutomationId="LogSearch"
                         AutomationProperties.Name="Search the log"
                         KeyDown="OnLogSearchKeyDown"
                         PlaceholderText="Search the log"
+                        QueryIcon="Find"
                         Text="{x:Bind ViewModel.Logs.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock
                         Grid.Column="1"
@@ -247,16 +275,19 @@
                     <Button
                         Grid.Column="5"
                         Click="OnCopyLogs"
-                        Content="Copy all" />
+                        Content="Copy all"
+                        Style="{StaticResource ToolbarButtonStyle}" />
                 </Grid>
 
                 <InfoBar
+                    Title="Couldn't read the log"
                     Grid.Row="1"
                     Margin="12,0,12,10"
                     IsClosable="False"
                     IsOpen="{x:Bind ViewModel.Logs.HasError, Mode=OneWay}"
                     Message="{x:Bind ViewModel.Logs.Error, Mode=OneWay}"
-                    Severity="Error" />
+                    Severity="Error"
+                    Visibility="{x:Bind ViewModel.Logs.HasError, Mode=OneWay}" />
 
                 <ListView
                     x:Name="LogList"
@@ -313,6 +344,7 @@
         <!--  Inspect  -->
         <Grid
             Grid.Row="3"
+            Margin="0,16,0,0"
             ColumnSpacing="16"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Inspect'), Mode=OneWay}">
             <Grid.ColumnDefinitions>
@@ -327,15 +359,15 @@
                         IsOpen="{x:Bind ViewModel.Inspect.HasError, Mode=OneWay}"
                         Message="{x:Bind ViewModel.Inspect.Error, Mode=OneWay}"
                         Severity="Error" />
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Configuration" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Configuration" />
                             <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.Configuration, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="State" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="State" />
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="130" />
@@ -350,16 +382,16 @@
                             <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.State, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="10">
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Limits" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Limits" />
                             <ItemsControl ItemTemplate="{StaticResource FactTemplate}" ItemsSource="{x:Bind ViewModel.Inspect.Limits, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
 
-            <Border Grid.Column="1" Style="{StaticResource ListCardStyle}">
+            <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -375,21 +407,24 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock
                             VerticalAlignment="Center"
-                            Style="{StaticResource CardTitleTextStyle}"
+                            Style="{StaticResource CardHeadingStyle}"
                             Text="Raw JSON" />
                         <TextBox
                             Grid.Column="1"
+                            VerticalAlignment="Center"
                             AutomationProperties.Name="Find a key"
                             PlaceholderText="Find a key"
                             Text="{x:Bind ViewModel.Inspect.FindText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <Button
                             Grid.Column="2"
                             Click="OnCollapseJson"
-                            Content="Collapse all" />
+                            Content="Collapse all"
+                            Style="{StaticResource ToolbarButtonStyle}" />
                         <Button
                             Grid.Column="3"
                             Click="OnCopyJson"
-                            Content="Copy" />
+                            Content="Copy"
+                            Style="{StaticResource ToolbarButtonStyle}" />
                     </Grid>
                     <TreeView
                         Grid.Row="1"
@@ -400,13 +435,17 @@
                         CanReorderItems="False"
                         ItemsSource="{x:Bind ViewModel.Inspect.Nodes}"
                         SelectionMode="None">
+                        <!--  One 20px line per node, like the code it shows; the defaults give each node 32.  -->
                         <TreeView.Resources>
-                            <x:Double x:Key="TreeViewItemMinHeight">22</x:Double>
+                            <x:Double x:Key="TreeViewItemMinHeight">20</x:Double>
+                            <x:Double x:Key="TreeViewItemContentHeight">20</x:Double>
+                            <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
+                            <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
                         </TreeView.Resources>
                         <TreeView.ItemTemplate>
                             <DataTemplate x:DataType="vm:JsonTreeNode">
                                 <TreeViewItem
-                                    MinHeight="22"
+                                    MinHeight="20"
                                     Padding="0"
                                     IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
                                     ItemsSource="{x:Bind Children}">
@@ -418,16 +457,20 @@
                                             Text="{x:Bind Key}"
                                             Visibility="{x:Bind HasKey}" />
                                         <TextBlock
+                                            Margin="0,0,6,0"
                                             FontFamily="{StaticResource LogFontFamily}"
                                             FontSize="13"
-                                            Text=": "
+                                            Text=":"
                                             Visibility="{x:Bind HasKey}" />
                                         <TextBlock
+                                            MaxWidth="360"
                                             FontFamily="{StaticResource LogFontFamily}"
                                             FontSize="13"
                                             Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                             IsTextSelectionEnabled="True"
                                             Text="{x:Bind Value}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind Value}"
                                             Visibility="{x:Bind views:ContainerDetailPage.WhenKind(Kind, 'String')}" />
                                         <TextBlock
                                             FontFamily="{StaticResource LogFontFamily}"
@@ -466,6 +509,7 @@
         <!--  Exec  -->
         <Grid
             Grid.Row="3"
+            Margin="0,16,0,0"
             ColumnSpacing="16"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Exec'), Mode=OneWay}">
             <Grid.ColumnDefinitions>
@@ -473,7 +517,7 @@
                 <ColumnDefinition Width="280" />
             </Grid.ColumnDefinitions>
 
-            <Border Style="{StaticResource ListCardStyle}">
+            <Border Style="{StaticResource CardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -530,10 +574,14 @@
                             Grid.Column="5"
                             Orientation="Horizontal"
                             Spacing="4">
-                            <Button Click="OnClearTerminal" Content="Clear" />
+                            <Button
+                                Click="OnClearTerminal"
+                                Content="Clear"
+                                Style="{StaticResource ToolbarButtonStyle}" />
                             <Button
                                 AutomationProperties.Name="Copy selection"
                                 Click="OnCopyTerminal"
+                                Style="{StaticResource ToolbarButtonStyle}"
                                 ToolTipService.ToolTip="Copy selection">
                                 <FontIcon FontSize="14" Glyph="&#xE8C8;" />
                             </Button>
@@ -542,11 +590,13 @@
                                 Click="OnConnectTerminal"
                                 Content="Connect"
                                 IsEnabled="{x:Bind ViewModel.IsRunning, Mode=OneWay}"
+                                Style="{StaticResource ToolbarButtonStyle}"
                                 Visibility="{x:Bind ViewModel.Terminal.IsDisconnected, Mode=OneWay}" />
                             <Button
                                 AutomationProperties.AutomationId="TerminalDisconnectButton"
                                 Click="OnDisconnectTerminal"
                                 Content="Disconnect"
+                                Style="{StaticResource ToolbarButtonStyle}"
                                 Visibility="{x:Bind ViewModel.Terminal.IsConnected, Mode=OneWay}" />
                         </StackPanel>
                     </Grid>
@@ -561,7 +611,7 @@
 
             <ScrollViewer Grid.Column="1">
                 <StackPanel Spacing="10">
-                    <Border Padding="16,12" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16,12" Style="{StaticResource CardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -579,10 +629,10 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="12">
                             <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Ports" />
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Ports" />
                                 <ItemsControl ItemsSource="{x:Bind ViewModel.Ports, Mode=OneWay}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:PortLink">
@@ -609,7 +659,7 @@
                             </StackPanel>
                             <MenuFlyoutSeparator />
                             <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Mounts" />
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Mounts" />
                                 <TextBlock
                                     Style="{StaticResource SecondaryCellTextStyle}"
                                     Text="No mounts."
@@ -632,7 +682,7 @@
                             </StackPanel>
                             <MenuFlyoutSeparator />
                             <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Network" />
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Network" />
                                 <TextBlock
                                     Style="{StaticResource SecondaryCellTextStyle}"
                                     Text="Not attached to a network."
@@ -658,7 +708,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Environment" />
+                                    <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Environment" />
                                     <TextBlock Style="{StaticResource SecondaryCellTextStyle}" Text="{x:Bind ViewModel.Inspect.EnvironmentSummary, Mode=OneWay}" />
                                 </StackPanel>
                                 <ToggleButton
@@ -675,7 +725,7 @@
                                 TextWrapping="Wrap" />
                             <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.Inspect.HasCompose, Mode=OneWay}">
                                 <MenuFlyoutSeparator />
-                                <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Compose" />
+                                <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Compose" />
                                 <TextBlock
                                     Style="{StaticResource SecondaryCellTextStyle}"
                                     Text="{x:Bind ViewModel.Inspect.Compose, Mode=OneWay}"
@@ -690,34 +740,15 @@
         <!--  Stats  -->
         <Grid
             Grid.Row="3"
-            RowSpacing="12"
+            Margin="0,16,0,0"
             Visibility="{x:Bind views:ContainerDetailPage.When(ViewModel.Tab, 'Stats'), Mode=OneWay}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <StackPanel
-                HorizontalAlignment="Right"
-                Orientation="Horizontal"
-                Spacing="8">
-                <TextBlock VerticalAlignment="Center" Text="Show" />
-                <ComboBox AutomationProperties.Name="Show" SelectedIndex="{x:Bind ViewModel.Stats.WindowIndex, Mode=TwoWay}">
-                    <x:String>Last minute</x:String>
-                    <x:String>Last 5 minutes</x:String>
-                    <x:String>Last 15 minutes</x:String>
-                </ComboBox>
-            </StackPanel>
-
-            <TextBlock
-                Grid.Row="1"
-                Margin="0,48,0,0"
-                VerticalAlignment="Top"
-                Style="{StaticResource EmptyStateTextStyle}"
-                Text="{x:Bind views:ContainerDetailPage.StatsWaitText(ViewModel.CanStop, ViewModel.Stats.Error), Mode=OneWay}"
+            <common:EmptyState
+                Title="{x:Bind views:ContainerDetailPage.StatsWaitTitle(ViewModel.CanStop, ViewModel.Stats.Error), Mode=OneWay}"
+                Margin="0,0,0,48"
+                Glyph="&#xE9D9;"
+                Message="{x:Bind views:ContainerDetailPage.StatsWaitText(ViewModel.CanStop, ViewModel.Stats.Error), Mode=OneWay}"
                 Visibility="{x:Bind ViewModel.Stats.HasNoSamples, Mode=OneWay}" />
-
-            <ScrollViewer Grid.Row="1" Visibility="{x:Bind ViewModel.Stats.HasSamples, Mode=OneWay}">
+            <ScrollViewer Visibility="{x:Bind ViewModel.Stats.HasSamples, Mode=OneWay}">
                 <Grid ColumnSpacing="12" RowSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -728,14 +759,14 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Padding="16" Style="{StaticResource ListCardStyle}">
+                    <Border Padding="16" Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="CPU" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="CPU" />
                             <TextBlock
                                 HorizontalAlignment="Right"
                                 Style="{StaticResource SubtitleTextBlockStyle}"
@@ -754,14 +785,14 @@
                     <Border
                         Grid.Column="1"
                         Padding="16"
-                        Style="{StaticResource ListCardStyle}">
+                        Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Memory" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Memory" />
                             <TextBlock
                                 HorizontalAlignment="Right"
                                 Style="{StaticResource SubtitleTextBlockStyle}"
@@ -781,14 +812,14 @@
                     <Border
                         Grid.Row="1"
                         Padding="16"
-                        Style="{StaticResource ListCardStyle}">
+                        Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Network" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Network" />
                             <TextBlock
                                 HorizontalAlignment="Right"
                                 Style="{StaticResource SecondaryCellTextStyle}"
@@ -820,14 +851,14 @@
                         Grid.Row="1"
                         Grid.Column="1"
                         Padding="16"
-                        Style="{StaticResource ListCardStyle}">
+                        Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="100" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource CardTitleTextStyle}" Text="Disk" />
+                            <TextBlock Style="{StaticResource CardHeadingStyle}" Text="Disk" />
                             <TextBlock
                                 HorizontalAlignment="Right"
                                 Style="{StaticResource SecondaryCellTextStyle}"

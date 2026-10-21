@@ -14,6 +14,7 @@ using Contr.Modules.Images.Application.Images.Commands.PruneImages;
 using Contr.Modules.Images.Application.Images.Commands.RemoveImage;
 using Contr.Modules.Images.Application.Images.Queries.PullImage;
 using Contr.Modules.Images.Application.Images.Queries.WatchImages;
+using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
 using Contr.UI.Common.Formatting;
 using Contr.UI.Common.Lists;
@@ -56,9 +57,9 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
     [ObservableProperty]
     public partial bool IsPullIndeterminate { get; set; }
 
-    /// <summary>Such as <c>9 images · 2.2 GB on disk · 1.1 GB unused</c>.</summary>
+    /// <summary>Counted over every image, tagged or not.</summary>
     [ObservableProperty]
-    public partial string Subtitle { get; set; }
+    public partial IReadOnlyList<StatCard> StatCards { get; set; }
 
     /// <summary>Such as <c>Remove unused (1.1 GB)</c>.</summary>
     [ObservableProperty]
@@ -102,7 +103,7 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         PullTitle = string.Empty;
         PullPlatform = string.Empty;
         PullStatus = string.Empty;
-        Subtitle = string.Empty;
+        StatCards = [];
         RemoveUnusedText = "Remove unused";
         DanglingTitle = string.Empty;
         DanglingSize = string.Empty;
@@ -255,6 +256,39 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         base.Dispose(disposing);
     }
 
+    private List<StatCard> Summarize(bool isUsageKnown, long unusedBytes, int untagged)
+    {
+        var inUse = Rows.Count(row => row.InUse);
+        var unused = Rows.Count(row => row.Containers == 0);
+
+        return [
+            new StatCard(
+                "IMAGES",
+                Count(Rows.Count),
+                untagged == 0 ? "all tagged" : $"{Count(untagged)} untagged",
+                "\uE8B9",
+                StatKind.Accent),
+            new StatCard(
+                "TOTAL SIZE",
+                HumanFormat.Bytes(Rows.Sum(row => row.SizeBytes)),
+                "summed over the images",
+                "\uEDA2",
+                StatKind.Accent),
+            new StatCard(
+                "IN USE",
+                isUsageKnown ? Count(inUse) : "—",
+                isUsageKnown ? "by a container" : "not reported",
+                "\uE7B8",
+                isUsageKnown && inUse > 0 ? StatKind.Positive : StatKind.Muted),
+            new StatCard(
+                "UNUSED",
+                isUsageKnown ? HumanFormat.Bytes(unusedBytes) : "—",
+                isUsageKnown ? $"{Count(unused)} images no container uses" : "not reported",
+                "\uE74D",
+                isUsageKnown && unused > 0 ? StatKind.Warning : StatKind.Muted),
+        ];
+    }
+
     private static string Count(long count)
     {
         return count.ToString(CultureInfo.CurrentCulture);
@@ -312,11 +346,12 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
             ? $"Remove unused ({HumanFormat.Bytes(unusedBytes)})"
             : "Remove unused";
 
-        var images = Rows.Count == 1 ? "1 image" : $"{Count(Rows.Count)} images";
-        var summary = $"{images} · {HumanFormat.Bytes(Rows.Sum(row => row.SizeBytes))} on disk";
-        Subtitle = Rows.Count == 0
-            ? string.Empty
-            : isUsageKnown ? $"{summary} · {HumanFormat.Bytes(unusedBytes)} unused" : summary;
+        var cards = Summarize(isUsageKnown, unusedBytes, dangling.Count);
+
+        if (!cards.SequenceEqual(StatCards))
+        {
+            StatCards = cards;
+        }
     }
 
     private void Apply(PullEvent pullEvent)
