@@ -62,6 +62,9 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
   on, and `DaemonConnection` stops starting it; for older daemons the client's own choice still applies.
   From API revision 13 it saves `engine.daemon_json` and reads the unknown keys and the engine's suggestions
   from the `DaemonJsonRejection` detail of a refusal.
+- `KubernetesClient` serves `IKubernetesCluster` over `ContrClient.Kubernetes` (API revision 16), following
+  `WatchCluster` while the daemon reports `CAPABILITY_KUBERNETES`. The settings `kubernetes.*` change through
+  `IDaemonSettings`; a cluster state whose `SettingsRevision` is below the revision an update returned predates it.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
@@ -148,9 +151,9 @@ converters, because a function is compile-checked against its arguments. Brushes
 `{ThemeResource}` in XAML, or `ThemeResources.Brush` in code: `Application.Current.Resources` answers for
 the theme the app started in.
 
-A `NavigationItem` can carry a `Badge`, such as the Containers count, and an `Order` that places it among every
-module's items; `Tools` items, such as Troubleshoot, sit below a separator. The shell's own Kubernetes and
-Troubleshoot pages are items like the modules'.
+A `NavigationItem` can carry a `Badge`, such as the Containers count, a `State` drawn as a spinner or a dot, such as the
+cluster's, and an `Order` that places it among every module's items; `Tools` items, such as Troubleshoot, sit below a
+separator. The shell's own Kubernetes and Troubleshoot pages are items like the modules'.
 
 A surface outside a module reaches the module's data through a contract in `Contr.UI.Contracts`, never the module:
 the tray flyout lists running containers through `IRunningContainers`, which the Containers module implements, an
@@ -162,7 +165,7 @@ their services, whose containers are the Containers module's own DTOs, so the pa
 stream Compose's output under the project's buttons, and its logs come from one stream per project. The status bar
 spans the window
 under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the
-backend, the engine version and the Docker context.
+backend, the engine version, the Docker context and the Kubernetes cluster's state.
 
 ## Tests
 
