@@ -68,6 +68,36 @@
                 </Grid>
             </DataTemplate>
 
+            <!--  One numbered row of what installing WSL does; the rows after the first are divided.  -->
+            <Style x:Key="WslStepStyle" TargetType="Grid">
+                <Setter Property="Padding" Value="0,10" />
+                <Setter Property="ColumnSpacing" Value="12" />
+                <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+            </Style>
+
+            <Style x:Key="StepNumberStyle" TargetType="Border">
+                <Setter Property="Width" Value="24" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+                <Setter Property="Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+            </Style>
+
+            <Style x:Key="StepNumberTextStyle" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <Style x:Key="StepDetailStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
             <Style x:Key="CommandBoxStyle" TargetType="Border">
                 <Setter Property="Padding" Value="12,10" />
                 <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" />
@@ -145,37 +175,126 @@
 
                 <!--  2. Install WSL  -->
                 <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.IsWsl, Mode=OneWay}">
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Setting up the engine in the next step tells whether WSL is there."
-                        TextWrapping="Wrap"
-                        Visibility="{x:Bind local:OnboardingWindow.WhenNot(ViewModel.IsWslMissing), Mode=OneWay}" />
                     <InfoBar
-                        Title="WSL isn't installed."
+                        Title="{x:Bind local:OnboardingViewModel.WslErrorTitle}"
+                        AutomationProperties.AutomationId="WslError"
                         IsClosable="False"
-                        IsOpen="{x:Bind ViewModel.IsWslMissing, Mode=OneWay}"
-                        Message="Install it from a terminal opened as administrator, restart if Windows asks, then try again."
+                        IsOpen="{x:Bind ViewModel.HasWslError, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.WslError, Mode=OneWay}"
+                        Severity="Error"
+                        Visibility="{x:Bind ViewModel.HasWslError, Mode=OneWay}" />
+                    <InfoBar
+                        Title="{x:Bind ViewModel.WslDoneTitle, Mode=OneWay}"
+                        AutomationProperties.AutomationId="WslDone"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.IsWslRestartNeeded, Mode=OneWay}"
+                        Message="{x:Bind ViewModel.WslDoneMessage, Mode=OneWay}"
                         Severity="Informational"
-                        Visibility="{x:Bind ViewModel.IsWslMissing, Mode=OneWay}" />
-                    <Border Style="{StaticResource CaptionedCardStyle}" Visibility="{x:Bind ViewModel.IsWslMissing, Mode=OneWay}">
-                        <StackPanel Spacing="12">
-                            <Grid>
-                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="IN A TERMINAL OPENED AS ADMINISTRATOR" />
-                                <Button HorizontalAlignment="Right" Click="OnCopyWslCommand">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource IconStyle}" />
-                                        <TextBlock Text="Copy" />
-                                    </StackPanel>
-                                </Button>
+                        Visibility="{x:Bind ViewModel.IsWslRestartNeeded, Mode=OneWay}" />
+                    <InfoBar
+                        Title="Needs administrator approval once."
+                        IsClosable="False"
+                        IsOpen="True"
+                        Message="Everything after this step runs as you, without admin rights."
+                        Severity="Informational"
+                        Visibility="{x:Bind local:OnboardingWindow.WhenNot(ViewModel.IsWslRestartNeeded), Mode=OneWay}" />
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}">
+                        <ProgressRing
+                            Width="16"
+                            Height="16"
+                            IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+                        <TextBlock
+                            AutomationProperties.AutomationId="WslStatus"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{x:Bind ViewModel.WslStatus, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Border Style="{StaticResource CaptionedCardStyle}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="WHAT HAPPENS" />
+                            <Grid Style="{StaticResource WslStepStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource StepNumberStyle}">
+                                    <TextBlock Style="{StaticResource StepNumberTextStyle}" Text="1" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Windows asks for administrator approval" />
+                                    <TextBlock Style="{StaticResource StepDetailStyle}" Text="If you can't approve it, someone from IT can sign in on the prompt." />
+                                </StackPanel>
                             </Grid>
-                            <Border Style="{StaticResource CommandBoxStyle}">
-                                <TextBlock
-                                    FontFamily="Cascadia Mono,Consolas"
-                                    IsTextSelectionEnabled="True"
-                                    Text="{x:Bind local:OnboardingWindow.WslCommand}" />
-                            </Border>
+                            <Grid BorderThickness="0,1,0,0" Style="{StaticResource WslStepStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource StepNumberStyle}">
+                                    <TextBlock Style="{StaticResource StepNumberTextStyle}" Text="2" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="WSL is installed from Microsoft" />
+                                    <TextBlock Style="{StaticResource StepDetailStyle}">
+                                        <Run Text="Runs" />
+                                        <Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind local:OnboardingWindow.WslCommand}" /><Run Text=". No Linux distribution is added." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                            <Grid BorderThickness="0,1,0,0" Style="{StaticResource WslStepStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource StepNumberStyle}">
+                                    <TextBlock Style="{StaticResource StepNumberTextStyle}" Text="3" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="You restart your PC" />
+                                    <TextBlock Style="{StaticResource StepDetailStyle}" Text="Only if Windows asks. Save your work first; you choose when." />
+                                </StackPanel>
+                            </Grid>
+                            <Grid BorderThickness="0,1,0,0" Style="{StaticResource WslStepStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource StepNumberStyle}">
+                                    <TextBlock Style="{StaticResource StepNumberTextStyle}" Text="4" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Setup continues when you open Contr again" />
+                                    <TextBlock Style="{StaticResource StepDetailStyle}" Text="It picks up at step 3. No admin rights are needed after this." />
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
+
+                    <Expander
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.AutomationId="NoApprovalExpander"
+                        Header="Can't get administrator approval?"
+                        Visibility="{x:Bind local:OnboardingWindow.WhenNot(ViewModel.IsWslRestartNeeded), Mode=OneWay}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Your IT team can install WSL for you. Send them the instructions, then come back here." TextWrapping="Wrap" />
+                            <Button
+                                AutomationProperties.AutomationId="CopyItInstructions"
+                                Click="OnCopyItInstructions">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Copy}" Style="{StaticResource IconStyle}" />
+                                    <TextBlock Text="Copy instructions for IT" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
 
                 <!--  3. Set up the engine  -->
@@ -354,15 +473,35 @@
                     MinWidth="96"
                     Click="OnBack"
                     Content="Back"
+                    IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.CanGoBack, Mode=OneWay}" />
-                <Button
+                <StackPanel
                     Grid.Column="2"
-                    MinWidth="96"
-                    AutomationProperties.AutomationId="OnboardingNext"
-                    Click="OnNext"
-                    Content="{x:Bind ViewModel.NextText, Mode=OneWay}"
-                    IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}"
-                    Style="{StaticResource AccentButtonStyle}" />
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        MinWidth="96"
+                        AutomationProperties.AutomationId="OnboardingNotNow"
+                        Click="OnNotNow"
+                        Content="Not now"
+                        IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.CanPostpone, Mode=OneWay}" />
+                    <Button
+                        MinWidth="96"
+                        AutomationProperties.AutomationId="OnboardingNext"
+                        AutomationProperties.Name="{x:Bind ViewModel.NextText, Mode=OneWay}"
+                        Click="OnNext"
+                        IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}"
+                        Style="{StaticResource AccentButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                Glyph="{x:Bind icons:ContrIcons.Shield}"
+                                Style="{StaticResource IconStyle}"
+                                Visibility="{x:Bind ViewModel.NextNeedsApproval, Mode=OneWay}" />
+                            <TextBlock Text="{x:Bind ViewModel.NextText, Mode=OneWay}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
