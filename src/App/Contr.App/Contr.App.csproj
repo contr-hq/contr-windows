@@ -21,6 +21,8 @@
 
     <WindowsPackageType>None</WindowsPackageType>
     <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- The installer ships the Windows App SDK runtime with the app rather than asking Windows for it. -->
+    <WindowsAppSDKSelfContained Condition="'$(SelfContained)' == 'true'">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
   <ItemGroup>
@@ -48,6 +50,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="System.Reactive" />
+    <PackageReference Include="Velopack" />
     <PackageReference Include="WinUIEx" />
   </ItemGroup>
 
