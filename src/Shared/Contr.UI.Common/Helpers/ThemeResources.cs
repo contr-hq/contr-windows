@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 
@@ -7,7 +8,7 @@ namespace Contr.UI.Common.Helpers;
 /// <summary>Theme resources as an element's own theme resolves them.</summary>
 /// <remarks>
 /// <c>Application.Current.Resources[key]</c> answers for the theme the app started in, not the theme a window
-/// or page requests.
+/// or page requests. Later merged dictionaries win, as in XAML lookup.
 /// </remarks>
 public static class ThemeResources
 {
@@ -24,7 +25,7 @@ public static class ThemeResources
             return brush;
         }
 
-        foreach (var merged in resources.MergedDictionaries)
+        foreach (var merged in resources.MergedDictionaries.Reverse())
         {
             if (Find(merged, theme, key) is Brush mergedBrush)
             {
