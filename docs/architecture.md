@@ -67,6 +67,8 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
 - `KubernetesClient` serves `IKubernetesCluster` over `ContrClient.Kubernetes` (API revision 16), following
   `WatchCluster` while the daemon reports `CAPABILITY_KUBERNETES`. The settings `kubernetes.*` change through
   `IDaemonSettings`; a cluster state whose `SettingsRevision` is below the revision an update returned predates it.
+- `UpdatesClient` serves `IDaemonUpdates` over `ContrClient.Updates` (API revision 21): the daemon's latest update
+  check and a check on request, which the daemon refuses while `updates.check` is off.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
