@@ -25,6 +25,19 @@ public interface INetworksGateway
     Task<Result<IReadOnlyList<NetworkEndpointDto>>> GetEndpointsAsync(
         NetworkId id, CancellationToken cancellationToken);
 
+    /// <summary>Every container, running or not, with the networks it is connected to.</summary>
+    Task<Result<IReadOnlyList<NetworkContainerDto>>> ListContainersAsync(CancellationToken cancellationToken);
+
+    /// <summary>Connects a container to the network.</summary>
+    /// <param name="container">The container's ID or name.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    Task<Result> ConnectAsync(NetworkId id, string container, CancellationToken cancellationToken);
+
+    /// <summary>Disconnects a container from the network.</summary>
+    /// <param name="container">The container's ID or name.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    Task<Result> DisconnectAsync(NetworkId id, string container, CancellationToken cancellationToken);
+
     /// <summary>Deletes unused user-defined networks; returns how many it deleted.</summary>
     Task<Result<int>> PruneAsync(CancellationToken cancellationToken);
 }
