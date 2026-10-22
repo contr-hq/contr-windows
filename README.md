@@ -3,6 +3,10 @@
 WinUI 3 desktop client for [Contr](https://github.com/contr-hq/contr). It talks to the `contrd` daemon only through the
 C# SDK the core repository generates, over a per-user named pipe.
 
+Download it from [Releases](https://github.com/contr-hq/contr-windows/releases). What is signed, by whom and how, and
+what Contr sends to other systems, is in the
+[Code signing policy](https://github.com/contr-hq/contr/blob/main/docs/code-signing-policy.md).
+
 ## Status
 
 The design's shell, Containers (grouped by Compose project, with a page per container: logs, inspect, a terminal and
@@ -86,8 +90,10 @@ CI regenerates it from `gen/CORE_COMMIT` and fails when the committed copy diffe
 A `v*` tag builds the installer: the app published self-contained for x64, the core release
 `packaging/core-release.json` pins (checked against its SHA-256) laid out beside it, packed by
 [Velopack](https://velopack.io) into `Setup.exe`, an MSI and the update packages. The tag must match `Version.props`,
-and `docs/releases/<tag>.md` holds the release's notes. `scripts/pack-release.ps1` builds the same installer locally,
-unsigned.
+and `docs/releases/<tag>.md` holds the release's notes, written from `docs/releases/TEMPLATE.md`; the release fails
+without its link to the Code signing policy. Every file of a tagged release gets a GitHub build attestation (`gh
+attestation verify <file> --repo contr-hq/contr-windows`) and a line in `SHA256SUMS`. `scripts/pack-release.ps1` builds
+the same installer locally, unsigned.
 
 Tagged and manual builds sign `Contr.App.exe`, `Update.exe`, `Setup.exe` and the MSI with Azure Artifact Signing when
 the organization sets the variables `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT` and
