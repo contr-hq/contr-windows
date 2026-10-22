@@ -58,18 +58,28 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="EndpointTemplate" x:DataType="app:NetworkEndpointDto">
-            <Grid ColumnSpacing="8">
+        <!--  A running member's dot is filled; a stopped one's is hollow and its address says why it has none.  -->
+        <DataTemplate x:Key="MemberTemplate" x:DataType="app:NetworkMemberDto">
+            <Grid AutomationProperties.Name="{x:Bind Container}" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Ellipse
                     Width="7"
                     Height="7"
                     VerticalAlignment="Center"
-                    Fill="{ThemeResource SystemFillColorSuccessBrush}" />
+                    Fill="{ThemeResource SystemFillColorSuccessBrush}"
+                    Visibility="{x:Bind IsRunning}" />
+                <Ellipse
+                    Width="7"
+                    Height="7"
+                    VerticalAlignment="Center"
+                    Stroke="{ThemeResource TextFillColorTertiaryBrush}"
+                    StrokeThickness="1.2"
+                    Visibility="{x:Bind views:NetworksPage.Not(IsRunning)}" />
                 <TextBlock
                     Grid.Column="1"
                     FontWeight="SemiBold"
@@ -77,9 +87,30 @@
                     Text="{x:Bind Container}" />
                 <TextBlock
                     Grid.Column="2"
+                    VerticalAlignment="Center"
                     FontSize="12"
                     Style="{StaticResource IdentifierTextStyle}"
-                    Text="{x:Bind Address}" />
+                    Text="{x:Bind Address}"
+                    Visibility="{x:Bind IsRunning}" />
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="Stopped · no address"
+                    Visibility="{x:Bind views:NetworksPage.Not(IsRunning)}" />
+                <Button
+                    Grid.Column="3"
+                    AutomationProperties.Name="{x:Bind views:NetworksPage.DisconnectName(Container)}"
+                    Click="OnDisconnect"
+                    Style="{StaticResource RowActionButtonStyle}"
+                    Tag="{x:Bind}"
+                    ToolTipService.ToolTip="{x:Bind views:NetworksPage.DisconnectName(Container)}">
+                    <FontIcon
+                        FontSize="14"
+                        Glyph="{x:Bind icons:ContrIcons.Dismiss}"
+                        Style="{StaticResource IconStyle}" />
+                </Button>
             </Grid>
         </DataTemplate>
     </Page.Resources>
@@ -223,7 +254,10 @@
                             </Grid>
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                             <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="CONNECTED CONTAINERS" />
-                            <ItemsControl ItemTemplate="{StaticResource EndpointTemplate}" ItemsSource="{x:Bind ViewModel.Endpoints}">
+                            <ItemsControl
+                                AutomationProperties.AutomationId="NetworkMembers"
+                                ItemTemplate="{StaticResource MemberTemplate}"
+                                ItemsSource="{x:Bind ViewModel.Members}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Spacing="8" />
@@ -232,9 +266,14 @@
                             </ItemsControl>
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="{x:Bind ViewModel.EndpointsNote, Mode=OneWay}"
+                                Text="{x:Bind ViewModel.MembersNote, Mode=OneWay}"
                                 TextWrapping="Wrap"
-                                Visibility="{x:Bind views:NetworksPage.WhenText(ViewModel.EndpointsNote), Mode=OneWay}" />
+                                Visibility="{x:Bind views:NetworksPage.WhenText(ViewModel.MembersNote), Mode=OneWay}" />
+                            <Button
+                                AutomationProperties.AutomationId="ConnectContainerButton"
+                                Click="OnConnect"
+                                Content="Connect a container…"
+                                IsEnabled="{x:Bind ViewModel.CanConnect, Mode=OneWay}" />
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                             <Button
                                 AutomationProperties.AutomationId="DeleteNetworkButton"
