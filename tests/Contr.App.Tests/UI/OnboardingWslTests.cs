@@ -218,6 +218,7 @@ public sealed class OnboardingWslTests
 
     private OnboardingViewModel CreateViewModel()
     {
-        return new OnboardingViewModel(_daemon, _diagnostics, _cliTools, _wsl, _signIn, _settings, _clipboard);
+        return new OnboardingViewModel(
+            _daemon, _diagnostics, _cliTools, _wsl, _signIn, _settings, _clipboard, Substitute.For<IDaemonSettings>());
     }
 }

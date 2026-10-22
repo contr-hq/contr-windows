@@ -402,6 +402,29 @@
                             AutomationProperties.Name="Start Contr when I sign in"
                             IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}" />
                     </controls:SettingsCard>
+                    <!--  What the app sends to other systems is shown, with a way to turn it off, before setup ends.  -->
+                    <controls:SettingsCard
+                        AutomationProperties.AutomationId="UpdateCheckCard"
+                        Description="{x:Bind ViewModel.UpdateCheckText, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.OffersUpdateCheck, Mode=OneWay}">
+                        <controls:SettingsCard.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Check for new releases" />
+                                <common:PillView
+                                    Kind="Locked"
+                                    Text="Managed by your organization"
+                                    Visibility="{x:Bind ViewModel.IsUpdateCheckLocked, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard.Header>
+                        <controls:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="{x:Bind icons:ContrIcons.Sync}" Style="{StaticResource IconStyle}" />
+                        </controls:SettingsCard.HeaderIcon>
+                        <ToggleSwitch
+                            AutomationProperties.AutomationId="UpdateCheckSwitch"
+                            AutomationProperties.Name="Check for new releases"
+                            IsEnabled="{x:Bind ViewModel.CanChooseUpdateCheck, Mode=OneWay}"
+                            IsOn="{x:Bind ViewModel.ChecksForUpdates, Mode=TwoWay}" />
+                    </controls:SettingsCard>
                 </StackPanel>
 
                 <!--  5. Ready  -->
