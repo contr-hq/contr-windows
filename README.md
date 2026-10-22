@@ -57,6 +57,13 @@ whose SVGs and licence are in `assets/icons`. After adding or changing an SVG th
 uv run --with fonttools==4.60.1 scripts/build-icon-font.py
 ```
 
+The app icon and the in-app logo come from `assets/app-icon/app.svg`. After changing it, redraw `app.ico` at each of
+its sizes and `ContrLogo.png`:
+
+```bash
+uv run --with resvg-py==0.5.0 --with pillow==12.1.1 scripts/build-app-icon.py
+```
+
 ## Build and run
 
 Windows 10 1809 or later with the .NET 10 SDK (see `global.json`) and the Windows App Runtime 2.3 or later.
