@@ -224,13 +224,13 @@
                         </InfoBar.ActionButton>
                     </InfoBar>
                     <InfoBar
-                        Title="Updates are not available yet"
+                        Title="Updates aren't checked"
                         Margin="0,16,0,0"
                         IsClosable="False"
                         IsOpen="True"
-                        Message="This version of Contr does not check for updates."
+                        Message="This version of Contr's background service doesn't check for updates."
                         Severity="Informational"
-                        Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}" />
+                        Visibility="{x:Bind local:SettingsPage.WhenShown(ViewModel.TabIndex, 5, ViewModel.Updates.LacksOffer), Mode=OneWay}" />
 
                     <SelectorBar
                         x:Name="Tabs"
@@ -931,27 +931,101 @@
                         Margin="0,12,0,0"
                         Spacing="16"
                         Visibility="{x:Bind local:SettingsPage.When(ViewModel.TabIndex, 5), Mode=OneWay}">
+                        <Border
+                            AutomationProperties.AutomationId="AvailableUpdate"
+                            Style="{StaticResource CaptionedCardStyle}"
+                            Visibility="{x:Bind ViewModel.Updates.HasAvailable, Mode=OneWay}">
+                            <StackPanel Spacing="16">
+                                <TextBlock Style="{StaticResource CaptionLabelStyle}" Text="AVAILABLE UPDATE" />
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Width="40"
+                                        Height="40"
+                                        VerticalAlignment="Top"
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                        CornerRadius="20">
+                                        <FontIcon
+                                            FontSize="20"
+                                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                            Glyph="{x:Bind icons:ContrIcons.Sync}"
+                                            Style="{StaticResource IconStyle}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Updates.AvailableTitle, Mode=OneWay}" />
+                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="{x:Bind ViewModel.Updates.AvailableDetail, Mode=OneWay}" /><Run FontFamily="Cascadia Mono,Consolas" Text="{x:Bind ViewModel.Updates.CurrentVersion, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <HyperlinkButton
+                                            Margin="-12,4,0,0"
+                                            Content="{x:Bind ViewModel.Updates.WhatsNewText, Mode=OneWay}"
+                                            NavigateUri="{x:Bind ViewModel.Updates.ReleasePage, Mode=OneWay}"
+                                            Visibility="{x:Bind ViewModel.Updates.HasReleasePage, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AutomationId="OpenReleasePage"
+                                        Click="OnOpenReleasePage"
+                                        Content="Open the release page"
+                                        IsEnabled="{x:Bind ViewModel.Updates.HasReleasePage, Mode=OneWay}"
+                                        Style="{StaticResource AccentButtonStyle}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource SettingsGroupStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="UPDATE SETTINGS" />
-                                <controls:SettingsCard
-                                    BorderThickness="0"
-                                    Description="Which releases Contr installs."
-                                    Header="Release channel"
-                                    IsEnabled="False">
-                                    <ComboBox MinWidth="160" PlaceholderText="—" />
+                                <controls:SettingsCard BorderThickness="0" Description="Stable releases only, or prereleases too.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Release channel" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Updates.IsChannelLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <ComboBox
+                                        MinWidth="160"
+                                        AutomationProperties.AutomationId="ReleaseChannel"
+                                        AutomationProperties.Name="Release channel"
+                                        IsEnabled="{x:Bind ViewModel.Updates.CanChooseChannel, Mode=OneWay}"
+                                        SelectedIndex="{x:Bind ViewModel.Updates.ChannelIndex, Mode=OneWay}"
+                                        SelectionChanged="OnReleaseChannelChanged">
+                                        <x:String>Stable</x:String>
+                                        <x:String>Prereleases too</x:String>
+                                    </ComboBox>
                                 </controls:SettingsCard>
-                                <controls:SettingsCard
-                                    Description="Contr never restarts the engine without asking."
-                                    Header="Download updates in the background"
-                                    IsEnabled="False">
-                                    <ToggleSwitch />
+                                <controls:SettingsCard Description="Contr shows a newer release here. Nothing installs on its own.">
+                                    <controls:SettingsCard.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Check for updates every day" />
+                                            <common:PillView
+                                                Kind="Locked"
+                                                Text="Managed by your organization"
+                                                Visibility="{x:Bind ViewModel.Updates.IsCheckLocked, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </controls:SettingsCard.Header>
+                                    <ToggleSwitch
+                                        x:Name="UpdatesCheckSwitch"
+                                        AutomationProperties.AutomationId="UpdatesCheck"
+                                        AutomationProperties.Name="Check for updates every day"
+                                        IsEnabled="{x:Bind ViewModel.Updates.CanChooseCheck, Mode=OneWay}"
+                                        IsOn="{x:Bind ViewModel.Updates.Checks, Mode=OneWay}"
+                                        Toggled="OnUpdatesCheckToggled" />
                                 </controls:SettingsCard>
-                                <controls:SettingsCard
-                                    Description="Never checked."
-                                    Header="Check for updates"
-                                    IsEnabled="False">
-                                    <Button Content="Check now" />
+                                <controls:SettingsCard Description="{x:Bind ViewModel.Updates.CheckedText, Mode=OneWay}" Header="Check for updates">
+                                    <Button
+                                        AutomationProperties.AutomationId="CheckForUpdates"
+                                        Click="OnCheckForUpdates"
+                                        Content="Check now"
+                                        IsEnabled="{x:Bind ViewModel.Updates.CanCheckNow, Mode=OneWay}" />
                                 </controls:SettingsCard>
                             </StackPanel>
                         </Border>

@@ -14,22 +14,24 @@ public sealed record InstalledComponent(string Name, string WhatItIs, string Ver
     public bool HasStatus => Status.Length > 0;
 
     /// <summary>The parts the app and the daemon report; the rest stay out rather than show guesses.</summary>
+    /// <param name="available">The newer Contr the daemon found, such as <c>0.2.0</c>; empty without one.</param>
     public static IReadOnlyList<InstalledComponent> From(
-        string appVersion, DaemonIdentity? daemon, EngineDetails? engine, CliToolsStatus? tools)
+        string appVersion, DaemonIdentity? daemon, EngineDetails? engine, CliToolsStatus? tools, string available = "")
     {
         ArgumentNullException.ThrowIfNull(appVersion);
+        ArgumentNullException.ThrowIfNull(available);
 
         List<InstalledComponent> rows = [];
+        var (update, kind) = available.Length > 0 ? ($"{available} available", PillKind.Busy) : (string.Empty, default);
 
         if (daemon is null || Release(daemon.Version) == Release(appVersion))
         {
-            rows.Add(new(
-                "Contr app", "Windows app, tray icon and the contrd service", appVersion, string.Empty, default));
+            rows.Add(new("Contr app", "Windows app, tray icon and the contrd service", appVersion, update, kind));
         }
         else
         {
-            rows.Add(new("Contr app", "Windows app and tray icon", appVersion, string.Empty, default));
-            rows.Add(new("Contr service", "contrd, which runs the engine", daemon.Version, string.Empty, default));
+            rows.Add(new("Contr app", "Windows app and tray icon", appVersion, update, kind));
+            rows.Add(new("Contr service", "contrd, which runs the engine", daemon.Version, update, kind));
         }
 
         rows.Add(new(

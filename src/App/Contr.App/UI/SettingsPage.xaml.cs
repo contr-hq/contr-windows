@@ -8,6 +8,7 @@ using Contr.UI.Contracts.Services.Daemon;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
 
 namespace Contr.App.UI;
 
@@ -138,6 +139,42 @@ public sealed partial class SettingsPage : Page, IHasViewModel
     private void OnFormatEngineFile(object sender, RoutedEventArgs e)
     {
         ViewModel.Engine.Format();
+    }
+
+    private async void OnOpenReleasePage(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Updates.ReleasePage is { } page)
+        {
+            await Launcher.LaunchUriAsync(page);
+        }
+    }
+
+    private async void OnCheckForUpdates(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Updates.CheckNowAsync();
+    }
+
+    private async void OnUpdatesCheckToggled(object sender, RoutedEventArgs e)
+    {
+        if (UpdatesCheckSwitch.IsOn == ViewModel.Updates.Checks)
+        {
+            return;
+        }
+
+        await ViewModel.Updates.ChooseCheckAsync(UpdatesCheckSwitch.IsOn);
+        UpdatesCheckSwitch.IsOn = ViewModel.Updates.Checks;
+    }
+
+    private async void OnReleaseChannelChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox channel || channel.SelectedIndex < 0
+            || channel.SelectedIndex == ViewModel.Updates.ChannelIndex)
+        {
+            return;
+        }
+
+        await ViewModel.Updates.ChooseChannelAsync(channel.SelectedIndex);
+        channel.SelectedIndex = ViewModel.Updates.ChannelIndex;
     }
 
     private void OnResetEngineFile(object sender, RoutedEventArgs e)
