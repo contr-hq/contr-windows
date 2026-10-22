@@ -72,7 +72,7 @@ public sealed partial class UpdatesSettingsViewModel : ObservableObject
     /// <summary>Whether the daemon checks once a day and on request.</summary>
     public bool Checks => Saved?.Updates.Check == true;
 
-    /// <summary>0 counts stable releases, 1 prereleases too.</summary>
+    /// <summary>0 counts stable releases, 1 prereleases.</summary>
     public int ChannelIndex => Saved?.Updates.Prereleases == true ? _prereleasesIndex : _stableIndex;
 
     public bool IsCheckLocked => Saved?.IsLocked(DaemonSetting.UpdatesCheck) == true;
