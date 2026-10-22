@@ -50,6 +50,8 @@
     <AssemblyVersion>$(VersionMajor).$(VersionMinor).0.0</AssemblyVersion>
     <FileVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).0</FileVersion>
     <InformationalVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch)</InformationalVersion>
+    <!-- Every file of a build names the same product, which code signing checks against the project's name. -->
+    <Product>Contr</Product>
   </PropertyGroup>
 
 </Project>

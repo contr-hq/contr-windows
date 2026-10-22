@@ -20,7 +20,7 @@ Remove-Item -Recurse -Force $publish, $core, $Output -ErrorAction SilentlyContin
 
 dotnet publish (Join-Path $root 'src/App/Contr.App/Contr.App.csproj') `
     --configuration Release --runtime win-x64 --self-contained true `
-    -p:Platform=x64 -p:InformationalVersion=$Version `
+    -p:Platform=x64 -p:InformationalVersion=$Version -p:Product=Contr `
     --output $publish
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish exited with $LASTEXITCODE" }
 
