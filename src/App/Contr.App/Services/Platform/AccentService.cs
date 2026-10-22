@@ -51,7 +51,8 @@ public sealed class AccentService : IAccentService
 
     public void Initialize()
     {
-        Accent = _localSettings.Read<AccentSource>(_accentSettingKey);
+        Accent = _localSettings.Read<AccentSource?>(_accentSettingKey)
+            ?? (HasAppAccent ? AccentSource.App : AccentSource.Windows);
 
         // These keys shadow the framework's own accent, so following Windows is this service's job.
         _dispatcher = DispatcherQueue.GetForCurrentThread();
