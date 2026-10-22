@@ -5,10 +5,10 @@ namespace Contr.UI.Contracts.Services.Platform;
 /// <summary>Where the app's accent colour comes from.</summary>
 public enum AccentSource
 {
-    /// <summary>The accent the user chose in Windows. The default.</summary>
+    /// <summary>The accent the user chose in Windows.</summary>
     Windows = 0,
 
-    /// <summary>Contr's own accent, from <c>Branding:Accent</c> in configuration.</summary>
+    /// <summary>Contr's own accent, from <c>Branding:Accent</c>. The default when configuration sets one.</summary>
     App = 1,
 }
 
