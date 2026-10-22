@@ -6,6 +6,7 @@ using Contr.Interoperability;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
+using Velopack;
 
 namespace Contr.App;
 
@@ -20,6 +21,11 @@ public static class Program
     [STAThread]
     private static int Main()
     {
+        // The installer runs this executable for its install, update and uninstall hooks; Run handles them and exits.
+        VelopackApp
+            .Build()
+            .Run();
+
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
         var instance = AppInstance.FindOrRegisterForKey(InstanceKey());
