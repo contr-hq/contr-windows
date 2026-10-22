@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.Application.Abstractions.Watching;
@@ -8,6 +9,7 @@ using Contr.Modules.Networks.Application.Abstractions;
 using Contr.Modules.Networks.Application.Networks;
 using Contr.Modules.Networks.Domain;
 using Contr.SharedKernel;
+using ContainersV1 = Contr.Sdk.Containers.V1;
 using NetworksV1 = Contr.Sdk.Networks.V1;
 
 namespace Contr.Modules.Networks.UI.Infrastructure;
@@ -76,6 +78,51 @@ public sealed class NetworksGateway : INetworksGateway
         return result.IsSuccess
             ? Result.Success(NetworkMapping.ToEndpoints(result.Value.RawJson))
             : Result.Failure<IReadOnlyList<NetworkEndpointDto>>(result.Error);
+    }
+
+    public async Task<Result<IReadOnlyList<NetworkContainerDto>>> ListContainersAsync(
+        CancellationToken cancellationToken)
+    {
+        var result = await _daemon
+            .CallAsync(
+                (client, token) => client.Containers
+                    .ListContainersAsync(new ContainersV1.ListContainersRequest(), cancellationToken: token)
+                    .ResponseAsync,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Result.Success<IReadOnlyList<NetworkContainerDto>>(
+                [.. result.Value.Containers.Select(NetworkMapping.ToContainer)])
+            : Result.Failure<IReadOnlyList<NetworkContainerDto>>(result.Error);
+    }
+
+    public Task<Result> ConnectAsync(NetworkId id, string container, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentException.ThrowIfNullOrEmpty(container);
+
+        var request = new NetworksV1.ConnectNetworkRequest { Network = id.Value, Container = container };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Networks
+                .ConnectNetworkAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
+    }
+
+    public Task<Result> DisconnectAsync(NetworkId id, string container, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentException.ThrowIfNullOrEmpty(container);
+
+        var request = new NetworksV1.DisconnectNetworkRequest { Network = id.Value, Container = container };
+
+        return _daemon.RunAsync(
+            (client, token) => client.Networks
+                .DisconnectNetworkAsync(request, cancellationToken: token)
+                .ResponseAsync,
+            cancellationToken);
     }
 
     public async Task<Result<int>> PruneAsync(CancellationToken cancellationToken)

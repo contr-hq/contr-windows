@@ -5,6 +5,7 @@ using System.Text.Json;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Networks.Application.Networks;
 using Contr.Modules.Networks.Domain;
+using ContainersV1 = Contr.Sdk.Containers.V1;
 using NetworksV1 = Contr.Sdk.Networks.V1;
 using WatchCase = Contr.Sdk.Networks.V1.WatchNetworksResponse.EventOneofCase;
 
@@ -25,6 +26,15 @@ internal static class NetworkMapping
             WatchCase.RemovedId => new ListChange<NetworkDto>.Removed(response.RemovedId),
             _ => null,
         };
+    }
+
+    /// <summary>A container by the name the engine lists it under, without the leading slash.</summary>
+    public static NetworkContainerDto ToContainer(ContainersV1.Container container)
+    {
+        var name = container.Names.FirstOrDefault()?.TrimStart('/') ?? container.Id;
+
+        return new NetworkContainerDto(
+            container.Id, name, container.State == ContainersV1.ContainerState.Running, [.. container.Networks]);
     }
 
     public static NetworkDto ToDto(NetworksV1.Network network)
