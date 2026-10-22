@@ -2,6 +2,7 @@ using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using Contr.Modules.Containers.UI.ViewModels;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Platform;
@@ -19,15 +20,29 @@ namespace Contr.Modules.Containers.UI.Views;
 /// <summary>The engine's Compose projects, with their services, the Compose commands and the merged logs.</summary>
 public sealed partial class ComposePage : Page, IHasViewModel
 {
-    /// <summary>Service colours readable on both the light and the dark log background.</summary>
-    private static readonly SolidColorBrush[] _serviceBrushes = [
-        new(Color.FromArgb(255, 0x3F, 0xB9, 0x50)),
-        new(Color.FromArgb(255, 0xD2, 0x99, 0x22)),
-        new(Color.FromArgb(255, 0x58, 0xA6, 0xFF)),
-        new(Color.FromArgb(255, 0xF8, 0x51, 0x49)),
-        new(Color.FromArgb(255, 0xBC, 0x8C, 0xFF)),
-        new(Color.FromArgb(255, 0x39, 0xC5, 0xCF)),
+    /// <summary>Service colours for the light log background, each 4.5:1 or more against it.</summary>
+    private static readonly Color[] _lightServiceColors = [
+        Color.FromArgb(255, 0x39, 0x72, 0x47),
+        Color.FromArgb(255, 0x84, 0x63, 0x24),
+        Color.FromArgb(255, 0x32, 0x68, 0x93),
+        Color.FromArgb(255, 0xA3, 0x43, 0x3B),
+        Color.FromArgb(255, 0x79, 0x52, 0x95),
+        Color.FromArgb(255, 0x2B, 0x72, 0x76),
     ];
+
+    /// <summary>Service colours for the dark log background, each 4.5:1 or more against it.</summary>
+    private static readonly Color[] _darkServiceColors = [
+        Color.FromArgb(255, 0x82, 0xC3, 0x8F),
+        Color.FromArgb(255, 0xDB, 0xB9, 0x70),
+        Color.FromArgb(255, 0x86, 0xB7, 0xE1),
+        Color.FromArgb(255, 0xE8, 0x8F, 0x87),
+        Color.FromArgb(255, 0xC3, 0xA1, 0xDC),
+        Color.FromArgb(255, 0x76, 0xC7, 0xCC),
+    ];
+
+    /// <summary>Shared by every log line, so recolouring them follows the page's theme.</summary>
+    private static readonly SolidColorBrush[] _serviceBrushes =
+        [.. _darkServiceColors.Select(color => new SolidColorBrush(color))];
 
     private readonly IMainWindowProvider _mainWindow;
     private bool _isShowingFilters;
@@ -100,7 +115,9 @@ public sealed partial class ComposePage : Page, IHasViewModel
         ViewModel.OutputAdded += OnOutputAdded;
         ViewModel.Filters.CollectionChanged += OnFiltersChanged;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ActualThemeChanged += OnActualThemeChanged;
         ViewModel.Activate();
+        ShowServiceColors();
         ShowFilters();
         ShowSelection();
     }
@@ -111,7 +128,22 @@ public sealed partial class ComposePage : Page, IHasViewModel
         ViewModel.OutputAdded -= OnOutputAdded;
         ViewModel.Filters.CollectionChanged -= OnFiltersChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        ActualThemeChanged -= OnActualThemeChanged;
         ViewModel.Deactivate();
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        ShowServiceColors();
+    }
+
+    private void ShowServiceColors()
+    {
+        var colors = ActualTheme == ElementTheme.Light ? _lightServiceColors : _darkServiceColors;
+        for (var i = 0; i < _serviceBrushes.Length; i++)
+        {
+            _serviceBrushes[i].Color = colors[i];
+        }
     }
 
     private void OnFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)

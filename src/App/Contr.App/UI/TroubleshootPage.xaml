@@ -14,10 +14,10 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="TroubleshootLogBackgroundBrush" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="TroubleshootLogBackgroundBrush" Color="#0D1013" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="TroubleshootLogBackgroundBrush" Color="#FBFBFB" />
+                    <SolidColorBrush x:Key="TroubleshootLogBackgroundBrush" Color="#F5F7F9" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

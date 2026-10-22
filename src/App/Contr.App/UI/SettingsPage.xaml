@@ -18,10 +18,10 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#0D1013" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#FBFBFB" />
+                    <SolidColorBrush x:Key="EngineFileBackgroundBrush" Color="#F5F7F9" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

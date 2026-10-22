@@ -20,6 +20,7 @@
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Cards.xaml" />
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Lists.xaml" />
                 <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/SelectorBar.xaml" />
+                <ResourceDictionary Source="ms-appx:///Contr.UI.Common/Styles/Palette.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!--  The Fluent icons the design uses, built by scripts/build-icon-font.py; glyphs are ContrIcons' constants.  -->

@@ -19,7 +19,7 @@
     mc:Ignorable="d">
 
     <winex:WindowEx.SystemBackdrop>
-        <MicaBackdrop />
+        <common:TintedMicaBackdrop />
     </winex:WindowEx.SystemBackdrop>
 
     <Grid x:Name="Root">

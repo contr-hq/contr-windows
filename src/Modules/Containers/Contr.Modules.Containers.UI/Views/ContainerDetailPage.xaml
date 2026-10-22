@@ -16,12 +16,12 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#0D1013" />
                     <SolidColorBrush x:Key="LogMatchBrush" Color="#4D6B2A2A" />
                     <SolidColorBrush x:Key="JsonStringBrush" Color="#E6C07B" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#FBFBFB" />
+                    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#F5F7F9" />
                     <SolidColorBrush x:Key="LogMatchBrush" Color="#33C42B1C" />
                     <SolidColorBrush x:Key="JsonStringBrush" Color="#8A5300" />
                 </ResourceDictionary>
