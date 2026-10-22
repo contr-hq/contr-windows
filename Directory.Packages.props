@@ -42,7 +42,8 @@
   <ItemGroup Label="System">
     <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.298" />
     <PackageVersion Include="System.Reactive" Version="7.0.0" />
-    <PackageVersion Include="Velopack" Version="1.2.161" />
+    <!-- Before 1.3.39 an MSI uninstall deletes %LOCALAPPDATA%\<packTitle>, which is the engine's data folder. -->
+    <PackageVersion Include="Velopack" Version="1.3.39-g8d2844f" />
   </ItemGroup>
 
   <ItemGroup Label="Style analyzers (tools/)">
