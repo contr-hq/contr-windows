@@ -84,6 +84,12 @@ public enum DaemonSetting
 
     /// <summary>The cluster runs the Traefik ingress controller.</summary>
     KubernetesTraefik,
+
+    /// <summary>The daemon checks for a newer Contr once a day and when asked.</summary>
+    UpdatesCheck,
+
+    /// <summary>Prereleases count as updates.</summary>
+    UpdatesPrereleases,
 }
 
 /// <summary>How the engine finds its proxy.</summary>
@@ -124,6 +130,15 @@ public sealed record KubernetesSettings(bool Enabled, string Version, bool Traef
     public static KubernetesSettings Default { get; } = new(false, string.Empty, false);
 }
 
+/// <summary>How the daemon looks for a newer Contr.</summary>
+/// <param name="Check">See <see cref="DaemonSetting.UpdatesCheck"/>.</param>
+/// <param name="Prereleases">See <see cref="DaemonSetting.UpdatesPrereleases"/>.</param>
+public sealed record UpdatesSettings(bool Check, bool Prereleases)
+{
+    /// <summary>The daemon's defaults.</summary>
+    public static UpdatesSettings Default { get; } = new(true, false);
+}
+
 /// <summary>The daemon's settings in effect.</summary>
 /// <param name="StartEngineWithDaemon">See <see cref="DaemonSetting.StartEngineWithDaemon"/>.</param>
 /// <param name="ServeDefaultPipe">See <see cref="DaemonSetting.ServeDefaultPipe"/>.</param>
@@ -145,6 +160,9 @@ public sealed record DaemonSettings(
 
     /// <summary>Applies where the daemon reports <see cref="DaemonCapability.Kubernetes"/>.</summary>
     public KubernetesSettings Kubernetes { get; init; } = KubernetesSettings.Default;
+
+    /// <summary>How the daemon looks for a newer Contr.</summary>
+    public UpdatesSettings Updates { get; init; } = UpdatesSettings.Default;
 
     /// <summary>Grows with every change; a <see cref="KubernetesCluster"/> whose
     /// <see cref="KubernetesCluster.SettingsRevision"/> is at least this reflects these settings.</summary>
@@ -199,6 +217,12 @@ public sealed record DaemonSettingsEdit
     /// <summary>See <see cref="DaemonSetting.KubernetesTraefik"/>.</summary>
     public bool? KubernetesTraefik { get; init; }
 
+    /// <summary>See <see cref="DaemonSetting.UpdatesCheck"/>.</summary>
+    public bool? UpdatesCheck { get; init; }
+
+    /// <summary>See <see cref="DaemonSetting.UpdatesPrereleases"/>.</summary>
+    public bool? UpdatesPrereleases { get; init; }
+
     /// <summary>The settings this edit changes.</summary>
     public IEnumerable<DaemonSetting> Settings()
     {
@@ -216,6 +240,8 @@ public sealed record DaemonSettingsEdit
             (KubernetesEnabled is not null, DaemonSetting.KubernetesEnabled),
             (KubernetesVersion is not null, DaemonSetting.KubernetesVersion),
             (KubernetesTraefik is not null, DaemonSetting.KubernetesTraefik),
+            (UpdatesCheck is not null, DaemonSetting.UpdatesCheck),
+            (UpdatesPrereleases is not null, DaemonSetting.UpdatesPrereleases),
         ];
 
         return fields
@@ -262,6 +288,8 @@ public static class DaemonSettingPaths
         (DaemonSetting.KubernetesEnabled, "kubernetes.enabled"),
         (DaemonSetting.KubernetesVersion, "kubernetes.version"),
         (DaemonSetting.KubernetesTraefik, "kubernetes.traefik"),
+        (DaemonSetting.UpdatesCheck, "updates.check"),
+        (DaemonSetting.UpdatesPrereleases, "updates.prereleases"),
     ];
 
     /// <summary>Such as <c>proxy.http</c>.</summary>

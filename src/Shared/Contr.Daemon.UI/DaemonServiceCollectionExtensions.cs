@@ -26,6 +26,7 @@ public static class DaemonServiceCollectionExtensions
         services.TryAddSingleton<IDiagnostics, DiagnosticsClient>();
         services.TryAddSingleton<IDaemonSettings, DaemonSettingsClient>();
         services.TryAddSingleton<IKubernetesCluster, KubernetesClient>();
+        services.TryAddSingleton<IDaemonUpdates, UpdatesClient>();
 
         return services;
     }
