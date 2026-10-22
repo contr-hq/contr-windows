@@ -1,0 +1,141 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - packaging/**
+      - scripts/pack-release.ps1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Version a tag's build by the tag, which must match Version.props
+        id: version
+        shell: pwsh
+        run: |
+          $group = ([xml](Get-Content Version.props)).Project.PropertyGroup
+          $release = "$($group.VersionMajor).$($group.VersionMinor).$($group.VersionPatch)"
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+              $version = $env:GITHUB_REF_NAME.Substring(1)
+              if ($version -ne $release -and -not $version.StartsWith("$release-")) {
+                  throw "The tag $env:GITHUB_REF_NAME does not match Version.props ($release)."
+              }
+          } else {
+              $version = "$release-ci.$env:GITHUB_RUN_NUMBER"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Download the pinned core release and check it
+        id: core
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $pin = Get-Content packaging/core-release.json | ConvertFrom-Json
+          gh release download $pin.tag --repo contr-hq/contr --pattern $pin.asset --dir $env:RUNNER_TEMP
+          $zip = Join-Path $env:RUNNER_TEMP $pin.asset
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $pin.sha256) { throw "$($pin.asset) has SHA-256 $hash, not the pinned $($pin.sha256)." }
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Install vpk at the version of the app's Velopack package
+        shell: pwsh
+        run: |
+          $velopack = ([xml](Get-Content Directory.Packages.props)).Project.ItemGroup.PackageVersion |
+              Where-Object Include -eq 'Velopack'
+          dotnet tool install --global vpk --version $velopack.Version
+
+      # Tagged and manual builds sign Contr.App.exe, Update.exe, Setup.exe and the MSI with the organization's Azure
+      # Artifact Signing account; the core's binaries arrive signed and stay as they are.
+      - name: Sign with Azure Artifact Signing when it is set up
+        id: signing
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          HAS_CREDENTIALS: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' }}
+        run: |
+          if (-not ($env:ENDPOINT -and $env:ACCOUNT -and $env:PROFILE) -or $env:HAS_CREDENTIALS -ne 'true') {
+              "::warning title=Unsigned installer::Contr.App.exe, Setup.exe and the MSI are not signed. Set the " +
+                  "variables ARTIFACT_SIGNING_ENDPOINT, ARTIFACT_SIGNING_ACCOUNT and ARTIFACT_SIGNING_PROFILE and the " +
+                  "secrets AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET to sign them."
+              exit 0
+          }
+          $metadata = Join-Path $env:RUNNER_TEMP 'artifact-signing.json'
+          @{ Endpoint = $env:ENDPOINT; CodeSigningAccountName = $env:ACCOUNT; CertificateProfileName = $env:PROFILE } |
+              ConvertTo-Json | Set-Content $metadata
+          "metadata=$metadata" >> $env:GITHUB_OUTPUT
+
+      - name: Pack the installer
+        shell: pwsh
+        env:
+          # Azure's DefaultAzureCredential reads these when vpk signs.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: >-
+          scripts/pack-release.ps1 -Version '${{ steps.version.outputs.version }}'
+          -CoreZip '${{ steps.core.outputs.zip }}' -Output artifacts/release
+          -SignMetadata '${{ steps.signing.outputs.metadata }}'
+
+      - name: Require the signed installers to verify
+        if: steps.signing.outputs.metadata != ''
+        shell: pwsh
+        run: |
+          $signed = @(Get-ChildItem artifacts/release -Filter *.exe) + @(Get-ChildItem artifacts/release -Filter *.msi)
+          foreach ($file in $signed) {
+              $status = (Get-AuthenticodeSignature $file.FullName).Status
+              if ($status -ne 'Valid') { throw "$($file.Name) has signature status $status." }
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: installer
+          path: artifacts/release
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: installer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: installer
+          path: artifacts/release
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/releases/$GITHUB_REF_NAME.md"
+          test -f "$notes" || { echo "::error::$notes holds no release notes"; exit 1; }
+          prerelease=$([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease || true)
+          cd artifacts/release
+          sha256sum -- * > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Contr for Windows ${GITHUB_REF_NAME#v}" \
+            --notes-file "$GITHUB_WORKSPACE/$notes" $prerelease -- *
