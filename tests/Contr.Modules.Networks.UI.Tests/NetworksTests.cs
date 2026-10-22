@@ -10,6 +10,7 @@ using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
 using NSubstitute;
 using Xunit;
+using ContainersV1 = Contr.Sdk.Containers.V1;
 using NetworksV1 = Contr.Sdk.Networks.V1;
 
 namespace Contr.Modules.Networks.UI.Tests;
@@ -94,6 +95,19 @@ public sealed class NetworksTests
             .RemoveAsync(Row("shop_default"));
 
         await sender.DidNotReceiveWithAnyArgs().Send(Arg.Any<RemoveNetworkCommand>(), default);
+    }
+
+    [Fact]
+    public void ToContainer_ReadsTheNameWithoutItsSlashAndTheNetworks()
+    {
+        var container = new ContainersV1.Container { Id = "c0ffee01", State = ContainersV1.ContainerState.Exited };
+        container.Names.Add("/shop-worker-1");
+        container.Networks.Add("shop_default");
+
+        var dto = NetworkMapping.ToContainer(container);
+
+        Assert.Equal(("c0ffee01", "shop-worker-1", false), (dto.Id, dto.Name, dto.IsRunning));
+        Assert.Equal(["shop_default"], dto.Networks);
     }
 
     private static NetworkRow Row(string name)
