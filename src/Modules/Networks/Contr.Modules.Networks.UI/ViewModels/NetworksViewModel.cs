@@ -10,10 +10,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Contr.Application.Abstractions.Messaging;
 using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Networks.Application.Networks;
+using Contr.Modules.Networks.Application.Networks.Commands.ConnectContainer;
 using Contr.Modules.Networks.Application.Networks.Commands.CreateNetwork;
+using Contr.Modules.Networks.Application.Networks.Commands.DisconnectContainer;
 using Contr.Modules.Networks.Application.Networks.Commands.PruneNetworks;
 using Contr.Modules.Networks.Application.Networks.Commands.RemoveNetwork;
-using Contr.Modules.Networks.Application.Networks.Queries.InspectNetwork;
+using Contr.Modules.Networks.Application.Networks.Queries.GetNetworkMembers;
 using Contr.Modules.Networks.Application.Networks.Queries.WatchNetworks;
 using Contr.UI.Common.Controls;
 using Contr.UI.Common.Engine;
@@ -33,7 +35,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     private readonly ISender _sender;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
-    private int _endpointsRequest;
+    private int _membersRequest;
 
     /// <summary>The id a search asked for, until that network is listed.</summary>
     private string? _requested;
@@ -42,15 +44,20 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     private bool _reveal;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(CanConnect))]
     public partial NetworkRow? Selected { get; set; }
 
     /// <summary>Counted over every network.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<PillItem> SummaryPills { get; set; }
 
+    /// <summary>Why the members are missing, or that there are none; empty while they show.</summary>
     [ObservableProperty]
-    public partial string EndpointsNote { get; set; }
+    public partial string MembersNote { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    public partial bool IsConnecting { get; set; }
 
     public NetworksViewModel(
         ISender sender,
@@ -70,7 +77,7 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
         _notifications = notifications;
         Engine = new EngineGateViewModel(daemon, settings, notifications);
         SummaryPills = [];
-        EndpointsNote = string.Empty;
+        MembersNote = string.Empty;
         Rows.CollectionChanged += OnRowsChanged;
     }
 
@@ -81,10 +88,16 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
     /// <summary>The rows five to a page; the page turns to a network a search selects.</summary>
     public Paging<NetworkRow> Page { get; } = new("NETWORKS", row => row.Id);
 
-    /// <summary>The running containers connected to the selected network.</summary>
-    public ObservableCollection<NetworkEndpointDto> Endpoints { get; } = [];
+    /// <summary>Every container connected to the selected network, running or stopped.</summary>
+    public ObservableCollection<NetworkMemberDto> Members { get; } = [];
+
+    /// <summary>The containers not connected to the selected network, which Connect a container offers.</summary>
+    public ObservableCollection<NetworkContainerDto> Others { get; } = [];
 
     public bool HasSelection => Selected is not null;
+
+    /// <summary>Containers connect to every network but the engine's host and none networks.</summary>
+    public bool CanConnect => Selected is { Driver: not ("host" or "null") } && Others.Count > 0 && !IsConnecting;
 
     public void Activate()
     {
@@ -249,36 +262,101 @@ public sealed partial class NetworksViewModel : LiveListViewModel<NetworkDto, Ne
             SummaryPills = pills;
         }
 
-        if (Selected is { } row && (row.Id != previous || Endpoints.Count == 0))
+        if (Selected is { } row && (row.Id != previous || Members.Count == 0))
         {
-            _ = LoadEndpointsAsync(row);
+            _ = LoadMembersAsync(row);
+        }
+
+        OnPropertyChanged(nameof(CanConnect));
+    }
+
+    /// <summary>Connects <paramref name="container"/> to the selected network.</summary>
+    public async Task ConnectAsync(NetworkContainerDto container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+
+        if (Selected is not { } network)
+        {
+            return;
+        }
+
+        IsConnecting = true;
+        try
+        {
+            var result = await _sender.Send(new ConnectContainerCommand(network.NetworkId, container.Id));
+
+            if (result.IsFailure)
+            {
+                _notifications.Show(
+                    result.Error.Message, InfoBarSeverity.Error, $"{container.Name} wasn't connected");
+
+                return;
+            }
+
+            _notifications.Show($"Connected {container.Name} to {network.Name}.", InfoBarSeverity.Success);
+            await LoadMembersAsync(network);
+        }
+        finally
+        {
+            IsConnecting = false;
         }
     }
 
-    private async Task LoadEndpointsAsync(NetworkRow row)
+    public async Task DisconnectAsync(NetworkMemberDto member)
     {
-        var request = ++_endpointsRequest;
-        var result = await _sender.Send(new GetNetworkEndpointsQuery(row.NetworkId));
+        ArgumentNullException.ThrowIfNull(member);
 
-        if (request != _endpointsRequest)
+        if (Selected is not { } network)
         {
             return;
         }
 
-        Endpoints.Clear();
+        var result = await _sender.Send(new DisconnectContainerCommand(network.NetworkId, member.ContainerId));
 
         if (result.IsFailure)
         {
-            EndpointsNote = result.Error.Message;
+            _notifications.Show(
+                result.Error.Message, InfoBarSeverity.Error, $"{member.Container} wasn't disconnected");
 
             return;
         }
 
-        foreach (var endpoint in result.Value)
+        _notifications.Show($"Disconnected {member.Container} from {network.Name}.", InfoBarSeverity.Success);
+        await LoadMembersAsync(network);
+    }
+
+    private async Task LoadMembersAsync(NetworkRow row)
+    {
+        var request = ++_membersRequest;
+        var result = await _sender.Send(new GetNetworkMembersQuery(row.NetworkId, row.Name));
+
+        if (request != _membersRequest)
         {
-            Endpoints.Add(endpoint);
+            return;
         }
 
-        EndpointsNote = Endpoints.Count == 0 ? "No running container is connected." : string.Empty;
+        Members.Clear();
+        Others.Clear();
+
+        if (result.IsFailure)
+        {
+            MembersNote = result.Error.Message;
+            OnPropertyChanged(nameof(CanConnect));
+
+            return;
+        }
+
+        foreach (var member in result.Value.Members)
+        {
+            Members.Add(member);
+        }
+
+        foreach (var other in result.Value.Others)
+        {
+            Others.Add(other);
+        }
+
+        MembersNote = Members.Count == 0 ? "No container is connected." : string.Empty;
+        OnPropertyChanged(nameof(CanConnect));
     }
 }
