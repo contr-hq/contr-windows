@@ -96,9 +96,11 @@ A `v*` tag builds the installer: the app published self-contained for x64, the c
 `packaging/core-release.json` pins (checked against its SHA-256) laid out beside it, packed by
 [Velopack](https://velopack.io) into `Setup.exe`, an MSI and the update packages. The tag must match `Version.props`,
 and `docs/releases/<tag>.md` holds the release's notes, written from `docs/releases/TEMPLATE.md`; the release fails
-without the template's SignPath line and its link to the Code signing policy. Every file of a tagged release gets a GitHub build attestation (`gh
-attestation verify <file> --repo contr-hq/contr-windows`) and a line in `SHA256SUMS`. `scripts/pack-release.ps1` builds
-the same installer locally, unsigned.
+without the template's SignPath line and its link to the Code signing policy. Every file of a tagged release gets a
+GitHub build attestation (`gh attestation verify <file> --repo contr-hq/contr-windows`) and a line in `SHA256SUMS`,
+which [contr-packages](https://github.com/contr-hq/contr-packages) signs: at once when the secret
+`PACKAGES_DISPATCH_TOKEN` lets the release tell it, else in its daily build. `scripts/pack-release.ps1` builds the same
+installer locally, unsigned.
 
 Tagged and manual builds sign `Contr.App.exe`, `Update.exe`, `Setup.exe` and the MSI with Azure Artifact Signing when
 the organization sets the variables `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT` and
