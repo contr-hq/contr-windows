@@ -109,6 +109,23 @@ public sealed class DaemonSettingsClientTests
     }
 
     [Fact]
+    public void ToSettings_ReadsTheUpdateSettings()
+    {
+        var state = new Wire.SettingsState {
+            Settings = new Wire.Settings { Updates = new Wire.UpdatesSettings { Check = false, Prereleases = true } },
+            LockedPaths = { "updates.check" },
+        };
+
+        var settings = DaemonSettingsClient.ToSettings(state);
+
+        var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit { UpdatesPrereleases = false });
+
+        Assert.Equal(new UpdatesSettings(false, true), settings.Updates);
+        Assert.True(settings.IsLocked(DaemonSetting.UpdatesCheck));
+        Assert.Equal(["updates.prereleases"], request.UpdateMask.Paths);
+    }
+
+    [Fact]
     public void ToRequest_NamesTheKubernetesSettings()
     {
         var request = DaemonSettingsClient.ToRequest(new DaemonSettingsEdit {
