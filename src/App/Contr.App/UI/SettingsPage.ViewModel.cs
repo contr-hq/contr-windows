@@ -41,6 +41,9 @@ public sealed partial class SettingsViewModel : ViewModel
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly IClipboardService _clipboard;
+
+    /// <summary>The command-line tools the installed versions last showed.</summary>
+    private CliToolsStatus? _tools;
     private readonly DispatcherQueue? _dispatcher;
     private IDisposable? _subscription;
     private bool _isShowing;
@@ -124,7 +127,8 @@ public sealed partial class SettingsViewModel : ViewModel
         IDaemonSettings settings,
         IDialogService dialogs,
         INotificationService notifications,
-        IClipboardService clipboard)
+        IClipboardService clipboard,
+        IDaemonUpdates updates)
     {
         ArgumentNullException.ThrowIfNull(themeService);
         ArgumentNullException.ThrowIfNull(accentService);
@@ -137,6 +141,7 @@ public sealed partial class SettingsViewModel : ViewModel
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(updates);
         _themeService = themeService;
         _accentService = accentService;
         _daemon = daemon;
@@ -152,6 +157,13 @@ public sealed partial class SettingsViewModel : ViewModel
         Autostart = new EngineAutostartViewModel(daemon, settings, notifications);
         Proxies = new ProxySettingsViewModel(settings, daemon, notifications);
         Engine = new EngineSettingsViewModel(settings, daemon, notifications);
+        Updates = new UpdatesSettingsViewModel(settings, updates, daemon, notifications);
+        Updates.PropertyChanged += (_, e) => {
+            if (e.PropertyName == nameof(UpdatesSettingsViewModel.AvailableVersion))
+            {
+                ShowComponents(_tools);
+            }
+        };
         ThemeIndex = themeService.Theme switch {
             ElementTheme.Light => 1,
             ElementTheme.Dark => 2,
@@ -190,6 +202,8 @@ public sealed partial class SettingsViewModel : ViewModel
 
     /// <summary>The Engine tab.</summary>
     public EngineSettingsViewModel Engine { get; }
+
+    public UpdatesSettingsViewModel Updates { get; }
 
     public string DaemonDescription { get; }
 
@@ -244,6 +258,7 @@ public sealed partial class SettingsViewModel : ViewModel
         Autostart.Start();
         Proxies.Activate();
         Engine.Activate();
+        _ = Updates.ActivateAsync();
         _subscription ??= _settings.Changes.Subscribe(settings => {
             // Changes emits on a background thread.
             if (_dispatcher is null)
@@ -277,6 +292,7 @@ public sealed partial class SettingsViewModel : ViewModel
         _isShowing = false;
         Proxies.Show(settings);
         Engine.Show(settings);
+        Updates.Show(settings);
     }
 
     /// <summary>Asks the daemon for <paramref name="value"/>; a refusal turns the switch back and says why.</summary>
@@ -391,9 +407,12 @@ public sealed partial class SettingsViewModel : ViewModel
 
     private void ShowComponents(CliToolsStatus? tools)
     {
+        _tools = tools;
         Components.Clear();
+        var rows = InstalledComponent.From(
+            AppVersion, _daemon.Identity, _daemon.Status.Details, tools, Updates.AvailableVersion);
 
-        foreach (var row in InstalledComponent.From(AppVersion, _daemon.Identity, _daemon.Status.Details, tools))
+        foreach (var row in rows)
         {
             Components.Add(row);
         }
