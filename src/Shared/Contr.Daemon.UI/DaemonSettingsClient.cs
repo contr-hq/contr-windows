@@ -18,10 +18,12 @@ using KubernetesSettings = Contr.UI.Contracts.Services.Daemon.KubernetesSettings
 using ProxyMode = Contr.UI.Contracts.Services.Daemon.ProxyMode;
 using ProxySettings = Contr.UI.Contracts.Services.Daemon.ProxySettings;
 using UnknownDaemonKey = Contr.UI.Contracts.Services.Daemon.UnknownDaemonKey;
+using UpdatesSettings = Contr.UI.Contracts.Services.Daemon.UpdatesSettings;
 using WireKubernetes = Contr.Sdk.Settings.V1.KubernetesSettings;
 using WireMode = Contr.Sdk.Settings.V1.ProxyMode;
 using WireProxy = Contr.Sdk.Settings.V1.ProxySettings;
 using WireSettings = Contr.Sdk.Settings.V1.Settings;
+using WireUpdates = Contr.Sdk.Settings.V1.UpdatesSettings;
 
 namespace Contr.Daemon.UI;
 
@@ -144,6 +146,7 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
         var engine = state.Settings?.Engine ?? new EngineSettings();
         var proxy = state.Settings?.Proxy;
         var kubernetes = state.Settings?.Kubernetes;
+        var updates = state.Settings?.Updates;
 
         return new DaemonSettings(engine.StartWithDaemon, engine.ServeDefaultPipe, Known(state.LockedPaths)) {
             Proxy = proxy is null
@@ -157,6 +160,9 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
             Kubernetes = kubernetes is null
                 ? KubernetesSettings.Default
                 : new KubernetesSettings(kubernetes.Enabled, kubernetes.Version, kubernetes.Traefik),
+            Updates = updates is null
+                ? UpdatesSettings.Default
+                : new UpdatesSettings(updates.Check, updates.Prereleases),
             Revision = ulong.TryParse(state.Etag, NumberStyles.None, CultureInfo.InvariantCulture, out var revision)
                 ? revision
                 : 0,
@@ -191,6 +197,10 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
                 Enabled = edit.KubernetesEnabled ?? false,
                 Version = edit.KubernetesVersion ?? string.Empty,
                 Traefik = edit.KubernetesTraefik ?? false,
+            },
+            Updates = new WireUpdates {
+                Check = edit.UpdatesCheck ?? false,
+                Prereleases = edit.UpdatesPrereleases ?? false,
             },
             Registry = new RegistrySettings { Mirrors = { edit.RegistryMirrors ?? [] } },
         };
