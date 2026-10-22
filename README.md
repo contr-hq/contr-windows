@@ -28,7 +28,6 @@ it, the engine's trust in Windows' certificates and its registry mirror, and app
 engine. The Engine tab edits the engine's `daemon.json`, names the line of a key the engine does not take, and renames
 it to the key the engine suggests.
 
-Next: a Velopack installer that bundles a pinned core release.
 Networks list every container connected to them, stopped ones too, and connect or disconnect one. Containers run from
 the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from their menus; Troubleshoot
 resets the engine's runtime or everything it holds; the status bar and the tray show the engine's CPU, memory and disk.
@@ -81,6 +80,20 @@ scripts/update-sdk.sh ../contr origin/main
 ```
 
 CI regenerates it from `gen/CORE_COMMIT` and fails when the committed copy differs.
+
+## Releases
+
+A `v*` tag builds the installer: the app published self-contained for x64, the core release
+`packaging/core-release.json` pins (checked against its SHA-256) laid out beside it, packed by
+[Velopack](https://velopack.io) into `Setup.exe`, an MSI and the update packages. The tag must match `Version.props`,
+and `docs/releases/<tag>.md` holds the release's notes. `scripts/pack-release.ps1` builds the same installer locally,
+unsigned.
+
+Tagged and manual builds sign `Contr.App.exe`, `Update.exe`, `Setup.exe` and the MSI with Azure Artifact Signing when
+the organization sets the variables `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT` and
+`ARTIFACT_SIGNING_PROFILE` and the secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`; without
+them the build warns and stays unsigned. Velopack installs to `%LOCALAPPDATA%\Contr.App`, apart from the engine's data
+in `%LOCALAPPDATA%\Contr`, which uninstalling leaves alone.
 
 ## Layout
 
