@@ -142,9 +142,11 @@ jobs:
         run: |
           notes="docs/releases/$GITHUB_REF_NAME.md"
           test -f "$notes" || { echo "::error::$notes holds no release notes"; exit 1; }
-          # SignPath requires every release page to link the code signing policy.
+          # SignPath requires every release page to name it and to link the code signing policy.
           policy="https://github.com/contr-hq/contr/blob/main/docs/code-signing-policy.md"
-          grep -q "$policy" "$notes" || { echo "::error::$notes does not link the Code signing policy ($policy)"; exit 1; }
+          grep -qF "$policy" "$notes" || { echo "::error::$notes does not link the Code signing policy ($policy)"; exit 1; }
+          signpath=$(grep -F 'Free code signing provided by' docs/releases/TEMPLATE.md)
+          grep -qxF "$signpath" "$notes" || { echo "::error::$notes lacks the template's line: $signpath"; exit 1; }
           prerelease=$([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease || true)
           cd artifacts/release
           gh release create "$GITHUB_REF_NAME" --verify-tag --title "Contr for Windows ${GITHUB_REF_NAME#v}" \
