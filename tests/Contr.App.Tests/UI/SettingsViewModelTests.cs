@@ -163,6 +163,17 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public void InstalledVersions_NameTheReleaseTheDaemonFound()
+    {
+        var daemon = new DaemonIdentity("npipe:////./pipe/x", "0.1.0", 21, "WSL 2");
+
+        var rows = InstalledComponent.From("0.1.0", daemon, null, null, "0.2.0");
+
+        Assert.Equal(("Contr app", "0.2.0 available", PillKind.Busy), (rows[0].Name, rows[0].Status, rows[0].Kind));
+        Assert.Equal(string.Empty, InstalledComponent.From("0.1.0", daemon, null, null)[0].Status);
+    }
+
+    [Fact]
     public void Kubectl_ReadsAsTheKubernetesClient()
     {
         var tools = new CliToolsStatus([], string.Empty, IsOnPath: true, ShadowedBy: string.Empty);
@@ -313,6 +324,7 @@ public sealed class SettingsViewModelTests
             _settings,
             _dialogs,
             _notifications,
-            Substitute.For<IClipboardService>());
+            Substitute.For<IClipboardService>(),
+            Substitute.For<IDaemonUpdates>());
     }
 }
