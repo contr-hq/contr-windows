@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -37,6 +39,12 @@ public sealed partial class OnboardingViewModel : ViewModel
     private const string _wslMissing = "WSL_NOT_INSTALLED";
     private const long _lowDiskBytes = 10_000_000_000;
 
+    /// <summary>The first API revision with the daemon's update check.</summary>
+    private const uint _updatesRevision = 21;
+
+    /// <summary>How long setup waits for the daemon's settings before it leaves the update check as it is.</summary>
+    private static readonly TimeSpan _settingsWait = TimeSpan.FromSeconds(3);
+
     private static readonly CheckFix _installWsl = new(new Remediation(Remediation.InstallWslId, true));
 
     private readonly IDaemonConnection _daemon;
@@ -46,6 +54,10 @@ public sealed partial class OnboardingViewModel : ViewModel
     private readonly ISignInStartup _signIn;
     private readonly ILocalSettingsService _settings;
     private readonly IClipboardService _clipboard;
+    private readonly IDaemonSettings _daemonSettings;
+
+    /// <summary>The daemon's update check as setup found it; setup changes it only when the user did.</summary>
+    private bool _checkedForUpdates;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StepCaption), nameof(StepNumber), nameof(StepTitle), nameof(StepLead))]
@@ -126,6 +138,18 @@ public sealed partial class OnboardingViewModel : ViewModel
     [ObservableProperty]
     public partial bool StartAtSignIn { get; set; }
 
+    /// <summary>Whether the daemon checks GitHub once a day for a newer Contr.</summary>
+    [ObservableProperty]
+    public partial bool ChecksForUpdates { get; set; }
+
+    /// <summary>Whether the daemon has an update check to show; it does from API revision 21.</summary>
+    [ObservableProperty]
+    public partial bool OffersUpdateCheck { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanChooseUpdateCheck), nameof(UpdateCheckText))]
+    public partial bool IsUpdateCheckLocked { get; set; }
+
     public OnboardingViewModel(
         IDaemonConnection daemon,
         IDiagnostics diagnostics,
@@ -133,7 +157,8 @@ public sealed partial class OnboardingViewModel : ViewModel
         IWslDistributions wsl,
         ISignInStartup signIn,
         ILocalSettingsService settings,
-        IClipboardService clipboard)
+        IClipboardService clipboard,
+        IDaemonSettings daemonSettings)
     {
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(diagnostics);
@@ -142,6 +167,7 @@ public sealed partial class OnboardingViewModel : ViewModel
         ArgumentNullException.ThrowIfNull(signIn);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(daemonSettings);
         _daemon = daemon;
         _diagnostics = diagnostics;
         _cliTools = cliTools;
@@ -149,6 +175,7 @@ public sealed partial class OnboardingViewModel : ViewModel
         _signIn = signIn;
         _settings = settings;
         _clipboard = clipboard;
+        _daemonSettings = daemonSettings;
         EngineError = string.Empty;
         WslError = string.Empty;
         WslStatus = string.Empty;
@@ -159,6 +186,7 @@ public sealed partial class OnboardingViewModel : ViewModel
         ContextText = string.Empty;
         WslText = string.Empty;
         StartAtSignIn = true;
+        ChecksForUpdates = true;
         Steps = [
             new OnboardingStep(1, "Check this PC"),
             new OnboardingStep(2, "Install WSL"),
@@ -218,6 +246,14 @@ public sealed partial class OnboardingViewModel : ViewModel
     public bool IsTools => StepIndex == 3;
 
     public bool IsReady => StepIndex == 4;
+
+    public bool CanChooseUpdateCheck => !IsUpdateCheckLocked;
+
+    /// <summary>What the update check sends, which code signing requires setup to show; an administrator's lock says
+    /// who decides instead.</summary>
+    public string UpdateCheckText => IsUpdateCheckLocked
+        ? "Contr checks GitHub once a day for new releases while this is on. Your organization manages this setting."
+        : "Contr checks GitHub once a day for new releases; turn this off in Settings → Updates.";
 
     public bool CanGoBack => StepIndex is > 0 and < 4 && !IsWslRestartNeeded;
 
@@ -576,7 +612,27 @@ public sealed partial class OnboardingViewModel : ViewModel
                 + $"docker command uses with docker context use {context}."
             : "The daemon made no Docker context for this engine.";
         StartAtSignIn = _signIn.IsEnabled || !_settings.Read<bool>(SetupDoneKey);
+        await LoadUpdateCheckAsync();
         await LoadDistributionsAsync();
+    }
+
+    private async Task LoadUpdateCheckAsync()
+    {
+        if (_daemon.Identity is not { ApiRevision: >= _updatesRevision })
+        {
+            OffersUpdateCheck = false;
+
+            return;
+        }
+
+        var first = _daemonSettings.Changes
+            .Take(1)
+            .ToTask();
+        var settings = await Task.WhenAny(first, Task.Delay(_settingsWait)) == first ? await first : null;
+        OffersUpdateCheck = settings is not null;
+        _checkedForUpdates = settings?.Updates.Check ?? true;
+        ChecksForUpdates = _checkedForUpdates;
+        IsUpdateCheckLocked = settings?.IsLocked(DaemonSetting.UpdatesCheck) == true;
     }
 
     private async Task LoadDistributionsAsync()
@@ -677,6 +733,13 @@ public sealed partial class OnboardingViewModel : ViewModel
         {
             _signIn.IsEnabled = StartAtSignIn;
 
+            if (OffersUpdateCheck && !IsUpdateCheckLocked && ChecksForUpdates != _checkedForUpdates)
+            {
+                var changed = await _daemonSettings.UpdateAsync(
+                    new DaemonSettingsEdit { UpdatesCheck = ChecksForUpdates }, CancellationToken.None);
+                ChecksForUpdates = changed.IsSuccess ? ChecksForUpdates : _checkedForUpdates;
+            }
+
             if (InstallTools)
             {
                 var installed = await _cliTools.InstallAsync(CancellationToken.None);
@@ -712,5 +775,12 @@ public sealed partial class OnboardingViewModel : ViewModel
         Summary.Add(StartAtSignIn
             ? new CheckRow(StatusKind.Good, "On", "Start at sign-in", "Contr starts in the notification area")
             : new CheckRow(StatusKind.Neutral, "Off", "Start at sign-in", "Off"));
+
+        if (OffersUpdateCheck)
+        {
+            Summary.Add(ChecksForUpdates
+                ? new CheckRow(StatusKind.Good, "On", "Update check", "Contr checks GitHub once a day")
+                : new CheckRow(StatusKind.Neutral, "Off", "Update check", "Off"));
+        }
     }
 }
