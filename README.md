@@ -29,12 +29,13 @@ engine. The Engine tab edits the engine's `daemon.json`, names the line of a key
 it to the key the engine suggests.
 
 Next: a Velopack installer that bundles a pinned core release.
-Containers run from the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from their
-menus; Troubleshoot resets the engine's runtime or everything it holds; the status bar and the tray show the engine's
-CPU, memory and disk. Troubleshoot saves the daemon's diagnostics bundle, a redacted zip for support, and resets the
-Kubernetes cluster. Settings › Updates shows the release the daemon's daily check found, with its release page, and
-changes the check and the channel. Screens and actions whose daemon API does not exist yet (resources) show their
-layout with the actions disabled.
+Networks list every container connected to them, stopped ones too, and connect or disconnect one. Containers run from
+the Run dialog, here or on an image's row, and pause, resume, take a kill or a new name from their menus; Troubleshoot
+resets the engine's runtime or everything it holds; the status bar and the tray show the engine's CPU, memory and disk.
+Troubleshoot saves the daemon's diagnostics bundle, a redacted zip for support, and resets the Kubernetes cluster.
+Settings › Updates shows the release the daemon's daily check found, with its release page, and changes the check and
+the channel. Screens and actions whose daemon API does not exist yet (resources) show their layout with the actions
+disabled.
 
 The terminal is [xterm.js](https://github.com/xtermjs/xterm.js) (MIT) in WebView2, vendored with its licence under
 `src/Modules/Containers/Contr.Modules.Containers.UI/Terminal/xterm` at the versions `VERSIONS` there names.
