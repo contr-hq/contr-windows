@@ -108,6 +108,11 @@ the organization sets the variables `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNI
 them the build warns and stays unsigned. Velopack installs to `%LOCALAPPDATA%\Contr.App`, apart from the engine's data
 in `%LOCALAPPDATA%\Contr`, which uninstalling leaves alone.
 
+Windows Installer orders MSIs by the first three fields of their ProductVersion, so `pack-release.ps1` sets the third
+field to the patch × 1000, plus 100, 200 or 300 and the prerelease number for alpha, beta and rc, 900 for a CI build,
+or 999 for the release: 0.1.0-alpha.3 is 0.1.103 and 0.1.0 is 0.1.999. An MSI then replaces any older one and refuses
+to install over a newer one; all CI builds of a version share 900.
+
 ## Layout
 
 See [docs/architecture.md](docs/architecture.md) for the projects, the layering rules the architecture tests enforce,

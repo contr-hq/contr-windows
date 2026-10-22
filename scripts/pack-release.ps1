@@ -13,6 +13,28 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Windows Installer orders MSIs by major.minor.build alone, and Velopack drops the prerelease from the ProductVersion,
+# so without this every 0.1.0-* MSI is 0.1.0 and an older prerelease installs over a newer one.
+function Get-MsiVersion([string] $Version) {
+    if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc|ci)\.(\d+))?$') {
+        throw "$Version is not major.minor.patch with an optional -alpha.N, -beta.N, -rc.N or -ci.N."
+    }
+    $major, $minor, $patch, $label = [int]$Matches[1], [int]$Matches[2], [int]$Matches[3], [string]$Matches[4]
+    $number = if ($label) { [int]$Matches[5] } else { 0 }
+    $stage = switch ($label) {
+        'alpha' { 100 + $number }
+        'beta' { 200 + $number }
+        'rc' { 300 + $number }
+        'ci' { 900 }
+        default { 999 }
+    }
+    if ($major -gt 255 -or $minor -gt 255 -or $patch -gt 64 -or ($label -in 'alpha', 'beta', 'rc' -and $number -gt 99)) {
+        throw "$Version has no MSI ProductVersion: major and minor go up to 255, patch to 64, a prerelease number to 99."
+    }
+    "$major.$minor.$($patch * 1000 + $stage)"
+}
+
+$msiVersion = Get-MsiVersion $Version
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 $publish = Join-Path $root 'artifacts/publish'
 $core = Join-Path $root 'artifacts/core'
@@ -49,6 +71,7 @@ $pack = @(
     '--icon', (Join-Path $root 'src/App/Contr.App/Assets/app.ico'),
     '--channel', 'win-x64',
     '--msi',
+    '--msiVersion', $msiVersion,
     '--outputDir', $Output
 )
 if ($SignMetadata) {
