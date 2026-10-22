@@ -15,10 +15,10 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#0D1013" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#FBFBFB" />
+                    <SolidColorBrush x:Key="ComposeLogBackgroundBrush" Color="#F5F7F9" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

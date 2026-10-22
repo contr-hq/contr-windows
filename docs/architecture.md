@@ -130,6 +130,10 @@ rows that select a details card; `Menus.xaml` the row and toolbar buttons and th
 the chips that filter a view, such as Compose's services. Settings and Kubernetes merge `Styles/SettingsGroups.xaml`,
 which turns each `SettingsCard` into a row of a captioned group.
 
+Contr's palette is slate and muted. `Branding:Accent` in `appsettings.json` is the accent, used unless the user picks
+the Windows one in Settings; `Palette.xaml` replaces the Fluent status colours with muted ones, each 4.5:1 or more on
+the backdrop; and every window's `TintedMicaBackdrop` tints Mica with the slate surface colour of the current theme.
+
 Icons come from the Contr Icons font, built from Fluent UI System Icons (MIT): `assets/icons/svg` holds one SVG
 per icon and `assets/icons/icons.json` pins each one's code point. `scripts/build-icon-font.py` writes
 `Assets/Fonts/ContrIcons.ttf` and the `ContrIcons` constants; a `FontIcon` with `IconStyle` draws a glyph:
