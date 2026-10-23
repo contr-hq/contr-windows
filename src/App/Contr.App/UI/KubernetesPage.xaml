@@ -359,7 +359,7 @@
                         <TextBlock Style="{StaticResource SettingsGroupCaptionStyle}" Text="MAINTENANCE" />
                         <controls:SettingsCard
                             BorderThickness="0"
-                            Description="Copies images from your engine into the cluster, so pods can use them without a registry."
+                            Description="{x:Bind ViewModel.ImportDescription, Mode=OneWay}"
                             Header="Use local images in the cluster">
                             <Button
                                 AutomationProperties.AutomationId="KubernetesImport"

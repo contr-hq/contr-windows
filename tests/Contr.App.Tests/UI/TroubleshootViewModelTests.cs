@@ -72,7 +72,8 @@ public sealed class TroubleshootViewModelTests
             Substitute.For<IDiagnostics>(),
             Substitute.For<IKubernetesCluster>(),
             Substitute.For<IDialogService>(),
-            Substitute.For<INotificationService>());
+            Substitute.For<INotificationService>(),
+            Activity());
 
         var error = await viewModel.ResetAsync(EngineResetScope.Factory);
 
@@ -255,6 +256,54 @@ public sealed class TroubleshootViewModelTests
     }
 
     [Fact]
+    public void Activate_FollowsAResetAClosedPageStarted()
+    {
+        var daemon = Daemon(DaemonStatus.Connecting);
+        daemon.StatusChanges.Returns(Observable.Return(DaemonStatus.Connecting));
+        var reset = new DaemonOperation(
+            "op-5",
+            new OperationWork.ResetEngine(EngineResetScope.Runtime),
+            OperationState.Running,
+            DateTimeOffset.Now);
+        var activity = Activity(reset);
+        activity
+            .FollowAsync("op-5", Arg.Any<IProgress<EngineProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(reset with { State = OperationState.Succeeded }));
+        var notifications = Substitute.For<INotificationService>();
+        var viewModel = Create(daemon, Diagnostics(), notifications, activity: activity);
+
+        viewModel.Activate();
+
+        Assert.False(viewModel.IsResetting);
+        notifications.Received(1).Show("The engine was reset. Start it when you need it.", InfoBarSeverity.Success);
+    }
+
+    [Fact]
+    public void Dispose_KeepsAClosedPagesResultUnsaid()
+    {
+        var daemon = Daemon(DaemonStatus.Connecting);
+        daemon.StatusChanges.Returns(Observable.Return(DaemonStatus.Connecting));
+        var reset = new DaemonOperation(
+            "op-5",
+            new OperationWork.ResetEngine(EngineResetScope.Runtime),
+            OperationState.Running,
+            DateTimeOffset.Now);
+        var activity = Activity(reset);
+        var ended = new TaskCompletionSource<Result<DaemonOperation>>();
+        activity
+            .FollowAsync("op-5", Arg.Any<IProgress<EngineProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(ended.Task);
+        var notifications = Substitute.For<INotificationService>();
+        var viewModel = Create(daemon, Diagnostics(), notifications, activity: activity);
+        viewModel.Activate();
+
+        viewModel.Dispose();
+        ended.SetResult(Result.Success(reset with { State = OperationState.Succeeded }));
+
+        notifications.DidNotReceive().Show(Arg.Any<string>(), Arg.Any<InfoBarSeverity>(), Arg.Any<string?>());
+    }
+
+    [Fact]
     public void Bundles_AreOfferedFromApiRevision18AndNamedByTheDay()
     {
         var daemon = Daemon(DaemonStatus.Connecting);
@@ -318,13 +367,24 @@ public sealed class TroubleshootViewModelTests
         IDiagnostics diagnostics,
         INotificationService notifications,
         IKubernetesCluster? cluster = null,
-        IDialogService? dialogs = null)
+        IDialogService? dialogs = null,
+        IActivity? activity = null)
     {
         return new TroubleshootViewModel(
             daemon,
             diagnostics,
             cluster ?? Substitute.For<IKubernetesCluster>(),
             dialogs ?? Substitute.For<IDialogService>(),
-            notifications);
+            notifications,
+            activity ?? Activity());
+    }
+
+    private static IActivity Activity(params DaemonOperation[] operations)
+    {
+        var activity = Substitute.For<IActivity>();
+        activity.Changes.Returns(Observable.Return<IReadOnlyList<DaemonOperation>>(operations));
+        activity.Current.Returns(operations);
+
+        return activity;
     }
 }

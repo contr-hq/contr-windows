@@ -9,6 +9,7 @@ using Contr.SharedKernel;
 using Contr.UI.Common.Controls;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
+using Microsoft.UI.Xaml.Controls;
 using NSubstitute;
 using Xunit;
 
@@ -24,6 +25,8 @@ public sealed class KubernetesViewModelTests
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly Subject<KubernetesCluster?> _clusters = new();
     private readonly Subject<DaemonSettings?> _allSettings = new();
+    private readonly IActivity _activity = Substitute.For<IActivity>();
+    private readonly BehaviorSubject<IReadOnlyList<DaemonOperation>> _operations = new([]);
 
     public KubernetesViewModelTests()
     {
@@ -32,6 +35,41 @@ public sealed class KubernetesViewModelTests
         });
         _cluster.Changes.Returns(_clusters);
         _settings.Changes.Returns(_allSettings);
+        _activity.Changes.Returns(_operations);
+        _activity.Current.Returns(_ => _operations.Value);
+    }
+
+    [Fact]
+    public void Activate_ShowsAnImportAClosedPageStarted()
+    {
+        _cluster
+            .FollowImportAsync("op-4", Arg.Any<IProgress<ImageImport>>(), Arg.Any<CancellationToken>())
+            .Returns(new TaskCompletionSource<Result<IReadOnlyList<ImageImport>>>().Task);
+        _operations.OnNext([Import("op-4", "shop-api:dev", "shop-web:dev")]);
+
+        var viewModel = Active();
+
+        Assert.True(viewModel.IsImporting);
+        Assert.False(viewModel.CanImport);
+        Assert.Equal("Importing 2 images into the cluster…", viewModel.ImportDescription);
+    }
+
+    [Fact]
+    public void Activate_ReportsAFollowedImportOnce()
+    {
+        _cluster
+            .FollowImportAsync("op-4", Arg.Any<IProgress<ImageImport>>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success<IReadOnlyList<ImageImport>>([
+                new ImageImport("shop-api:dev", string.Empty),
+                new ImageImport("shop-web:dev", string.Empty),
+            ]));
+        _operations.OnNext([Import("op-4", "shop-api:dev", "shop-web:dev")]);
+
+        var viewModel = Active();
+        _operations.OnNext([Import("op-4", "shop-api:dev", "shop-web:dev")]);
+
+        Assert.False(viewModel.IsImporting);
+        _notifications.Received(1).Show("Imported 2 images into the cluster.", InfoBarSeverity.Success);
     }
 
     [Fact]
@@ -194,9 +232,14 @@ public sealed class KubernetesViewModelTests
         Assert.False(viewModel.CanAct);
     }
 
+    private static DaemonOperation Import(string id, params string[] images)
+    {
+        return new DaemonOperation(id, new OperationWork.ImportImages(images), OperationState.Running, _started);
+    }
+
     private KubernetesViewModel Active()
     {
-        var viewModel = new KubernetesViewModel(_cluster, _settings, _daemon, _notifications);
+        var viewModel = new KubernetesViewModel(_cluster, _settings, _daemon, _notifications, _activity);
         viewModel.Activate();
 
         return viewModel;

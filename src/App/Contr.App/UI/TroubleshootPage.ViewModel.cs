@@ -64,10 +64,23 @@ public sealed partial class TroubleshootViewModel : ViewModel
     private readonly IKubernetesCluster _cluster;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IActivity _activity;
     private readonly DispatcherQueue? _dispatcher;
+
+    /// <summary>Cancelled when the page's view model goes; a fix or reset goes on in the daemon.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
+    /// <summary>Operations the page followed to their end, which the daemon may still list as running for a moment.
+    /// </summary>
+    private readonly HashSet<string> _followed = new(StringComparer.Ordinal);
+
     private IDisposable? _subscription;
     private IDisposable? _usage;
+    private IDisposable? _operations;
     private int _checkRuns;
+
+    /// <summary>Whether the page shows, between <see cref="Activate"/> and <see cref="Deactivate"/>.</summary>
+    private bool _isActive;
 
     /// <summary>Fixes that finished but wait for a restart or sign-out; offering them again would repeat them.
     /// </summary>
@@ -174,18 +187,21 @@ public sealed partial class TroubleshootViewModel : ViewModel
         IDiagnostics diagnostics,
         IKubernetesCluster cluster,
         IDialogService dialogs,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivity activity)
     {
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentNullException.ThrowIfNull(cluster);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
+        ArgumentNullException.ThrowIfNull(activity);
         _daemon = daemon;
         _diagnostics = diagnostics;
         _cluster = cluster;
         _dialogs = dialogs;
         _notifications = notifications;
+        _activity = activity;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         ProblemTitle = string.Empty;
         ProblemMessage = string.Empty;
@@ -257,14 +273,29 @@ public sealed partial class TroubleshootViewModel : ViewModel
                 _dispatcher?.TryEnqueue(() => DiskText = disk);
             }
         });
+        _isActive = true;
+        _operations ??= _activity.Changes.Subscribe(operations => {
+            // Changes emits on a background thread.
+            if (_dispatcher is null)
+            {
+                FollowRunning(operations);
+            }
+            else
+            {
+                _dispatcher.TryEnqueue(() => FollowRunning(operations));
+            }
+        });
     }
 
     public void Deactivate()
     {
+        _isActive = false;
         _subscription?.Dispose();
         _subscription = null;
         _usage?.Dispose();
         _usage = null;
+        _operations?.Dispose();
+        _operations = null;
     }
 
     /// <summary>Asks first, then replaces the engine's runtime; images, containers and volumes stay.</summary>
@@ -278,14 +309,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
             return;
         }
 
-        if (await ResetAsync(EngineResetScope.Runtime) is { } error)
-        {
-            _notifications.Show(error, InfoBarSeverity.Error, "The engine wasn't reset");
-        }
-        else
-        {
-            _notifications.Show("The engine was reset. Start it when you need it.", InfoBarSeverity.Success);
-        }
+        ShowReset(await ResetAsync(EngineResetScope.Runtime), EngineResetScope.Runtime);
     }
 
     /// <summary>Writes the daemon's diagnostics bundle to <paramref name="destination"/>, following its steps in
@@ -302,17 +326,18 @@ public sealed partial class TroubleshootViewModel : ViewModel
         try
         {
             var progress = new Progress<EngineProgress>(step => BundleStatus = step.Message);
+
+            // The file is written to its end even when the page closes; the notice then stays unsaid.
             var result = await _diagnostics.CreateBundleAsync(destination, progress, CancellationToken.None);
 
             if (result.IsFailure)
             {
-                _notifications.Show(
-                    result.Error.Message, InfoBarSeverity.Error, "The diagnostics bundle wasn't created");
+                Notify(result.Error.Message, InfoBarSeverity.Error, "The diagnostics bundle wasn't created");
 
                 return false;
             }
 
-            _notifications.Show($"Saved the diagnostics bundle to {path}.", InfoBarSeverity.Success);
+            Notify($"Saved the diagnostics bundle to {path}.", InfoBarSeverity.Success);
 
             return true;
         }
@@ -356,12 +381,11 @@ public sealed partial class TroubleshootViewModel : ViewModel
 
     public void ShowFactoryResetDone()
     {
-        _notifications.Show(
-            "Contr deleted the engine and its data. Starting the engine sets it up again.", InfoBarSeverity.Success);
+        ShowReset(null, EngineResetScope.Factory);
     }
 
     /// <summary>Resets the engine, following its steps in <see cref="ResetStatus"/>.</summary>
-    /// <returns>Why the reset failed; absent once it is done.</returns>
+    /// <returns>Why the reset failed; absent once it is done, or when the page closed first.</returns>
     public async Task<string?> ResetAsync(EngineResetScope scope)
     {
         IsResetting = true;
@@ -369,9 +393,14 @@ public sealed partial class TroubleshootViewModel : ViewModel
         try
         {
             var progress = new Progress<EngineProgress>(step => ResetStatus = step.Message);
-            var result = await _daemon.ResetEngineAsync(scope, progress, CancellationToken.None);
+            var result = await _daemon.ResetEngineAsync(scope, progress, _lifetime.Token);
 
             return result.IsSuccess ? null : result.Error.Message;
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed; the reset goes on in the daemon.
+            return null;
         }
         finally
         {
@@ -404,13 +433,23 @@ public sealed partial class TroubleshootViewModel : ViewModel
         try
         {
             var progress = new Progress<EngineProgress>(step => FixStatus = step.Message);
-            result = await _diagnostics.RunRemediationAsync(fix.ActionId, progress, CancellationToken.None);
+            result = await _diagnostics.RunRemediationAsync(fix.ActionId, progress, _lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed; the fix goes on in the daemon.
+            return;
         }
         finally
         {
             IsFixing = false;
         }
 
+        ShowFixed(fix, result);
+    }
+
+    private void ShowFixed(CheckFix fix, Result<RemediationOutcome> result)
+    {
         var notice = fix.Notice(result);
         var waitsForRestart = result.IsSuccess && (result.Value.RestartRequired || result.Value.SignOutRequired);
 
@@ -422,7 +461,7 @@ public sealed partial class TroubleshootViewModel : ViewModel
 
         if (!HasProblem || (result.IsSuccess && !waitsForRestart))
         {
-            _notifications.Show(notice.Message, notice.Severity, notice.Title);
+            Notify(notice.Message, notice.Severity, notice.Title);
         }
         else if (result.IsFailure)
         {
@@ -459,6 +498,141 @@ public sealed partial class TroubleshootViewModel : ViewModel
         if (disposing)
         {
             Deactivate();
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+        }
+    }
+
+    /// <summary>Shows a notice while the page lives; a closed page's work ends unsaid, in the activity view.</summary>
+    private void Notify(string message, InfoBarSeverity severity, string? title = null)
+    {
+        if (!_lifetime.IsCancellationRequested)
+        {
+            _notifications.Show(message, severity, title);
+        }
+    }
+
+    private void ShowReset(string? error, EngineResetScope scope)
+    {
+        if (error is not null)
+        {
+            Notify(error, InfoBarSeverity.Error, "The engine wasn't reset");
+        }
+        else if (scope == EngineResetScope.Factory)
+        {
+            Notify(
+                "Contr deleted the engine and its data. Starting the engine sets it up again.",
+                InfoBarSeverity.Success);
+        }
+        else
+        {
+            Notify("The engine was reset. Start it when you need it.", InfoBarSeverity.Success);
+        }
+    }
+
+    /// <summary>Shows the progress of a fix, reset or bundle the daemon runs, such as one the page started before it
+    /// closed.</summary>
+    private void FollowRunning(IReadOnlyList<DaemonOperation> operations)
+    {
+        if (!_isActive)
+        {
+            return;
+        }
+
+        foreach (var operation in operations.Where(operation =>
+            operation.IsRunning && !_followed.Contains(operation.Id)))
+        {
+            switch (operation.Work)
+            {
+                case OperationWork.ResetEngine reset when !IsResetting:
+                    _ = FollowResetAsync(operation.Id, reset.Scope);
+                    break;
+                case OperationWork.RunRemediation fix when !IsFixing:
+                    _ = FollowFixAsync(operation.Id, new CheckFix(new Remediation(fix.ActionId, false)));
+                    break;
+                case OperationWork.CreateBundle when !IsCreatingBundle:
+                    _ = FollowBundleAsync(operation.Id);
+                    break;
+            }
+        }
+    }
+
+    private async Task FollowResetAsync(string operationId, EngineResetScope scope)
+    {
+        _followed.Add(operationId);
+        IsResetting = true;
+        ResetStatus = "Stopping the engine";
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => ResetStatus = step.Message);
+            var ended = await _activity.FollowAsync(operationId, progress, _lifetime.Token);
+            var error = ended.IsFailure ? ended.Error.Message : Failure(ended.Value);
+            ShowReset(error, scope);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed; the reset goes on in the daemon.
+        }
+        finally
+        {
+            IsResetting = false;
+        }
+    }
+
+    private async Task FollowFixAsync(string operationId, CheckFix fix)
+    {
+        _followed.Add(operationId);
+        IsFixFromProblem = fix.ActionId == ProblemFix?.ActionId;
+        IsFixing = true;
+        FixStatus = fix.Running;
+        FixError = string.Empty;
+        Result<RemediationOutcome> result;
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => FixStatus = step.Message);
+            result = await _diagnostics.FollowRemediationAsync(operationId, fix.ActionId, progress, _lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+        finally
+        {
+            IsFixing = false;
+        }
+
+        ShowFixed(fix, result);
+    }
+
+    /// <summary>Why an operation did not succeed; absent when it did.</summary>
+    private static string? Failure(DaemonOperation operation)
+    {
+        return operation.State switch {
+            OperationState.Succeeded => null,
+            OperationState.Failed when operation.Failure is { } failure => failure.Error.Message,
+            OperationState.Cancelled => "It was cancelled.",
+            _ => "It ended early.",
+        };
+    }
+
+    /// <summary>Shows a bundle's steps; the page or the activity view that started it saves its zip.</summary>
+    private async Task FollowBundleAsync(string operationId)
+    {
+        _followed.Add(operationId);
+        IsCreatingBundle = true;
+        BundleStatus = "Collecting";
+        try
+        {
+            var progress = new Progress<EngineProgress>(step => BundleStatus = step.Message);
+            await _activity.FollowAsync(operationId, progress, _lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed.
+        }
+        finally
+        {
+            IsCreatingBundle = false;
         }
     }
 
