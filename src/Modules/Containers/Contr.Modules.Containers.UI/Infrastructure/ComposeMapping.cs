@@ -2,10 +2,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Contr.Application.Abstractions.Watching;
+using Contr.Daemon.UI;
 using Contr.Modules.Containers.Application.Compose;
 using Contr.Modules.Containers.Domain;
+using Contr.Sdk.Operations.V1;
+using Contr.UI.Contracts.Services.Daemon;
 using ComposeV1 = Contr.Sdk.Compose.V1;
 using ContainersV1 = Contr.Sdk.Containers.V1;
+using FollowCase = Contr.Sdk.Operations.V1.FollowOperationResponse.EventOneofCase;
 
 namespace Contr.Modules.Containers.UI.Infrastructure;
 
@@ -56,6 +60,21 @@ internal static class ComposeMapping
             _ => null,
         };
     }
+
+    /// <summary>Returns <see langword="null"/> for an event kind this client does not know.</summary>
+    public static Followed? ToFollowed(FollowOperationResponse response)
+    {
+        return response.EventCase switch {
+            FollowCase.ComposeAction => ToEvent(response.ComposeAction) is { } actionEvent
+                ? new Followed(actionEvent, null)
+                : null,
+            FollowCase.Finished => new Followed(null, DaemonOperations.ToOperation(response.Finished)),
+            _ => null,
+        };
+    }
+
+    /// <summary>One event of a followed Compose operation, or its final state.</summary>
+    public sealed record Followed(ComposeActionEvent? Event, DaemonOperation? Finished);
 }
 
 /// <summary>Decodes the UTF-8 chunks of a project's merged logs.</summary>

@@ -28,6 +28,9 @@ public abstract record ComposeActionEvent
     {
     }
 
+    /// <summary>The first event of a run the daemon runs as an operation, which outlives this stream.</summary>
+    public sealed record Started(string OperationId) : ComposeActionEvent;
+
     /// <summary>A line Compose wrote, without its line ending.</summary>
     public sealed record Output(string Line) : ComposeActionEvent;
 
@@ -36,4 +39,7 @@ public abstract record ComposeActionEvent
 
     /// <summary>The last event of a run the daemon refused or that broke.</summary>
     public sealed record Failed(Error Error) : ComposeActionEvent;
+
+    /// <summary>The last event of a run that was cancelled, from this client or another.</summary>
+    public sealed record Cancelled : ComposeActionEvent;
 }

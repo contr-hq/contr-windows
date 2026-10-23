@@ -22,7 +22,11 @@ public interface IComposeGateway
     /// <summary>Forgets a project the user added; its containers stay.</summary>
     Task<Result> RemoveProjectAsync(string project, CancellationToken cancellationToken);
 
-    /// <summary>Runs Compose on <paramref name="project"/>, streaming its output until it exits.</summary>
+    /// <summary>
+    /// Runs Compose on <paramref name="project"/>, streaming its output until it exits. A daemon that runs Compose
+    /// actions as operations goes on after the enumeration is cancelled and starts the stream with
+    /// <see cref="ComposeActionEvent.Started"/>; an older one stops Compose with the enumeration.
+    /// </summary>
     /// <param name="services">The services to act on; empty acts on every one.</param>
     /// <param name="removeVolumes">With <see cref="ComposeAction.Down"/>, also removes the named volumes.</param>
     IAsyncEnumerable<ComposeActionEvent> RunActionAsync(
@@ -31,6 +35,10 @@ public interface IComposeGateway
         IReadOnlyList<string> services,
         bool removeVolumes,
         CancellationToken cancellationToken);
+
+    /// <summary>Follows a Compose action the daemon runs as an operation, the last lines it kept first.</summary>
+    /// <param name="cancellationToken">Stops following; Compose goes on.</param>
+    IAsyncEnumerable<ComposeActionEvent> FollowActionAsync(string operationId, CancellationToken cancellationToken);
 
     /// <summary>The last <paramref name="tailLines"/> lines of every container of the project.</summary>
     /// <param name="follow">Then new output of the containers running when the stream opened.</param>
