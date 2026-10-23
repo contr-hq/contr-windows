@@ -8,3 +8,4 @@ IsProcessorFeaturePresent
 WM_QUERYENDSESSION
 WM_ENDSESSION
 IsWindowVisible
+RegisterApplicationRestart

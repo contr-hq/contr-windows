@@ -2,6 +2,7 @@ using System;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
+using Contr.App.Services.Platform;
 using Contr.Interoperability;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -16,6 +17,9 @@ namespace Contr.App;
 /// </summary>
 public static class Program
 {
+    /// <summary>Within the 15 seconds Velopack's MSI gives the update hook before it kills it.</summary>
+    private static readonly TimeSpan _hookQuitTimeout = TimeSpan.FromSeconds(10);
+
     private static DispatcherQueue? _dispatcher;
 
     [STAThread]
@@ -24,6 +28,9 @@ public static class Program
         // The installer runs this executable for its install, update and uninstall hooks; Run handles them and exits.
         VelopackApp
             .Build()
+            .OnBeforeUpdateFastCallback(_ => QuitRunningInstance())
+            .OnAfterUpdateFastCallback(_ => QuitRunningInstance())
+            .OnBeforeUninstallFastCallback(_ => QuitRunningInstance())
             .Run();
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
@@ -38,6 +45,8 @@ public static class Program
         }
 
         instance.Activated += OnActivated;
+        using var quitSignal = new QuitSignal(QuitSignal.NameFor(InstanceKey()), OnQuitRequested);
+        RestartInterop.RegisterForInstallerRestart(SignInStartup.BackgroundArgument);
         Microsoft.UI.Xaml.Application.Start(Launch);
 
         return 0;
@@ -86,5 +95,16 @@ public static class Program
     private static void OnActivated(object? sender, AppActivationArguments args)
     {
         _dispatcher?.TryEnqueue(() => App.Current.ShowMainWindow());
+    }
+
+    /// <summary>Asks the running Contr to quit and waits for it, so the installer finds its files free.</summary>
+    private static void QuitRunningInstance()
+    {
+        QuitSignal.Send(QuitSignal.NameFor(InstanceKey()), _hookQuitTimeout);
+    }
+
+    private static void OnQuitRequested()
+    {
+        _dispatcher?.TryEnqueue(() => App.Current.QuitOnRequest("an installer's Velopack hook"));
     }
 }
