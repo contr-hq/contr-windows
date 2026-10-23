@@ -149,11 +149,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     }
 
     /// <summary>Quits because Windows or another program asked, which the log records.</summary>
-    public void QuitOnRequest(string requester)
+    public void QuitOnRequest(string reason)
     {
         if (_host?.Services.GetService<ILogger<App>>() is { } logger)
         {
-            LogQuitRequested(logger, requester);
+            LogQuitRequested(logger, reason);
         }
 
         _ = QuitAsync();
@@ -219,6 +219,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         ExceptionWindow.ShowException(e.Exception);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Quitting: {Requester} asked")]
-    private static partial void LogQuitRequested(ILogger logger, string requester);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Quitting: {Reason}")]
+    private static partial void LogQuitRequested(ILogger logger, string reason);
 }

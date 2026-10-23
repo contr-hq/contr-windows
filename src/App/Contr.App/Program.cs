@@ -105,6 +105,6 @@ public static class Program
 
     private static void OnQuitRequested()
     {
-        _dispatcher?.TryEnqueue(() => App.Current.QuitOnRequest("an installer's Velopack hook"));
+        _dispatcher?.TryEnqueue(() => App.Current.QuitOnRequest("a Velopack hook of an install or update asked"));
     }
 }

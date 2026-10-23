@@ -45,7 +45,7 @@ public sealed partial class MainWindow : WindowEx
     {
         if (_closeRequests.EndsApp(args.Message.MessageId, args.Message.WParam))
         {
-            App.Current.QuitOnRequest("the Windows session is ending or an installer is closing Contr");
+            App.Current.QuitOnRequest("the Windows session is ending, or an installer is closing Contr");
         }
     }
 
@@ -60,7 +60,7 @@ public sealed partial class MainWindow : WindowEx
 
         if (_closeRequests.OnClose(WindowInterop.IsWindowVisible(this.GetWindowHandle())) == CloseAction.Quit)
         {
-            App.Current.QuitOnRequest("another program closed the window");
+            App.Current.QuitOnRequest("another program closed the hidden window, or the session is ending");
 
             return;
         }
