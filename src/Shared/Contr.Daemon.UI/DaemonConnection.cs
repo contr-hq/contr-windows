@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using EngineState = Contr.UI.Contracts.Services.Daemon.EngineState;
 using EngineUsage = Contr.UI.Contracts.Services.Daemon.EngineUsage;
+using OperationRequest = Contr.Sdk.Operations.V1.OperationRequest;
 using WireEngineState = Contr.Sdk.Engine.V1.EngineState;
 using WireEngineUsage = Contr.Sdk.Engine.V1.EngineUsage;
 
@@ -130,36 +131,46 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
 
     public Task<Result> StartEngineAsync(CancellationToken cancellationToken)
     {
-        return DrainAsync(
-            (client, token) => client.Engine.Start(new StartRequest(), cancellationToken: token),
-            cancellationToken);
+        return this.Offers()
+            ? this.RunOperationAsync(new OperationRequest { StartEngine = new StartRequest() }, null, cancellationToken)
+            : DrainAsync(
+                (client, token) => client.Engine.Start(new StartRequest(), cancellationToken: token),
+                cancellationToken);
     }
 
     public Task<Result> StartEngineAsync(IProgress<EngineProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
 
-        return DrainAsync(
-            (client, token) => client.Engine.Start(new StartRequest(), cancellationToken: token),
-            cancellationToken,
-            response => response.EventCase == StartResponse.EventOneofCase.Progress
-                ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
-                : null,
-            progress);
+        return this.Offers()
+            ? this.RunOperationAsync(
+                new OperationRequest { StartEngine = new StartRequest() }, progress, cancellationToken)
+            : DrainAsync(
+                (client, token) => client.Engine.Start(new StartRequest(), cancellationToken: token),
+                cancellationToken,
+                response => response.EventCase == StartResponse.EventOneofCase.Progress
+                    ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
+                    : null,
+                progress);
     }
 
     public Task<Result> StopEngineAsync(CancellationToken cancellationToken)
     {
-        return DrainAsync(
-            (client, token) => client.Engine.Stop(new StopRequest(), cancellationToken: token),
-            cancellationToken);
+        return this.Offers()
+            ? this.RunOperationAsync(new OperationRequest { StopEngine = new StopRequest() }, null, cancellationToken)
+            : DrainAsync(
+                (client, token) => client.Engine.Stop(new StopRequest(), cancellationToken: token),
+                cancellationToken);
     }
 
     public Task<Result> RestartEngineAsync(CancellationToken cancellationToken)
     {
-        return DrainAsync(
-            (client, token) => client.Engine.Restart(new RestartRequest(), cancellationToken: token),
-            cancellationToken);
+        return this.Offers()
+            ? this.RunOperationAsync(
+                new OperationRequest { RestartEngine = new RestartRequest() }, null, cancellationToken)
+            : DrainAsync(
+                (client, token) => client.Engine.Restart(new RestartRequest(), cancellationToken: token),
+                cancellationToken);
     }
 
     public Task<Result> ResetEngineAsync(
@@ -171,13 +182,15 @@ public sealed partial class DaemonConnection : IDaemonConnection, IDaemonClient,
             Scope = scope == EngineResetScope.Factory ? ResetScope.Factory : ResetScope.Runtime,
         };
 
-        return DrainAsync(
-            (client, token) => client.Engine.Reset(request, cancellationToken: token),
-            cancellationToken,
-            response => response.EventCase == ResetResponse.EventOneofCase.Progress
-                ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
-                : null,
-            progress);
+        return this.Offers()
+            ? this.RunOperationAsync(new OperationRequest { ResetEngine = request }, progress, cancellationToken)
+            : DrainAsync(
+                (client, token) => client.Engine.Reset(request, cancellationToken: token),
+                cancellationToken,
+                response => response.EventCase == ResetResponse.EventOneofCase.Progress
+                    ? new EngineProgress(response.Progress.Message, Fraction(response.Progress))
+                    : null,
+                progress);
     }
 
     /// <remarks>

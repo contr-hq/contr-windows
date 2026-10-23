@@ -28,6 +28,15 @@ public interface IDiagnostics
     Task<Result<RemediationOutcome>> RunRemediationAsync(
         string actionId, IProgress<EngineProgress> progress, CancellationToken cancellationToken);
 
+    /// <summary>Follows a fix the daemon runs as an operation, such as one a page started before it closed.</summary>
+    /// <param name="operationId">The fix's <see cref="DaemonOperation.Id"/>.</param>
+    /// <param name="actionId">The fix's <see cref="Remediation.ActionId"/>, for its messages.</param>
+    /// <param name="progress">Receives each step, the ones the daemon kept first.</param>
+    /// <param name="cancellationToken">Stops following the fix; the daemon finishes it.</param>
+    /// <returns>What <see cref="RunRemediationAsync"/> returns.</returns>
+    Task<Result<RemediationOutcome>> FollowRemediationAsync(
+        string operationId, string actionId, IProgress<EngineProgress> progress, CancellationToken cancellationToken);
+
     /// <summary>Writes a zip for support to <paramref name="destination"/>: versions, settings, check results, the
     /// engine's state and recent logs, with credentials and the user's name, home folder, computer name and Windows
     /// SIDs replaced.</summary>

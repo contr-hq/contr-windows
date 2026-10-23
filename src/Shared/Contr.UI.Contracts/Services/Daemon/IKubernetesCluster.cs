@@ -26,11 +26,20 @@ public interface IKubernetesCluster
     /// <summary>Copies images from the engine into a ready cluster, so pods use them without a registry.</summary>
     /// <param name="images">References on the engine, such as <c>shop-api:dev</c>.</param>
     /// <param name="progress">Told each image's outcome as the daemon reports it.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <param name="cancellationToken">Stops following; from API revision 22 the import goes on, and before it the
+    /// import stops.</param>
     /// <returns>Every image's outcome; a failure when the daemon refused the import, such as before the cluster is
     /// ready.</returns>
     Task<Result<IReadOnlyList<ImageImport>>> ImportImagesAsync(
         IReadOnlyList<string> images, IProgress<ImageImport> progress, CancellationToken cancellationToken);
+
+    /// <summary>Follows an import already running, such as one a page started before it closed.</summary>
+    /// <param name="operationId">The import's <see cref="DaemonOperation.Id"/>.</param>
+    /// <param name="progress">Told each image's outcome, the ones the daemon kept first.</param>
+    /// <param name="cancellationToken">Stops following; the import goes on.</param>
+    /// <returns>Every image's outcome; a failure when the import failed or was cancelled.</returns>
+    Task<Result<IReadOnlyList<ImageImport>>> FollowImportAsync(
+        string operationId, IProgress<ImageImport> progress, CancellationToken cancellationToken);
 
     /// <summary>Makes the cluster's context kubectl's current one, or restores the one that was current before.
     /// </summary>
