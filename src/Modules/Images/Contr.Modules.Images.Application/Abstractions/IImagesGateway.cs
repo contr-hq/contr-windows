@@ -15,10 +15,18 @@ public interface IImagesGateway
     /// <summary>The list, then every change to it, until cancelled or broken.</summary>
     IAsyncEnumerable<ListChange<ImageDto>> WatchAsync(CancellationToken cancellationToken);
 
-    /// <summary>Pulls the image; cancelling the enumeration cancels the pull.</summary>
+    /// <summary>
+    /// Pulls the image, or follows the pull of it already running. A daemon that runs pulls as operations goes on
+    /// after the enumeration is cancelled and starts the stream with <see cref="PullEvent.Started"/>; an older one
+    /// cancels the pull with the enumeration.
+    /// </summary>
     /// <param name="platform">Such as <c>linux/arm64</c>; empty pulls for the engine's own platform.</param>
     IAsyncEnumerable<PullEvent> PullAsync(
         ImageReference reference, string platform, CancellationToken cancellationToken);
+
+    /// <summary>Follows a pull the daemon runs as an operation, the progress it kept first.</summary>
+    /// <param name="cancellationToken">Stops following; the pull goes on.</param>
+    IAsyncEnumerable<PullEvent> FollowPullAsync(string operationId, CancellationToken cancellationToken);
 
     /// <summary>Removes one reference to the image and deletes it once nothing references it.</summary>
     Task<Result> RemoveAsync(ImageId id, CancellationToken cancellationToken);

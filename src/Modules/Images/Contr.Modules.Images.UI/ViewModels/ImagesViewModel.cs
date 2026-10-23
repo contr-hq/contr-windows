@@ -12,6 +12,7 @@ using Contr.Application.Abstractions.Watching;
 using Contr.Modules.Images.Application.Images;
 using Contr.Modules.Images.Application.Images.Commands.PruneImages;
 using Contr.Modules.Images.Application.Images.Commands.RemoveImage;
+using Contr.Modules.Images.Application.Images.Queries.FollowPull;
 using Contr.Modules.Images.Application.Images.Queries.PullImage;
 using Contr.Modules.Images.Application.Images.Queries.WatchImages;
 using Contr.UI.Common.Controls;
@@ -20,11 +21,15 @@ using Contr.UI.Common.Formatting;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.Modules.Images.UI.ViewModels;
 
-/// <summary>The images list, pulling with per-layer progress, removal and pruning.</summary>
+/// <summary>
+/// The images list, pulling with per-layer progress, removal and pruning. Where the daemon runs pulls as operations,
+/// the progress card follows the newest running pull, whichever page or client started it.
+/// </summary>
 public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageRow>
 {
     private static readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(3);
@@ -33,8 +38,21 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly IClipboardService _clipboard;
+    private readonly IActivity _activity;
+    private readonly DispatcherQueue? _dispatcher;
     private readonly Dictionary<string, PullLayer> _layers = new(StringComparer.Ordinal);
     private CancellationTokenSource? _pull;
+    private IDisposable? _operations;
+
+    /// <summary>Whether the page shows, between <see cref="Activate"/> and <see cref="Deactivate"/>.</summary>
+    private bool _isActive;
+
+    /// <summary>The daemon operation of the pull the card follows; absent for an older daemon's pull.</summary>
+    private string? _operationId;
+
+    /// <summary>Pulls the card followed to their end, which the daemon may still list as running for a moment.
+    /// </summary>
+    private readonly HashSet<string> _shown = new(StringComparer.Ordinal);
 
     [ObservableProperty]
     public partial bool IsPulling { get; set; }
@@ -87,7 +105,8 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         INotificationService notifications,
         IClipboardService clipboard,
         IDaemonConnection daemon,
-        IDaemonSettings settings)
+        IDaemonSettings settings,
+        IActivity activity)
         : base(
             new LiveCollection<ImageDto, ImageRow>(ImageRow.From, row => row.Id, ImageRow.Compare),
             _retryDelay)
@@ -96,10 +115,13 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(notifications);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(activity);
         _sender = sender;
         _dialogs = dialogs;
         _notifications = notifications;
         _clipboard = clipboard;
+        _activity = activity;
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
         Engine = new EngineGateViewModel(daemon, settings, notifications);
         PullReference = string.Empty;
         PullPlatform = string.Empty;
@@ -119,17 +141,24 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
 
     public ObservableCollection<PullLayer> PullLayers { get; } = [];
 
-    /// <summary>Starts following the engine and the list; call it from the page's <c>Loaded</c>.</summary>
+    /// <summary>Starts following the engine, the list and the running pulls; call it from the page's <c>Loaded</c>.
+    /// </summary>
     public void Activate()
     {
         Engine.Start();
         StartWatching();
         Summarise();
+        _isActive = true;
+        _operations ??= _activity.Changes.Subscribe(OnOperations);
     }
 
-    /// <summary>Stops following; a pull in progress goes on.</summary>
+    /// <summary>Stops following; a pull in progress goes on, and so does its card while the view model lives.
+    /// </summary>
     public void Deactivate()
     {
+        _isActive = false;
+        _operations?.Dispose();
+        _operations = null;
         StopWatching();
         Engine.Stop();
     }
@@ -156,9 +185,17 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         return null;
     }
 
+    /// <summary>Cancels the pull the card follows; an older daemon's pull stops with the card.</summary>
     public void CancelPull()
     {
-        _pull?.Cancel();
+        if (_operationId is { } id)
+        {
+            _ = CancelOperationAsync(id);
+
+            return;
+        }
+
+        StopFollowing();
     }
 
     /// <summary>Asks first; the engine refuses while a container uses the image.</summary>
@@ -220,18 +257,20 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         if (disposing)
         {
             Rows.CollectionChanged -= OnRowsChanged;
-            CancelPull();
+            StopFollowing();
             Deactivate();
         }
 
         base.Dispose(disposing);
     }
 
-    private async Task FollowAsync(string reference, string platform, IAsyncEnumerable<PullEvent> events)
+    private async Task FollowAsync(
+        string reference, string platform, IAsyncEnumerable<PullEvent> events, string? operationId = null)
     {
-        CancelPull();
+        StopFollowing();
         var pull = new CancellationTokenSource();
         _pull = pull;
+        _operationId = operationId;
         _layers.Clear();
         PullLayers.Clear();
         PullReference = reference.Trim();
@@ -255,12 +294,77 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
         {
             if (ReferenceEquals(_pull, pull))
             {
+                if (_operationId is { } shown && !pull.IsCancellationRequested)
+                {
+                    _shown.Add(shown);
+                }
+
                 IsPulling = false;
                 _pull = null;
+                _operationId = null;
             }
 
             pull.Dispose();
         }
+
+        if (_isActive && !IsPulling)
+        {
+            FollowRunning(_activity.Current);
+        }
+    }
+
+    private void StopFollowing()
+    {
+        _pull?.Cancel();
+    }
+
+    private async Task CancelOperationAsync(string id)
+    {
+        var result = await _activity.CancelAsync(id, CancellationToken.None);
+
+        if (result.IsFailure)
+        {
+            _notifications.Show(result.Error.Message, InfoBarSeverity.Error, "The pull wasn't cancelled");
+        }
+    }
+
+    private void OnOperations(IReadOnlyList<DaemonOperation> operations)
+    {
+        // Changes emits on a background thread.
+        if (_dispatcher is null)
+        {
+            FollowRunning(operations);
+
+            return;
+        }
+
+        _dispatcher.TryEnqueue(() => FollowRunning(operations));
+    }
+
+    /// <summary>Shows the newest running pull while the card shows none.</summary>
+    private void FollowRunning(IReadOnlyList<DaemonOperation> operations)
+    {
+        if (IsPulling || !_isActive)
+        {
+            return;
+        }
+
+        var running = operations.FirstOrDefault(operation =>
+            operation is { IsRunning: true, Work: OperationWork.PullImage } && !_shown.Contains(operation.Id));
+
+        if (running is not { Work: OperationWork.PullImage pull })
+        {
+            return;
+        }
+
+        IsPulling = true;
+        Pulling = FollowOperationAsync(running.Id, pull);
+    }
+
+    private async Task FollowOperationAsync(string operationId, OperationWork.PullImage pull)
+    {
+        var events = await _sender.Send(new FollowPullQuery(operationId));
+        await FollowAsync(pull.Reference, pull.Platform, events, operationId);
     }
 
     private List<PillItem> Summarize(bool isUsageKnown, long unusedBytes)
@@ -359,6 +463,9 @@ public sealed partial class ImagesViewModel : LiveListViewModel<ImageDto, ImageR
                 break;
             case PullEvent.Failed failed:
                 _notifications.Show(failed.Error.Message, InfoBarSeverity.Error, "Pull failed");
+                break;
+            case PullEvent.Started started:
+                _operationId = started.OperationId;
                 break;
         }
     }
