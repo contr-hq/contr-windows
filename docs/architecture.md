@@ -81,7 +81,9 @@ app starts; by default it runs the `contrd.exe` beside the app, else the one on 
 
 `Program.Main` claims the single-instance key `contr-<user SID>` with
 `AppInstance.FindOrRegisterForKey`; a second launch redirects its activation to the running
-instance, which brings its window back. The host then runs the startup orchestrators in order:
+instance, which brings its window back. The running instance registers with Restart Manager to start again
+with `--background` after an installer closes it (never after a crash, a hang or a reboot). The host then runs
+the startup orchestrators in order:
 
 | Order | Step | |
 | --- | --- | --- |
@@ -101,6 +103,9 @@ too, and the daemon keeps running either way:
   `WM_QUERYENDSESSION` and `WM_ENDSESSION`; the app quits on a `WM_ENDSESSION` whose session ends.
 - A `WM_CLOSE` quits when the window is hidden, which only another program can close, or after
   `WM_QUERYENDSESSION`.
+- Velopack runs the executable with `--veloapp-obsolete`, `--veloapp-updated` or `--veloapp-uninstall` around an
+  update or uninstall. That process sets the event `Local\contr-<user SID>-quit`, on which the running instance
+  quits, and waits up to ten seconds for it to exit.
 
 ## Pages
 
