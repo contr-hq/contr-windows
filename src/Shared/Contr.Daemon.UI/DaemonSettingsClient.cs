@@ -262,7 +262,12 @@ public sealed partial class DaemonSettingsClient : IDaemonSettings
                     observer.OnNext(ToSettings(response.State ?? new SettingsState()));
                 }
             }
-            catch (RpcException exception) when (exception.StatusCode != StatusCode.Cancelled)
+            catch (RpcException) when (cancellationToken.IsCancellationRequested)
+            {
+                // gRPC reports a call the subscription's end cancelled as CANCELLED, not as a cancellation.
+                return;
+            }
+            catch (RpcException exception)
             {
                 LogWatchEnded(exception.Status.Detail);
             }

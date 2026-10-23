@@ -1,8 +1,15 @@
 using System;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Contr.Daemon.UI;
+using Contr.Sdk;
 using Contr.Sdk.Images.V1;
 using Contr.UI.Contracts.Services.Daemon;
 using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Xunit;
 using Wire = Contr.Sdk.Kubernetes.V1;
 
@@ -62,5 +69,35 @@ public sealed class KubernetesClientTests
         var images = KubernetesClient.TaggedImages([tagged, untagged, other]);
 
         Assert.Equal(["nginx:1.29", "shop-api:dev", "shop-api:latest"], images);
+    }
+
+    [Fact]
+    public async Task Changes_EndsQuietlyWhenItsLastSubscriberLeaves()
+    {
+        using var calls = new CancelledCalls();
+        var kubernetes = new KubernetesClient(
+            Connections.Connected(DaemonCapability.Kubernetes), calls.Daemon, NullLogger<KubernetesClient>.Instance);
+
+        var subscription = kubernetes.Changes.Subscribe(_ => { });
+        await calls.Started;
+        subscription.Dispose();
+
+        Assert.False(await calls.EscapedAsync());
+    }
+
+    [Fact]
+    public async Task Changes_ReadsAWatchTheDaemonCancelledAsNoCluster()
+    {
+        var daemon = Substitute.For<IDaemonClient>();
+        daemon
+            .GetAsync(Arg.Any<CancellationToken>())
+            .Returns<ValueTask<ContrClient>>(_ => throw new RpcException(new Status(StatusCode.Cancelled, "stop")));
+        var kubernetes = new KubernetesClient(
+            Connections.Connected(DaemonCapability.Kubernetes), daemon, NullLogger<KubernetesClient>.Instance);
+
+        var first = await kubernetes.Changes.FirstAsync();
+
+        Assert.Null(first);
+        await daemon.Received(1).GetAsync(Arg.Any<CancellationToken>());
     }
 }
