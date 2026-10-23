@@ -30,7 +30,10 @@ public static class Program
             .Build()
             .OnBeforeUpdateFastCallback(_ => QuitRunningInstance())
             .OnAfterUpdateFastCallback(_ => QuitRunningInstance())
-            .OnBeforeUninstallFastCallback(_ => QuitRunningInstance())
+            .OnBeforeUninstallFastCallback(_ => {
+                QuitRunningInstance();
+                ActivityToasts.Unregister();
+            })
             .Run();
 
         WinRT.ComWrappersSupport.InitializeComWrappers();

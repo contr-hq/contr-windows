@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="Contr.App.UI.ActivityPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:icons="using:Contr.UI.Common.Icons"
+    xmlns:local="using:Contr.App.UI"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Width="380"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="FixTemplate" x:DataType="local:CheckFix">
+            <Button
+                Click="OnFix"
+                Content="{x:Bind Label}"
+                Tag="{x:Bind}" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="RowTemplate" x:DataType="local:ActivityRow">
+            <Grid
+                Padding="12,10,8,10"
+                ColumnSpacing="10"
+                RowSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ProgressRing
+                    Width="16"
+                    Height="16"
+                    VerticalAlignment="Top"
+                    IsActive="{x:Bind IsRunning}"
+                    Visibility="{x:Bind IsRunning}" />
+                <FontIcon
+                    VerticalAlignment="Top"
+                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                    Glyph="{x:Bind icons:ContrIcons.SuccessFilled}"
+                    Style="{StaticResource IconStyle}"
+                    Visibility="{x:Bind IsSucceeded}" />
+                <FontIcon
+                    VerticalAlignment="Top"
+                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                    Glyph="{x:Bind icons:ContrIcons.ErrorFilled}"
+                    Style="{StaticResource IconStyle}"
+                    Visibility="{x:Bind IsFailed}" />
+                <FontIcon
+                    VerticalAlignment="Top"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Glyph="{x:Bind icons:ContrIcons.Dismiss}"
+                    Style="{StaticResource IconStyle}"
+                    Visibility="{x:Bind IsCancelled}" />
+
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock
+                        Text="{x:Bind Title}"
+                        TextTrimming="CharacterEllipsis"
+                        ToolTipService.ToolTip="{x:Bind Title}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        MaxLines="3"
+                        Text="{x:Bind Detail}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="2"
+                    VerticalAlignment="Top"
+                    AutomationProperties.Name="{x:Bind local:ActivityPanel.CancelName(Title)}"
+                    Click="OnCancel"
+                    Style="{StaticResource RowActionButtonStyle}"
+                    Tag="{x:Bind}"
+                    ToolTipService.ToolTip="Cancel"
+                    Visibility="{x:Bind CanCancel}">
+                    <FontIcon Glyph="{x:Bind icons:ContrIcons.Dismiss}" Style="{StaticResource IconStyle}" />
+                </Button>
+
+                <ProgressBar
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    IsIndeterminate="{x:Bind IsIndeterminate}"
+                    Maximum="100"
+                    Visibility="{x:Bind IsRunning}"
+                    Value="{x:Bind Percent}" />
+
+                <StackPanel
+                    Grid.Row="2"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <ItemsControl
+                        ItemTemplate="{StaticResource FixTemplate}"
+                        ItemsSource="{x:Bind Fixes}"
+                        Visibility="{x:Bind HasFixes}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button
+                        AutomationProperties.Name="Save the diagnostics bundle"
+                        Click="OnSave"
+                        Content="Save…"
+                        Tag="{x:Bind}"
+                        Visibility="{x:Bind CanSave}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock
+            Margin="12,12,12,4"
+            Style="{StaticResource CaptionLabelStyle}"
+            Text="ACTIVITY" />
+        <TextBlock
+            Margin="12,4,12,12"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="Nothing running. Pulls, Compose commands and other long work show here, and go on when you close Contr."
+            TextWrapping="Wrap"
+            Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}" />
+        <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
+            <ItemsControl
+                AutomationProperties.AutomationId="ActivityList"
+                ItemTemplate="{StaticResource RowTemplate}"
+                ItemsSource="{x:Bind ViewModel.Rows}" />
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

@@ -112,6 +112,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
+    /// <summary>Whether the main window shows, minimized or not; closing it hides it.</summary>
+    public bool IsMainWindowVisible => _window?.AppWindow.IsVisible == true;
+
     /// <summary>Shows the main window from the tray or a second launch; ignored before startup creates it.</summary>
     public void ShowMainWindow()
     {

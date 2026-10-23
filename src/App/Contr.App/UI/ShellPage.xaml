@@ -105,89 +105,124 @@
             <Frame x:Name="NavFrame" />
         </NavigationView>
 
-        <StackPanel
+        <Grid
             Grid.Row="2"
             Height="32"
-            Padding="12,0,16,0"
+            Padding="12,0,8,0"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0"
-            Orientation="Horizontal"
-            Spacing="20">
+            ColumnSpacing="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <Button
+                    x:Name="EngineStatusPill"
+                    Padding="4,2"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="EngineStatusPill"
+                    AutomationProperties.Name="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ToolTipService.ToolTip="{x:Bind local:ShellPage.ToolTipFor(ViewModel.EngineStatus.Detail), Mode=OneWay}">
+                    <controls:StatusLabel
+                        FontSize="12"
+                        Kind="{x:Bind ViewModel.EngineStatus.Kind, Mode=OneWay}"
+                        Text="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="TopEdgeAlignedLeft">
+                            <MenuFlyoutItem
+                                Command="{x:Bind ViewModel.StartEngineCommand}"
+                                Text="Start engine">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Play}" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem
+                                Command="{x:Bind ViewModel.StopEngineCommand}"
+                                Text="Stop engine">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Stop}" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem
+                                Command="{x:Bind ViewModel.RestartEngineCommand}"
+                                Text="Restart engine">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Restart}" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.SinceText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasSince, Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.BackendText, Mode=OneWay}"
+                    ToolTipService.ToolTip="{x:Bind ViewModel.DaemonVersionText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasBackend, Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.EngineVersionText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasEngineVersion, Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="StatusBarCpu"
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.CpuText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.MemoryText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.DiskText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasDisk, Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasContext, Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="StatusBarKubernetes"
+                    Style="{StaticResource StatusBarTextStyle}"
+                    Text="{x:Bind ViewModel.KubernetesText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasKubernetes, Mode=OneWay}" />
+            </StackPanel>
+
+            <!--  What the daemon runs and ran; the work goes on whatever the window does.  -->
             <Button
-                x:Name="EngineStatusPill"
-                Padding="4,2"
+                Grid.Column="1"
+                Padding="6,2"
                 VerticalAlignment="Center"
-                AutomationProperties.AutomationId="EngineStatusPill"
-                AutomationProperties.Name="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}"
+                AutomationProperties.AutomationId="ActivityButton"
+                AutomationProperties.Name="{x:Bind Activity.IndicatorText, Mode=OneWay}"
                 Background="Transparent"
                 BorderThickness="0"
-                ToolTipService.ToolTip="{x:Bind local:ShellPage.ToolTipFor(ViewModel.EngineStatus.Detail), Mode=OneWay}">
-                <controls:StatusLabel
-                    FontSize="12"
-                    Kind="{x:Bind ViewModel.EngineStatus.Kind, Mode=OneWay}"
-                    Text="{x:Bind ViewModel.EngineStatus.Text, Mode=OneWay}" />
+                Visibility="{x:Bind Activity.IsOffered, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ProgressRing
+                        Width="12"
+                        Height="12"
+                        IsActive="{x:Bind Activity.HasRunning, Mode=OneWay}"
+                        Visibility="{x:Bind Activity.HasRunning, Mode=OneWay}" />
+                    <FontIcon
+                        FontFamily="{StaticResource ContrIconsFontFamily}"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Glyph="{x:Bind icons:ContrIcons.Pending}"
+                        Visibility="{x:Bind local:ShellPage.Unless(Activity.HasRunning), Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource StatusBarTextStyle}" Text="{x:Bind Activity.IndicatorText, Mode=OneWay}" />
+                </StackPanel>
                 <Button.Flyout>
-                    <MenuFlyout Placement="TopEdgeAlignedLeft">
-                        <MenuFlyoutItem
-                            Command="{x:Bind ViewModel.StartEngineCommand}"
-                            Text="Start engine">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Play}" />
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem
-                            Command="{x:Bind ViewModel.StopEngineCommand}"
-                            Text="Stop engine">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Stop}" />
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem
-                            Command="{x:Bind ViewModel.RestartEngineCommand}"
-                            Text="Restart engine">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon FontFamily="{StaticResource ContrIconsFontFamily}" Glyph="{x:Bind icons:ContrIcons.Restart}" />
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                    </MenuFlyout>
+                    <Flyout x:Name="ActivityFlyout" Placement="TopEdgeAlignedRight" />
                 </Button.Flyout>
             </Button>
-
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.SinceText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasSince, Mode=OneWay}" />
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.BackendText, Mode=OneWay}"
-                ToolTipService.ToolTip="{x:Bind ViewModel.DaemonVersionText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasBackend, Mode=OneWay}" />
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.EngineVersionText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasEngineVersion, Mode=OneWay}" />
-            <TextBlock
-                AutomationProperties.AutomationId="StatusBarCpu"
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.CpuText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.MemoryText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasUsage, Mode=OneWay}" />
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.DiskText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasDisk, Mode=OneWay}" />
-            <TextBlock
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.ContextText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasContext, Mode=OneWay}" />
-            <TextBlock
-                AutomationProperties.AutomationId="StatusBarKubernetes"
-                Style="{StaticResource StatusBarTextStyle}"
-                Text="{x:Bind ViewModel.KubernetesText, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.HasKubernetes, Mode=OneWay}" />
-        </StackPanel>
+        </Grid>
     </Grid>
 </Page>
