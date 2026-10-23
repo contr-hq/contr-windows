@@ -71,6 +71,13 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
   `IDaemonSettings`; a cluster state whose `SettingsRevision` is below the revision an update returned predates it.
 - `UpdatesClient` serves `IDaemonUpdates` over `ContrClient.Updates` (API revision 21): the daemon's latest update
   check and a check on request, which the daemon refuses while `updates.check` is off.
+- `ActivityClient` serves `IActivity` over `ContrClient.Operations` (API revision 22, ADR 0010 in the core): it follows
+  `WatchOperations` for the app's lifetime, reconnecting after the daemon restarts, lists the running operations and
+  the finished ones the daemon keeps for an hour, reports each one that ends, cancels, and saves a finished bundle's
+  zip. From revision 22 pulls, Compose actions, image imports, bundles, fixes and engine operations start with
+  `StartOperation`, which returns the running operation for the same work, and the caller follows it with
+  `FollowOperation` (`DaemonOperations`). Cancelling the follow leaves the work running, so it goes on when a page
+  closes, the window hides or the app quits. Older daemons keep the streaming RPCs, whose work stops with the stream.
 - The host sees the connection only as `IDaemonConnection` (in `Contr.UI.Contracts`, SDK-free).
 
 The daemon is found through `CONTR_HOST`, then the daemon's discovery file, then the per-user
@@ -92,7 +99,7 @@ the startup orchestrators in order:
 | 15 | DaemonConnection | connect or start, then handshake; waits at most five seconds and never fails startup |
 | 20 | Shell | main window, navigation pane, status bar |
 | 30 | Theme | |
-| 35 | Tray | WinUIEx `TrayIcon`: a click opens the flyout, a double click the window |
+| 35 | Tray | WinUIEx `TrayIcon`: a click opens the flyout, a double click the window; Windows notifications for work that ends while the window is hidden |
 | 40 | Activation | skipped when Windows started Contr at sign-in (`--background`): only the tray shows |
 | 45 | Onboarding | the first-run setup, until it records `SetupDone`; never on a `--background` launch |
 
@@ -155,7 +162,11 @@ per icon and `assets/icons/icons.json` pins each one's code point. `scripts/buil
 ```
 
 Pages start loading from `Loaded`, never `OnNavigatedTo`: pages
-come from the container and the navigation service sets `Frame.Content` directly. A page that takes
+come from the container and the navigation service sets `Frame.Content` directly. Each page resolves in its own
+scope, which the navigation service disposes, with the page's view model, once another page shows; a view model stops
+following on `Dispose`, and the notices of work it started stay unsaid. A page over long work takes its busy state
+and progress from `IActivity` and follows the operation for its own subject, such as an image's pull or a project's
+Compose action, so leaving the page and coming back, or reopening the app, shows the work again. A page that takes
 navigation parameters, such as a container's ID, implements `IHasViewModel`; the navigation service
 hands the parameters to `ViewModel.OnNavigatedTo` before the page loads. Pages reached from a module's
 own pages rather than the pane, such as the container page, come from `IModule.GetPages`.
@@ -185,7 +196,10 @@ their services, whose containers are the Containers module's own DTOs, so the pa
 stream Compose's output under the project's buttons, and its logs come from one stream per project. The status bar
 spans the window
 under the pane: the engine state (its menu starts, stops and restarts the engine), when it stopped, the
-backend, the engine version, the Docker context and the Kubernetes cluster's state.
+backend, the engine version, the Docker context and the Kubernetes cluster's state. At its right end the activity
+button counts the running operations; its flyout lists them and the finished ones, with Cancel where the daemon allows
+it, the fixes a failure offers and Save… for a finished bundle. An operation that ends while the window is hidden
+shows a Windows notification, except an engine started or stopped as asked.
 
 ## Tests
 
