@@ -1,8 +1,15 @@
+using System;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Contr.Daemon.UI;
+using Contr.Sdk;
 using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Xunit;
 using Wire = Contr.Sdk.Settings.V1;
 
@@ -216,5 +223,35 @@ public sealed class DaemonSettingsClientTests
         Assert.Equal(
             [new UnknownDaemonKey("log-opt", "log-opts"), new UnknownDaemonKey("zzz", string.Empty)], keys);
         Assert.Empty(DaemonSettingsClient.UnknownKeys(new RpcException(new Status(StatusCode.InvalidArgument, "x"))));
+    }
+
+    [Fact]
+    public async Task Changes_EndsQuietlyWhenItsLastSubscriberLeaves()
+    {
+        using var calls = new CancelledCalls();
+        var settings = new DaemonSettingsClient(
+            Connections.Connected(), calls.Daemon, NullLogger<DaemonSettingsClient>.Instance);
+
+        var subscription = settings.Changes.Subscribe(_ => { });
+        await calls.Started;
+        subscription.Dispose();
+
+        Assert.False(await calls.EscapedAsync());
+    }
+
+    [Fact]
+    public async Task Changes_ReadsAWatchTheDaemonCancelledAsNoSettings()
+    {
+        var daemon = Substitute.For<IDaemonClient>();
+        daemon
+            .GetAsync(Arg.Any<CancellationToken>())
+            .Returns<ValueTask<ContrClient>>(_ => throw new RpcException(new Status(StatusCode.Cancelled, "stop")));
+        var settings = new DaemonSettingsClient(
+            Connections.Connected(), daemon, NullLogger<DaemonSettingsClient>.Instance);
+
+        var first = await settings.Changes.FirstAsync();
+
+        Assert.Null(first);
+        await daemon.Received(1).GetAsync(Arg.Any<CancellationToken>());
     }
 }
