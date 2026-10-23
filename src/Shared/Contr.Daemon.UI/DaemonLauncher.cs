@@ -30,7 +30,7 @@ public sealed class DaemonLauncher
     /// <exception cref="DaemonUnavailableException">The executable cannot run, or Windows Installer runs.</exception>
     public void Start()
     {
-        // The installer may be replacing contrd; one started now keeps the old files in use after it finishes.
+        // The installer may be replacing contrd; one started now would hold the files it replaces.
         if (_installer.IsInstalling())
         {
             throw new DaemonUnavailableException(
