@@ -149,5 +149,22 @@ public sealed record ComposeRun(string Title, string StatusText, PillKind PillKi
 }
 
 /// <summary>One line of a project's merged logs, prefixed with its service.</summary>
-/// <param name="Color">An index into the page's service colours; each service keeps one.</param>
-public sealed record ComposeLogLine(string Service, int Color, string Text);
+/// <remarks>Compared by reference: a service repeats lines, and the list scrolls to the one just added, which an
+/// equal line before it would hide.</remarks>
+/// <param name="color">An index into the page's service colours; each service keeps one.</param>
+public sealed class ComposeLogLine(string service, int color, string text)
+{
+    public string Service { get; } = service;
+
+    public int Color { get; } = color;
+
+    public string Text { get; } = text;
+}
+
+/// <summary>One line a Compose command wrote.</summary>
+/// <remarks>Compared by reference: Compose writes some lines twice, and the list scrolls to the one just added.
+/// </remarks>
+public sealed class ComposeOutputLine(string text)
+{
+    public string Text { get; } = text;
+}
