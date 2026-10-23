@@ -131,16 +131,32 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window.Activate();
     }
 
-    /// <summary>Ends the process; the daemon keeps running.</summary>
+    /// <summary>Ends the process; the daemon keeps running. Call it on the UI thread.</summary>
     public async Task QuitAsync()
     {
+        if (IsQuitting)
+        {
+            return;
+        }
+
         IsQuitting = true;
 
         // The tray icon's window belongs to this thread; the host disposes services on another.
-        Services.GetService<TrayService>()?.Dispose();
+        _host?.Services.GetService<TrayService>()?.Dispose();
         await ShutdownAsync();
         _window?.Close();
         Exit();
+    }
+
+    /// <summary>Quits because Windows or another program asked, which the log records.</summary>
+    public void QuitOnRequest(string requester)
+    {
+        if (_host?.Services.GetService<ILogger<App>>() is { } logger)
+        {
+            LogQuitRequested(logger, requester);
+        }
+
+        _ = QuitAsync();
     }
 
     internal void SetMainWindow(WindowEx window)
@@ -202,4 +218,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         Log("Unhandled exception.", e.Exception);
         ExceptionWindow.ShowException(e.Exception);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Quitting: {Requester} asked")]
+    private static partial void LogQuitRequested(ILogger logger, string requester);
 }
