@@ -31,6 +31,7 @@ public sealed partial class ShellPage : Page
     private readonly GlobalSearch _search;
     private readonly Dictionary<string, NavigationViewItem> _navItemsByKey = new(StringComparer.Ordinal);
     private readonly Dictionary<NavigationViewItem, NavigationItem> _itemsByContainer = [];
+    private bool _isLoaded;
     private bool _isSyncingSelection;
     private string? _currentPageKey;
     private NavigationViewItemSeparator? _toolsSeparator;
@@ -77,8 +78,15 @@ public sealed partial class ShellPage : Page
         return string.IsNullOrEmpty(detail) ? null : detail;
     }
 
+    /// <summary>Builds the pane and subscribes once; the subscription cannot be reused after Unloaded.</summary>
     private void OnShellPageLoaded(object sender, RoutedEventArgs e)
     {
+        if (_isLoaded)
+        {
+            return;
+        }
+
+        _isLoaded = true;
         _navigationService.Initialize(NavFrame);
         _navigationService.Register([.. HostNavigation.ShellPages]);
 
@@ -359,7 +367,11 @@ public sealed partial class ShellPage : Page
         _navigationService.GoBack();
     }
 
-    /// <summary>Undoes what loading did, so a second Loaded does not double the pane.</summary>
+    /// <summary>Ends the subscriptions and leaves the pane as it is.</summary>
+    /// <remarks>
+    /// This runs as the window closes. Removing the selected item then makes NavigationView queue work that runs after
+    /// XAML shuts down and ends the process with a fail-fast (RPC_E_WRONG_THREAD).
+    /// </remarks>
     private void OnShellPageUnloaded(object sender, RoutedEventArgs e)
     {
         if (!_subscription.Unsubscribed)
@@ -370,15 +382,5 @@ public sealed partial class ShellPage : Page
         _searching?.Cancel();
         _searching?.Dispose();
         _searching = null;
-
-        foreach (var navItem in _navItemsByKey.Values)
-        {
-            NavView.MenuItems.Remove(navItem);
-            NavView.FooterMenuItems.Remove(navItem);
-        }
-
-        NavView.MenuItems.Remove(_toolsSeparator);
-        _toolsSeparator = null;
-        _navItemsByKey.Clear();
     }
 }
