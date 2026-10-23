@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Contr.Application.Abstractions.Messaging;
@@ -10,6 +11,7 @@ using Contr.Modules.Containers.Application.Compose;
 using Contr.Modules.Containers.Application.Compose.Commands.AddComposeProject;
 using Contr.Modules.Containers.Application.Compose.Commands.RemoveComposeProject;
 using Contr.Modules.Containers.Application.Compose.Commands.RunComposeAction;
+using Contr.Modules.Containers.Application.Compose.Queries.FollowComposeAction;
 using Contr.Modules.Containers.Application.Compose.Queries.StreamComposeLogs;
 using Contr.Modules.Containers.Application.Compose.Queries.WatchComposeProjects;
 using Contr.Modules.Containers.Application.Containers;
@@ -30,9 +32,13 @@ public sealed class ComposeViewModelTests
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly IDaemonConnection _daemon = Substitute.For<IDaemonConnection>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IActivity _activity = Substitute.For<IActivity>();
+    private readonly BehaviorSubject<IReadOnlyList<DaemonOperation>> _operations = new([]);
 
     public ComposeViewModelTests()
     {
+        _activity.Changes.Returns(_operations);
+        _activity.Current.Returns(_ => _operations.Value);
         var running = new DaemonStatus(DaemonConnectionState.Connected, EngineState.Running, string.Empty);
         _daemon.Status.Returns(running);
         _daemon.StatusChanges.Returns(Observable.Return(running));
@@ -224,6 +230,53 @@ public sealed class ComposeViewModelTests
     }
 
     [Fact]
+    public void Activate_ShowsAnActionAClosedPageStarted()
+    {
+        _operations.OnNext([Action("op-3", "shop", "up", OperationState.Running)]);
+        Follows(
+            "op-3", new ComposeActionEvent.Output("Container shop-api-1  Started"), new ComposeActionEvent.Exited(0));
+        var viewModel = Watching(Shop());
+
+        viewModel.Activate();
+
+        Assert.Equal("Up · shop", viewModel.Run?.Title);
+        Assert.Equal("Done", viewModel.Run?.StatusText);
+        Assert.Equal(["Container shop-api-1  Started"], viewModel.Output.Select(line => line.Text));
+        _notifications.Received(1).Show("shop is up.", InfoBarSeverity.Success, null);
+    }
+
+    [Fact]
+    public void Activate_ReplaysAnActionThatEndedWithoutTellingAgain()
+    {
+        _operations.OnNext([Action("op-3", "shop", "pull", OperationState.Succeeded)]);
+        Follows("op-3", new ComposeActionEvent.Output("api Pulled"), new ComposeActionEvent.Exited(0));
+        var viewModel = Watching(Shop());
+
+        viewModel.Activate();
+
+        Assert.Equal("Pull · shop", viewModel.Run?.Title);
+        Assert.Equal(["api Pulled"], viewModel.Output.Select(line => line.Text));
+        _notifications.DidNotReceive().Show(Arg.Any<string>(), Arg.Any<InfoBarSeverity>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public void Activate_KeepsABusyProjectsCommandsOff()
+    {
+        var running = new TaskCompletionSource();
+        _operations.OnNext([Action("op-3", "shop", "up", OperationState.Running)]);
+        _sender
+            .Send(Arg.Any<FollowComposeActionQuery>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(Until<ComposeActionEvent>(running.Task)));
+        var viewModel = Watching(Shop());
+
+        viewModel.Activate();
+
+        Assert.True(viewModel.IsActing);
+        Assert.False(viewModel.CanAct);
+        running.SetResult();
+    }
+
+    [Fact]
     public async Task WithoutTheCapability_TheProjectsAreNotWatched()
     {
         _daemon.Identity.Returns(new DaemonIdentity("npipe:////./pipe/x", "0.1.0", 14, "Fake"));
@@ -243,7 +296,29 @@ public sealed class ComposeViewModelTests
             .Send(Arg.Any<WatchComposeProjectsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(stream));
 
-        return new ComposeViewModel(_sender, _notifications, _daemon, Substitute.For<IDaemonSettings>());
+        return new ComposeViewModel(_sender, _notifications, _daemon, Substitute.For<IDaemonSettings>(), _activity);
+    }
+
+    private static DaemonOperation Action(string id, string project, string action, OperationState state)
+    {
+        return new DaemonOperation(
+            id, new OperationWork.ComposeAction(project, action, [], false), state, DateTimeOffset.UnixEpoch);
+    }
+
+    private void Follows(string operationId, params ComposeActionEvent[] events)
+    {
+        _sender
+            .Send(
+                Arg.Is<FollowComposeActionQuery>(query => query != null && query.OperationId == operationId),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(TestStreams.Of(events)));
+    }
+
+    private static async IAsyncEnumerable<T> Until<T>(Task done)
+    {
+        await done;
+
+        yield break;
     }
 
     private void Runs(params ComposeActionEvent[] events)

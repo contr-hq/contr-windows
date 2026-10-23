@@ -13,6 +13,7 @@ using Contr.Modules.Containers.Application.Compose;
 using Contr.Modules.Containers.Application.Compose.Commands.AddComposeProject;
 using Contr.Modules.Containers.Application.Compose.Commands.RemoveComposeProject;
 using Contr.Modules.Containers.Application.Compose.Commands.RunComposeAction;
+using Contr.Modules.Containers.Application.Compose.Queries.FollowComposeAction;
 using Contr.Modules.Containers.Application.Compose.Queries.StreamComposeLogs;
 using Contr.Modules.Containers.Application.Compose.Queries.WatchComposeProjects;
 using Contr.Modules.Containers.Domain;
@@ -21,12 +22,15 @@ using Contr.UI.Common.Engine;
 using Contr.UI.Common.Lists;
 using Contr.UI.Contracts.Services.Daemon;
 using Contr.UI.Contracts.Services.Platform;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.Modules.Containers.UI.ViewModels;
 
 /// <summary>
-/// The engine's Compose projects, one project's services, the Compose commands run on it and its merged logs.
+/// The engine's Compose projects, one project's services, the Compose commands run on it and its merged logs. Where
+/// the daemon runs Compose actions as operations, the page shows a project's running or latest action, whichever page
+/// or client started it.
 /// </summary>
 /// <remarks>Use it on the UI thread: the list, the commands and the logs resume on the captured context.</remarks>
 public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectDto, ComposeProjectDto>
@@ -46,11 +50,33 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
     private readonly ISender _sender;
     private readonly INotificationService _notifications;
     private readonly IDaemonConnection _daemon;
+    private readonly IActivity _activity;
+    private readonly DispatcherQueue? _dispatcher;
     private readonly List<ComposeLogLine> _allLines = [];
+
+    /// <summary>Cancelled when the page's view model goes; Compose goes on in the daemon.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
+    /// <summary>The projects with a Compose action running in the daemon.</summary>
+    private readonly HashSet<string> _busy = new(StringComparer.Ordinal);
+
+    /// <summary>The operations shown to their end, which the daemon may still list as running for a moment.</summary>
+    private readonly HashSet<string> _shown = new(StringComparer.Ordinal);
+
     private CancellationTokenSource? _logs;
+    private IDisposable? _operations;
     private string _logsKey = string.Empty;
     private string? _selectedName;
     private string _runProject = string.Empty;
+
+    /// <summary>The operation <see cref="Run"/> shows; absent for an older daemon's run.</summary>
+    private string? _runOperation;
+
+    /// <summary>Whether this page follows a run under way.</summary>
+    private bool _acting;
+
+    /// <summary>Whether the page shows, between <see cref="Activate"/> and <see cref="Deactivate"/>.</summary>
+    private bool _isActive;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection), nameof(CanAct), nameof(CanUp), nameof(ShowsRun))]
@@ -102,7 +128,11 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
     public partial bool IsOffered { get; set; }
 
     public ComposeViewModel(
-        ISender sender, INotificationService notifications, IDaemonConnection daemon, IDaemonSettings settings)
+        ISender sender,
+        INotificationService notifications,
+        IDaemonConnection daemon,
+        IDaemonSettings settings,
+        IActivity activity)
         : base(
             new LiveCollection<ComposeProjectDto, ComposeProjectDto>(
                 project => project, project => project.Name, ComposeProjectItem.Compare),
@@ -111,9 +141,12 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
         ArgumentNullException.ThrowIfNull(sender);
         ArgumentNullException.ThrowIfNull(notifications);
         ArgumentNullException.ThrowIfNull(daemon);
+        ArgumentNullException.ThrowIfNull(activity);
         _sender = sender;
         _notifications = notifications;
         _daemon = daemon;
+        _activity = activity;
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
         Engine = new EngineGateViewModel(daemon, settings, notifications);
         ConfigFiles = string.Empty;
         ConfigError = string.Empty;
@@ -184,11 +217,16 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
             StartWatching();
         }
 
+        _isActive = true;
         Show();
+        _operations ??= _activity.Changes.Subscribe(OnOperations);
     }
 
     public void Deactivate()
     {
+        _isActive = false;
+        _operations?.Dispose();
+        _operations = null;
         StopWatching();
         StopLogs();
         Engine.Stop();
@@ -293,6 +331,8 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
         {
             Rows.CollectionChanged -= OnRowsChanged;
             Deactivate();
+            _lifetime.Cancel();
+            _lifetime.Dispose();
         }
 
         base.Dispose(disposing);
@@ -350,51 +390,163 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
         }
 
         var target = services.Count == 1 ? services[0] : project.Name;
-        var verb = Verb(action);
-        var run = new ComposeRun($"{verb} · {target}", "Running", PillKind.Busy);
-        IsActing = true;
-        _runProject = project.Name;
+        BeginRun(project.Name, action, target, operationId: null);
+        var events = await _sender.Send(new RunComposeActionCommand(project.Name, action, services, removeVolumes));
+        await ShowRunAsync(action, target, removeVolumes, events, notify: true);
+    }
+
+    /// <summary>Shows a project's action the daemon runs or ran, such as one a closed page started.</summary>
+    private async Task FollowRunAsync(DaemonOperation operation, OperationWork.ComposeAction work, ComposeAction action)
+    {
+        var target = work.Services.Count == 1 ? work.Services[0] : work.Project;
+        BeginRun(work.Project, action, target, operation.Id);
+        var events = await _sender.Send(new FollowComposeActionQuery(operation.Id));
+
+        // Only a run that ends while the page shows it is news.
+        await ShowRunAsync(action, target, work.RemoveVolumes, events, notify: operation.IsRunning);
+    }
+
+    private void BeginRun(string project, ComposeAction action, string target, string? operationId)
+    {
+        _acting = true;
+        UpdateActing();
+        _runProject = project;
+        _runOperation = operationId;
         Output.Clear();
-        Run = run;
+        Run = new ComposeRun($"{Verb(action)} · {target}", "Running", PillKind.Busy);
+    }
+
+    private async Task ShowRunAsync(
+        ComposeAction action,
+        string target,
+        bool removeVolumes,
+        IAsyncEnumerable<ComposeActionEvent> events,
+        bool notify)
+    {
+        var verb = Verb(action);
+        var run = Run ?? new ComposeRun($"{verb} · {target}", "Running", PillKind.Busy);
 
         try
         {
-            var events = await _sender.Send(new RunComposeActionCommand(project.Name, action, services, removeVolumes));
-            await foreach (var item in events)
+            await foreach (var item in events.WithCancellation(_lifetime.Token))
             {
                 switch (item)
                 {
+                    case ComposeActionEvent.Started started:
+                        _runOperation = started.OperationId;
+                        break;
                     case ComposeActionEvent.Output output:
                         AddOutput(output.Line);
                         break;
                     case ComposeActionEvent.Exited { ExitCode: 0 }:
                         run = run with { StatusText = "Done", PillKind = PillKind.Good };
-                        _notifications.Show(Done(action, target, removeVolumes), InfoBarSeverity.Success);
+                        Notify(notify, Done(action, target, removeVolumes), InfoBarSeverity.Success);
                         break;
                     case ComposeActionEvent.Exited exited:
                         var code = exited.ExitCode.ToString(CultureInfo.CurrentCulture);
                         run = run with { StatusText = $"Exited ({code})", PillKind = PillKind.Critical };
-                        _notifications.Show(
+                        Notify(
+                            notify,
                             $"Compose exited with code {code}. Its output is under the project's commands.",
                             InfoBarSeverity.Error,
                             $"Compose {verb.ToLowerInvariant()} failed for {target}");
                         break;
                     case ComposeActionEvent.Failed failed:
                         run = run with { StatusText = "Failed", PillKind = PillKind.Critical };
-                        _notifications.Show(
+                        Notify(
+                            notify,
                             failed.Error.Message,
                             InfoBarSeverity.Error,
                             $"Couldn't run {verb.ToLowerInvariant()} on {target}");
+                        break;
+                    case ComposeActionEvent.Cancelled:
+                        run = run with { StatusText = "Cancelled", PillKind = PillKind.Hollow };
                         break;
                 }
             }
 
             Run = run.IsRunning ? run with { StatusText = "Ended", PillKind = PillKind.Hollow } : run;
         }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed; a daemon that runs operations goes on with Compose.
+        }
         finally
         {
-            IsActing = false;
+            if (_runOperation is { } shown)
+            {
+                _shown.Add(shown);
+            }
+
+            _acting = false;
+            UpdateActing();
         }
+    }
+
+    private void Notify(bool notify, string message, InfoBarSeverity severity, string? title = null)
+    {
+        if (notify)
+        {
+            _notifications.Show(message, severity, title);
+        }
+    }
+
+    private void UpdateActing()
+    {
+        IsActing = _acting || (Selected is { } project && _busy.Contains(project.Name));
+    }
+
+    private void OnOperations(IReadOnlyList<DaemonOperation> operations)
+    {
+        // Changes emits on a background thread.
+        if (_dispatcher is null)
+        {
+            ApplyOperations(operations);
+
+            return;
+        }
+
+        _dispatcher.TryEnqueue(() => ApplyOperations(operations));
+    }
+
+    private void ApplyOperations(IReadOnlyList<DaemonOperation> operations)
+    {
+        if (!_isActive)
+        {
+            return;
+        }
+
+        _busy.Clear();
+        _busy.UnionWith(operations
+            .Where(operation => operation.IsRunning && !_shown.Contains(operation.Id))
+            .Select(operation => operation.Work)
+            .OfType<OperationWork.ComposeAction>()
+            .Select(work => work.Project));
+        UpdateActing();
+        ShowLatestRun(operations);
+    }
+
+    /// <summary>Shows the selected project's latest action unless the page shows it, or a run of its own.</summary>
+    private void ShowLatestRun(IReadOnlyList<DaemonOperation> operations)
+    {
+        if (_acting || !_isActive || Selected is not { } project)
+        {
+            return;
+        }
+
+        var latest = operations.FirstOrDefault(operation =>
+            operation.Work is OperationWork.ComposeAction work && work.Project == project.Name);
+
+        if (latest is not { Work: OperationWork.ComposeAction work }
+            || latest.Id == _runOperation
+            || _shown.Contains(latest.Id)
+            || (!latest.IsRunning && ShowsRun)
+            || !Enum.TryParse<ComposeAction>(work.Action, ignoreCase: true, out var action))
+        {
+            return;
+        }
+
+        _ = FollowRunAsync(latest, work, action);
     }
 
     private void AddOutput(string text)
@@ -462,6 +614,8 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
 
         _selectedName = selected;
         Selected = projects.FirstOrDefault(project => project.Name == selected);
+        UpdateActing();
+        ShowLatestRun(_activity.Current);
 
         var project = Rows.FirstOrDefault(project => project.Name == selected);
         List<ComposeServiceRow> services = project is null
