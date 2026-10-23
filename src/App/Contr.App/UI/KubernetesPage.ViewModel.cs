@@ -248,13 +248,28 @@ public sealed partial class KubernetesViewModel : ViewModel
         nameof(KubeconfigFolder), nameof(CanOpenKubeconfig), nameof(CanImport), nameof(CanReset),
     ];
 
+    private const string _importLead =
+        "Copies images from your engine into the cluster, so pods can use them without a registry.";
+
     private readonly IKubernetesCluster _cluster;
     private readonly IDaemonSettings _settings;
     private readonly IDaemonConnection _daemon;
     private readonly INotificationService _notifications;
+    private readonly IActivity _activity;
     private readonly DispatcherQueue? _dispatcher;
+
+    /// <summary>Cancelled when the page's view model goes; an import goes on in the daemon.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
     private IDisposable? _clusterChanges;
     private IDisposable? _settingsChanges;
+    private IDisposable? _operations;
+
+    /// <summary>The import operation the page follows; absent while it follows none.</summary>
+    private string? _import;
+
+    /// <summary>Imports the page reported, which the daemon may still list as running for a moment.</summary>
+    private readonly HashSet<string> _reported = new(StringComparer.Ordinal);
     private DispatcherQueueTimer? _clock;
 
     /// <summary>The settings revision the user's last change made; a cluster state older than it is stale.</summary>
@@ -268,7 +283,17 @@ public sealed partial class KubernetesViewModel : ViewModel
 
     /// <summary>Whether a call the user made has not returned yet.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanImport))]
     public partial bool IsBusy { get; set; }
+
+    /// <summary>What the import card says: what it does, or how far an import got.</summary>
+    [ObservableProperty]
+    public partial string ImportDescription { get; set; }
+
+    /// <summary>Whether the daemon runs an import that the page follows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanImport))]
+    public partial bool IsImporting { get; set; }
 
     [ObservableProperty]
     public partial ClusterStatus Status { get; set; }
@@ -281,17 +306,21 @@ public sealed partial class KubernetesViewModel : ViewModel
         IKubernetesCluster cluster,
         IDaemonSettings settings,
         IDaemonConnection daemon,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivity activity)
     {
         ArgumentNullException.ThrowIfNull(cluster);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(notifications);
+        ArgumentNullException.ThrowIfNull(activity);
         _cluster = cluster;
         _settings = settings;
         _daemon = daemon;
         _notifications = notifications;
+        _activity = activity;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
+        ImportDescription = _importLead;
         Status = ClusterStatus.From(null, string.Empty, false);
         IsOffered = Offers(daemon);
     }
@@ -408,7 +437,7 @@ public sealed partial class KubernetesViewModel : ViewModel
 
     public bool CanOpenKubeconfig => KubeconfigFolder.Length > 0 && Directory.Exists(KubeconfigFolder);
 
-    public bool CanImport => CanAct && IsReady;
+    public bool CanImport => CanAct && IsReady && !IsImporting;
 
     /// <summary>A reset needs a running engine and a cluster that is not on its way down.</summary>
     public bool CanReset => CanAct && State is not (ClusterState.WaitingForEngine or ClusterState.Stopping);
@@ -419,6 +448,7 @@ public sealed partial class KubernetesViewModel : ViewModel
         IsOffered = Offers(_daemon);
         _clusterChanges ??= _cluster.Changes.Subscribe(cluster => OnUi(() => Cluster = cluster));
         _settingsChanges ??= _settings.Changes.Subscribe(settings => OnUi(() => Settings = settings));
+        _operations ??= _activity.Changes.Subscribe(operations => OnUi(() => FollowImport(operations)));
 
         if (_clock is null && _dispatcher is not null)
         {
@@ -435,6 +465,8 @@ public sealed partial class KubernetesViewModel : ViewModel
         _clusterChanges = null;
         _settingsChanges?.Dispose();
         _settingsChanges = null;
+        _operations?.Dispose();
+        _operations = null;
         _clock?.Stop();
         _clock = null;
     }
@@ -533,6 +565,10 @@ public sealed partial class KubernetesViewModel : ViewModel
         }
         finally
         {
+            // The import the dialog followed is the one the daemon lists.
+            _reported.UnionWith(_activity.Current
+                .Where(operation => operation.Work is OperationWork.ImportImages)
+                .Select(operation => operation.Id));
             IsBusy = false;
         }
     }
@@ -547,6 +583,61 @@ public sealed partial class KubernetesViewModel : ViewModel
         if (disposing)
         {
             Deactivate();
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+        }
+    }
+
+    /// <summary>Follows an import the daemon runs, such as one the page started before it closed.</summary>
+    private void FollowImport(IReadOnlyList<DaemonOperation> operations)
+    {
+        if (IsBusy || _import is not null)
+        {
+            return;
+        }
+
+        var running = operations.FirstOrDefault(operation =>
+            operation is { IsRunning: true, Work: OperationWork.ImportImages } && !_reported.Contains(operation.Id));
+
+        if (running is { Work: OperationWork.ImportImages work })
+        {
+            _ = FollowImportAsync(running.Id, work.Images.Count);
+        }
+    }
+
+    private async Task FollowImportAsync(string operationId, int count)
+    {
+        _import = operationId;
+        IsImporting = true;
+        var done = 0;
+        var images = count == 1 ? "1 image" : $"{count} images";
+        ImportDescription = $"Importing {images} into the cluster…";
+        var progress = new Progress<ImageImport>(_ =>
+            ImportDescription = $"Importing {images} into the cluster · {++done} done…");
+
+        try
+        {
+            var result = await _cluster.FollowImportAsync(operationId, progress, _lifetime.Token);
+
+            if (result.IsFailure)
+            {
+                _notifications.Show(result.Error.Message, InfoBarSeverity.Error, "No images were imported");
+            }
+            else
+            {
+                ReportImport(result.Value);
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The page closed; the import goes on in the daemon.
+        }
+        finally
+        {
+            _reported.Add(operationId);
+            _import = null;
+            IsImporting = false;
+            ImportDescription = _importLead;
         }
     }
 
