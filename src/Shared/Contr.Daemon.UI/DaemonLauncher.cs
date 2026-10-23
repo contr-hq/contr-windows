@@ -13,21 +13,30 @@ public sealed class DaemonLauncher
     private const string _daemonFileName = "contrd.exe";
 
     private readonly string[] _arguments;
+    private readonly InstallerActivity _installer;
 
-    public DaemonLauncher(IOptions<DaemonOptions> options)
+    public DaemonLauncher(IOptions<DaemonOptions> options, InstallerActivity? installer = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         Executable = Resolve(options.Value.Path);
         _arguments = options.Value.Arguments;
+        _installer = installer ?? new InstallerActivity();
     }
 
     /// <summary>The configured path, the bundled daemon, or the bare file name PATH resolves.</summary>
     public string Executable { get; }
 
-    /// <exception cref="DaemonUnavailableException">The executable cannot be run.</exception>
+    /// <exception cref="DaemonUnavailableException">The executable cannot run, or Windows Installer runs.</exception>
     public void Start()
     {
+        // The installer may be replacing contrd; one started now keeps the old files in use after it finishes.
+        if (_installer.IsInstalling())
+        {
+            throw new DaemonUnavailableException(
+                "Windows Installer is running; Contr starts the daemon once it finishes.", null);
+        }
+
         var startInfo = new ProcessStartInfo(Executable) { UseShellExecute = false, CreateNoWindow = true };
         foreach (var argument in _arguments)
         {
