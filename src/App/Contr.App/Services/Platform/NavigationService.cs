@@ -5,28 +5,33 @@ using System.Reactive.Subjects;
 using Contr.App.Infrastructure.Observability;
 using Contr.UI.Contracts;
 using Contr.UI.Contracts.Services.Platform;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Contr.App.Services.Platform;
 
 /// <summary>
 /// Shows pages in the shell's content <see cref="Frame"/>. Pages resolve from the container, so
-/// navigation sets <see cref="Frame.Content"/> directly and keeps its own back stack.
+/// navigation sets <see cref="Frame.Content"/> directly and keeps its own back stack. Each page resolves in its own
+/// scope, which disposes the page's view model once another page shows.
 /// </summary>
 public sealed class NavigationService : INavigationService
 {
-    private readonly IServiceProvider _services;
+    private readonly IServiceScopeFactory _scopes;
     private readonly Subject<NavigationEvent> _navigated = new();
     private readonly Dictionary<string, Type> _registry = new(StringComparer.Ordinal);
     private readonly Stack<NavigationEntry> _backStack = new();
     private Frame? _frame;
     private NavigationEntry? _current;
 
-    public NavigationService(IServiceProvider services, IEnumerable<IModule> modules)
+    /// <summary>The scope of the page showing.</summary>
+    private IServiceScope? _scope;
+
+    public NavigationService(IServiceScopeFactory scopes, IEnumerable<IModule> modules)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(scopes);
         ArgumentNullException.ThrowIfNull(modules);
-        _services = services;
+        _scopes = scopes;
 
         foreach (var module in modules)
         {
@@ -89,8 +94,12 @@ public sealed class NavigationService : INavigationService
             return false;
         }
 
-        if (_services.GetService(pageType) is not Page page)
+        var scope = _scopes.CreateScope();
+
+        if (scope.ServiceProvider.GetService(pageType) is not Page page)
         {
+            scope.Dispose();
+
             return false;
         }
 
@@ -103,7 +112,7 @@ public sealed class NavigationService : INavigationService
         }
 
         _current = new NavigationEntry(pageKey, args.ToArray());
-        Show(_frame, page, _current.Parameters);
+        Show(_frame, page, _current.Parameters, scope);
         _navigated.OnNext(new NavigationEvent(pageKey, pageType, page, _current.Parameters));
 
         return true;
@@ -116,13 +125,17 @@ public sealed class NavigationService : INavigationService
             return;
         }
 
-        if (_services.GetService(_registry[entry.PageKey]) is not Page page)
+        var scope = _scopes.CreateScope();
+
+        if (scope.ServiceProvider.GetService(_registry[entry.PageKey]) is not Page page)
         {
+            scope.Dispose();
+
             return;
         }
 
         _current = entry;
-        Show(_frame, page, entry.Parameters);
+        Show(_frame, page, entry.Parameters, scope);
         _navigated.OnNext(new NavigationEvent(entry.PageKey, page.GetType(), page, entry.Parameters));
     }
 
@@ -131,8 +144,9 @@ public sealed class NavigationService : INavigationService
         _backStack.Clear();
     }
 
-    /// <summary>Hands the parameters to the page's view model before the page loads.</summary>
-    private static void Show(Frame frame, Page page, object[] parameters)
+    /// <summary>Hands the parameters to the page's view model before the page loads, then disposes the page it
+    /// replaced with its view model; work that page started goes on where the daemon owns it.</summary>
+    private void Show(Frame frame, Page page, object[] parameters, IServiceScope scope)
     {
         if (frame.Content is IHasViewModel previous)
         {
@@ -141,6 +155,10 @@ public sealed class NavigationService : INavigationService
 
         (page as IHasViewModel)?.ViewModel.OnNavigatedTo(parameters);
         frame.Content = page;
+
+        var replaced = _scope;
+        _scope = scope;
+        replaced?.Dispose();
     }
 
     private sealed record NavigationEntry(string PageKey, object[] Parameters);
