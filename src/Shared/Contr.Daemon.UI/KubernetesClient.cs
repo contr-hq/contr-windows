@@ -9,12 +9,15 @@ using Contr.Application.Abstractions.Daemon;
 using Contr.Sdk;
 using Contr.Sdk.Images.V1;
 using Contr.Sdk.Kubernetes.V1;
+using Contr.Sdk.Operations.V1;
 using Contr.SharedKernel;
 using Contr.UI.Contracts.Services.Daemon;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using ClusterState = Contr.UI.Contracts.Services.Daemon.ClusterState;
+using FollowEvent = Contr.Sdk.Operations.V1.FollowOperationResponse.EventOneofCase;
+using UiState = Contr.UI.Contracts.Services.Daemon.OperationState;
 using WireCluster = Contr.Sdk.Kubernetes.V1.Cluster;
 using WireState = Contr.Sdk.Kubernetes.V1.ClusterState;
 
@@ -64,6 +67,18 @@ public sealed partial class KubernetesClient : IKubernetesCluster
         ArgumentNullException.ThrowIfNull(progress);
 
         var request = new ImportImagesRequest { Images = { images } };
+
+        if (_daemon.Offers())
+        {
+            var started = await _daemon
+                .StartOperationAsync(new OperationRequest { ImportImages = request }, cancellationToken)
+                .ConfigureAwait(false);
+
+            return started.IsSuccess
+                ? await FollowImportAsync(started.Value.Id, progress, cancellationToken).ConfigureAwait(false)
+                : Result.Failure<IReadOnlyList<ImageImport>>(started.Error);
+        }
+
         List<ImageImport> imports = [];
         var outcomes = _daemon.StreamAsync(
             (client, token) => client.Kubernetes.ImportImages(request, cancellationToken: token),
@@ -84,6 +99,43 @@ public sealed partial class KubernetesClient : IKubernetesCluster
                 progress.Report(import);
             }
         }
+
+        return Result.Success<IReadOnlyList<ImageImport>>(imports);
+    }
+
+    public async Task<Result<IReadOnlyList<ImageImport>>> FollowImportAsync(
+        string operationId, IProgress<ImageImport> progress, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(operationId);
+        ArgumentNullException.ThrowIfNull(progress);
+
+        List<ImageImport> imports = [];
+        var outcomes = _daemon.FollowOperationAsync(
+            operationId,
+            response => response.EventCase switch {
+                FollowEvent.ImportImages => new ImportOutcome(
+                    new ImageImport(response.ImportImages.Image, response.ImportImages.Error), null),
+                FollowEvent.Finished => new ImportOutcome(null, Failure(response.Finished)),
+                _ => null,
+            },
+            error => new ImportOutcome(null, error),
+            cancellationToken);
+
+        await foreach (var outcome in outcomes.ConfigureAwait(false))
+        {
+            if (outcome.Error is { } error)
+            {
+                return Result.Failure<IReadOnlyList<ImageImport>>(error);
+            }
+
+            if (outcome.Import is { } import)
+            {
+                imports.Add(import);
+                progress.Report(import);
+            }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         return Result.Success<IReadOnlyList<ImageImport>>(imports);
     }
@@ -240,6 +292,14 @@ public sealed partial class KubernetesClient : IKubernetesCluster
                 }
             }
         });
+    }
+
+    /// <summary>Why an import ended without succeeding; absent when it succeeded.</summary>
+    private static Error? Failure(Operation finished)
+    {
+        var ended = DaemonOperations.ToOperation(finished);
+
+        return ended.State == UiState.Succeeded ? null : DaemonOperations.Ended(ended);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "The cluster stream ended: {Reason}")]

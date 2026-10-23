@@ -5,6 +5,7 @@ using Contr.UI.Contracts.Services.Daemon;
 using Grpc.Core;
 using Xunit;
 using Wire = Contr.Sdk.Diagnostics.V1;
+using WireOperations = Contr.Sdk.Operations.V1;
 using WireRemediation = Contr.Sdk.Common.V1.Remediation;
 
 namespace Contr.Daemon.UI.Tests;
@@ -90,5 +91,38 @@ public sealed class DiagnosticsClientTests
         Assert.False(DiagnosticsClient.Dismisses(cancelled, asked.Token));
         Assert.False(DiagnosticsClient.Dismisses(
             new RpcException(new Status(StatusCode.Internal, "boom")), CancellationToken.None));
+    }
+
+    [Fact]
+    public void Ended_TellsADismissedPromptFromAFailedFix()
+    {
+        var dismissed = new WireOperations.Operation {
+            State = WireOperations.OperationState.Failed,
+            Error = new WireOperations.OperationError { Code = (int)StatusCode.Cancelled, Message = "dismissed" },
+        };
+        var failed = new WireOperations.Operation {
+            State = WireOperations.OperationState.Failed,
+            Error = new WireOperations.OperationError {
+                Code = (int)StatusCode.Internal,
+                Message = "install-wsl failed: wsl --install exited with 1",
+            },
+        };
+
+        Assert.Equal(
+            IDiagnostics.ElevationDeclinedCode,
+            DiagnosticsClient.Ended(dismissed, null, Remediation.InstallWslId).Error.Code);
+        Assert.Equal(
+            "wsl --install exited with 1",
+            DiagnosticsClient.Ended(failed, null, Remediation.InstallWslId).Error.Message);
+    }
+
+    [Fact]
+    public void Ended_KeepsTheOutcomeOfAFixThatSucceeded()
+    {
+        var succeeded = new WireOperations.Operation { State = WireOperations.OperationState.Succeeded };
+
+        var result = DiagnosticsClient.Ended(succeeded, new RemediationOutcome(true, false), Remediation.InstallWslId);
+
+        Assert.True(result.Value.RestartRequired);
     }
 }
