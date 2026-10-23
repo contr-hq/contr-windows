@@ -9,6 +9,10 @@ public abstract record PullEvent
     {
     }
 
+    /// <summary>The first event of a pull the daemon runs as an operation, which outlives this stream.</summary>
+    /// <param name="OperationId">Cancels the pull through the daemon's operations.</param>
+    public sealed record Started(string OperationId) : PullEvent;
+
     /// <summary>Download or extraction progress of one layer.</summary>
     /// <param name="Status">The engine's step, such as <c>Downloading</c> or <c>Pull complete</c>.</param>
     /// <param name="TotalBytes">Zero while unknown.</param>
@@ -22,4 +26,7 @@ public abstract record PullEvent
 
     /// <summary>The last event of a pull that failed.</summary>
     public sealed record Failed(Error Error) : PullEvent;
+
+    /// <summary>The last event of a pull that was cancelled, from this client or another.</summary>
+    public sealed record Cancelled : PullEvent;
 }

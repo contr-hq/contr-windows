@@ -1,8 +1,12 @@
 using System;
 using System.Linq;
 using Contr.Application.Abstractions.Watching;
+using Contr.Daemon.UI;
 using Contr.Modules.Images.Application.Images;
 using Contr.Modules.Images.Domain;
+using Contr.Sdk.Operations.V1;
+using Contr.UI.Contracts.Services.Daemon;
+using FollowCase = Contr.Sdk.Operations.V1.FollowOperationResponse.EventOneofCase;
 using ImagesV1 = Contr.Sdk.Images.V1;
 using PullCase = Contr.Sdk.Images.V1.PullImageResponse.EventOneofCase;
 using WatchCase = Contr.Sdk.Images.V1.WatchImagesResponse.EventOneofCase;
@@ -40,6 +44,18 @@ internal static class ImageMapping
     }
 
     /// <summary>Returns <see langword="null"/> for an event kind this client does not know.</summary>
+    public static Followed? ToFollowed(FollowOperationResponse response)
+    {
+        return response.EventCase switch {
+            FollowCase.PullImage => ToPullEvent(response.PullImage) is { } pullEvent
+                ? new Followed(pullEvent, null)
+                : null,
+            FollowCase.Finished => new Followed(null, DaemonOperations.ToOperation(response.Finished)),
+            _ => null,
+        };
+    }
+
+    /// <summary>Returns <see langword="null"/> for an event kind this client does not know.</summary>
     public static PullEvent? ToPullEvent(ImagesV1.PullImageResponse response)
     {
         return response.EventCase switch {
@@ -53,4 +69,7 @@ internal static class ImageMapping
             _ => null,
         };
     }
+
+    /// <summary>One event of a followed pull operation, or its final state.</summary>
+    public sealed record Followed(PullEvent? Event, DaemonOperation? Finished);
 }
