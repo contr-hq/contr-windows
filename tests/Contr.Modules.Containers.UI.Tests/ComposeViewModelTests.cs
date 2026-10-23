@@ -110,7 +110,7 @@ public sealed class ComposeViewModelTests
                 && command.Action == ComposeAction.Up
                 && command.Services.Count == 0),
             Arg.Any<CancellationToken>());
-        Assert.Equal([" Container shop-api-1  Started"], viewModel.Output);
+        Assert.Equal([" Container shop-api-1  Started"], viewModel.Output.Select(line => line.Text));
         Assert.Equal(
             ("Up · shop", "Done", PillKind.Good),
             (viewModel.Run?.Title, viewModel.Run?.StatusText, viewModel.Run?.PillKind));
@@ -129,7 +129,7 @@ public sealed class ComposeViewModelTests
         await viewModel.PullAsync();
 
         Assert.Equal(("Exited (1)", PillKind.Critical), (viewModel.Run?.StatusText, viewModel.Run?.PillKind));
-        Assert.Equal(["no such image"], viewModel.Output);
+        Assert.Equal(["no such image"], viewModel.Output.Select(line => line.Text));
         _notifications.Received(1).Show(
             "Compose exited with code 1. Its output is under the project's commands.",
             InfoBarSeverity.Error,

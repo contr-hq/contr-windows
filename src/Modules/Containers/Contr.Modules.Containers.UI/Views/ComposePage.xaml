@@ -194,12 +194,12 @@
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="OutputTemplate" x:DataType="x:String">
+            <DataTemplate x:Key="OutputTemplate" x:DataType="vm:ComposeOutputLine">
                 <TextBlock
                     Padding="14,1"
                     IsTextSelectionEnabled="True"
                     Style="{StaticResource LogTextStyle}"
-                    Text="{x:Bind}"
+                    Text="{x:Bind Text}"
                     TextWrapping="Wrap" />
             </DataTemplate>
         </ResourceDictionary>

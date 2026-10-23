@@ -227,7 +227,7 @@ public sealed partial class ComposePage : Page, IHasViewModel
         LogList.ScrollIntoView(line);
     }
 
-    private void OnOutputAdded(object? sender, string line)
+    private void OnOutputAdded(object? sender, ComposeOutputLine line)
     {
         OutputList.ScrollIntoView(line);
     }

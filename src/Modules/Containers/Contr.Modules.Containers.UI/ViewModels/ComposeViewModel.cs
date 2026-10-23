@@ -138,7 +138,7 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
     public ObservableCollection<ComposeLogLine> Lines { get; } = [];
 
     /// <summary>What the last command wrote, newest last.</summary>
-    public ObservableCollection<string> Output { get; } = [];
+    public ObservableCollection<ComposeOutputLine> Output { get; } = [];
 
     public bool LacksOffer => !IsOffered;
 
@@ -172,7 +172,7 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
     public event EventHandler<ComposeLogLine>? LineAdded;
 
     /// <summary>Raised when a command writes a line, so the view can keep it in sight.</summary>
-    public event EventHandler<string>? OutputAdded;
+    public event EventHandler<ComposeOutputLine>? OutputAdded;
 
     public void Activate()
     {
@@ -397,8 +397,9 @@ public sealed partial class ComposeViewModel : LiveListViewModel<ComposeProjectD
         }
     }
 
-    private void AddOutput(string line)
+    private void AddOutput(string text)
     {
+        var line = new ComposeOutputLine(text);
         Output.Add(line);
 
         if (Output.Count > _outputCapacity)
