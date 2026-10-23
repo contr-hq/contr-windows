@@ -8,8 +8,6 @@ C# SDK the core repository generates, over a per-user named pipe.
 [Releases](https://github.com/contr-hq/contr-windows/releases) has `Setup.exe`, and an MSI for managed installs. What is
 signed, by whom and how, and what Contr sends to other systems, is in the code signing policy.
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
-
 [Code signing policy](https://github.com/contr-hq/contr/blob/main/docs/code-signing-policy.md)
 
 ## Status
@@ -106,7 +104,7 @@ A `v*` tag builds the installer: the app published self-contained for x64, the c
 `packaging/core-release.json` pins (checked against its SHA-256) laid out beside it, packed by
 [Velopack](https://velopack.io) into `Setup.exe`, an MSI and the update packages. The tag must match `Version.props`,
 and `docs/releases/<tag>.md` holds the release's notes, written from `docs/releases/TEMPLATE.md`; the release fails
-without the template's SignPath line and its link to the Code signing policy. Every file of a tagged release gets a
+without the template's link to the Code signing policy. Every file of a tagged release gets a
 GitHub build attestation (`gh attestation verify <file> --repo contr-hq/contr-windows`) and a line in `SHA256SUMS`,
 which [contr-packages](https://github.com/contr-hq/contr-packages) signs: at once when the secret
 `PACKAGES_DISPATCH_TOKEN` lets the release tell it, else in its daily build. `scripts/pack-release.ps1` builds the same
