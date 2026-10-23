@@ -47,7 +47,9 @@ references it or names its namespace, and `Contr.App.Tests` checks the compiled 
   performs the handshake, follows `EngineService.WatchState`, starts an engine it finds stopped
   (`Daemon:StartEngine`), and reconnects every five seconds after the connection breaks. Each
   connection attempt is bounded to two seconds, because the SDK's named-pipe connect waits forever
-  for a pipe that does not exist.
+  for a pipe that does not exist. It starts no `contrd.exe` while Windows Installer holds its
+  `Global\_MSIExecute` mutex: an install may be replacing the daemon, and one started then would keep the
+  old files in use.
 - `DaemonCalls.CallAsync`, `RunAsync` and `StreamAsync` turn SDK and gRPC failures into
   `DaemonErrors`, so module gateways stay a few lines each.
 - `IntegrationClient` serves `ICliTools` and `IWslDistributions` over `ContrClient.Integration`, on the
