@@ -74,6 +74,7 @@ internal static class AppHost
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IMainWindowProvider, MainWindowProvider>();
         services.AddSingleton<TrayService>();
+        services.AddSingleton<ActivityToasts>();
         services.AddSingleton<ISignInStartup, SignInStartup>();
         services.AddTransient<OnboardingViewModel>();
         services.AddTransient<OnboardingWindow>();
@@ -96,6 +97,7 @@ internal static class AppHost
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<KubernetesViewModel>();
         services.AddTransient<TroubleshootViewModel>();
+        services.AddTransient<ActivityViewModel>();
     }
 
     private static void AddOrchestrators(IServiceCollection services)

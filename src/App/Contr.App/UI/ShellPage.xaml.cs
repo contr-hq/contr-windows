@@ -45,7 +45,9 @@ public sealed partial class ShellPage : Page
         IDaemonConnection daemon,
         IServiceProvider services,
         ISubscription subscription,
-        GlobalSearch search)
+        GlobalSearch search,
+        ActivityViewModel activity,
+        IMainWindowProvider mainWindow)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(navigationService);
@@ -55,8 +57,11 @@ public sealed partial class ShellPage : Page
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(subscription);
         ArgumentNullException.ThrowIfNull(search);
+        ArgumentNullException.ThrowIfNull(activity);
+        ArgumentNullException.ThrowIfNull(mainWindow);
 
         ViewModel = viewModel;
+        Activity = activity;
         _navigationService = navigationService;
         _notificationService = notificationService;
         _modules = [.. modules];
@@ -66,9 +71,12 @@ public sealed partial class ShellPage : Page
         _search = search;
 
         InitializeComponent();
+        ActivityFlyout.Content = new ActivityPanel(activity, mainWindow);
     }
 
     public ShellViewModel ViewModel { get; }
+
+    public ActivityViewModel Activity { get; }
 
     /// <summary>The custom title bar, handed to the window so it becomes the draggable caption.</summary>
     public TitleBar TitleBar => AppTitleBar;
@@ -76,6 +84,11 @@ public sealed partial class ShellPage : Page
     public static object? ToolTipFor(string detail)
     {
         return string.IsNullOrEmpty(detail) ? null : detail;
+    }
+
+    public static Visibility Unless(bool value)
+    {
+        return value ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>Builds the pane and subscribes once; the subscription cannot be reused after Unloaded.</summary>
@@ -87,6 +100,7 @@ public sealed partial class ShellPage : Page
         }
 
         _isLoaded = true;
+        Activity.Start();
         _navigationService.Initialize(NavFrame);
         _navigationService.Register([.. HostNavigation.ShellPages]);
 
@@ -382,5 +396,6 @@ public sealed partial class ShellPage : Page
         _searching?.Cancel();
         _searching?.Dispose();
         _searching = null;
+        Activity.Stop();
     }
 }
