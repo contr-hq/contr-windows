@@ -5,3 +5,6 @@ WA_ACTIVE
 WA_INACTIVE
 AllowSetForegroundWindow
 IsProcessorFeaturePresent
+WM_QUERYENDSESSION
+WM_ENDSESSION
+IsWindowVisible

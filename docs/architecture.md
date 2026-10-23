@@ -94,8 +94,13 @@ instance, which brings its window back. The host then runs the startup orchestra
 | 40 | Activation | skipped when Windows started Contr at sign-in (`--background`): only the tray shows |
 | 45 | Onboarding | the first-run setup, until it records `SetupDone`; never on a `--background` launch |
 
-Closing the main window hides it; only **Quit Contr** in the tray ends the process. The daemon keeps
-running either way.
+Closing the main window hides it, and **Quit Contr** in the tray ends the process. Windows and installers end it
+too, and the daemon keeps running either way:
+
+- Sign-out and Restart Manager, which an MSI install or uninstall uses to close the apps holding its files, send
+  `WM_QUERYENDSESSION` and `WM_ENDSESSION`; the app quits on a `WM_ENDSESSION` whose session ends.
+- A `WM_CLOSE` quits when the window is hidden, which only another program can close, or after
+  `WM_QUERYENDSESSION`.
 
 ## Pages
 

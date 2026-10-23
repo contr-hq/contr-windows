@@ -12,6 +12,12 @@ public static class WindowInterop
     {
         /// <summary>Sent to the window being activated and to the one being deactivated.</summary>
         public static uint Activate => PInvoke.WM_ACTIVATE;
+
+        /// <summary>Asks every top-level window whether the session may end, before sign-out or an installer.</summary>
+        public static uint QueryEndSession => PInvoke.WM_QUERYENDSESSION;
+
+        /// <summary>Follows <see cref="QueryEndSession"/>; a nonzero wParam means the session ends.</summary>
+        public static uint EndSession => PInvoke.WM_ENDSESSION;
     }
 
     /// <summary>The activation states <c>WM_ACTIVATE</c> carries.</summary>
@@ -35,6 +41,12 @@ public static class WindowInterop
     public static IntPtr SendMessage(IntPtr hWnd, uint msg, uint wParam, IntPtr lParam)
     {
         return PInvoke.SendMessage(new HWND(hWnd), msg, wParam, lParam).Value;
+    }
+
+    /// <summary>Whether the window has the visible style, even while it is covered or minimized.</summary>
+    public static bool IsWindowVisible(IntPtr hWnd)
+    {
+        return PInvoke.IsWindowVisible(new HWND(hWnd));
     }
 
     /// <summary>Lets the process with <paramref name="processId"/> bring its window to the foreground.</summary>
